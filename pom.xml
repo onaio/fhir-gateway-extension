@@ -6,7 +6,7 @@
     implementations do not have to do this; they can redeclare those deps. -->
     <groupId>com.google.fhir.gateway</groupId>
     <artifactId>fhir-gateway</artifactId>
-    <version>0.3.2</version>
+    <version>0.4.0</version>
   </parent>
 
   <groupId>org.smartregister</groupId>
@@ -20,7 +20,8 @@
   </modules>
 
   <properties>
-    <spotless.version>2.30.0</spotless.version>
+    <spotless.version>2.43.0</spotless.version>
+    <fhir.gateway.version>0.4.0</fhir.gateway.version>
   </properties>
 
   <dependencies>
@@ -33,6 +34,14 @@
 
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>${maven.compiler.source}</source>
+          <target>${maven.compiler.target}</target>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>com.mycila</groupId>
         <artifactId>license-maven-plugin</artifactId>
