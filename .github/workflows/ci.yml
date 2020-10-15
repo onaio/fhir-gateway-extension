@@ -17,10 +17,10 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Set up JDK 11
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: 11
+          java-version: '17'
 
       - name: Run Unit tests and generate report
         run: mvn -B clean test jacoco:report --file pom.xml --file README.md --file LICENSE

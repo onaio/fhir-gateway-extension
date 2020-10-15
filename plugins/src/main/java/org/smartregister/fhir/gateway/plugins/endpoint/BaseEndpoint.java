@@ -6,10 +6,6 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartregister.fhir.gateway.plugins.RestUtils;
@@ -18,6 +14,9 @@ import com.google.fhir.gateway.TokenVerifier;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 public abstract class BaseEndpoint extends HttpServlet {
     private static final Logger logger = LoggerFactory.getLogger(BaseEndpoint.class);

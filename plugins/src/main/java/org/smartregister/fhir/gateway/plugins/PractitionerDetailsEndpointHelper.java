@@ -23,7 +23,6 @@ import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.OrganizationAffiliation;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.PractitionerRole;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartregister.model.location.LocationHierarchy;
@@ -37,6 +36,7 @@ import com.google.common.annotations.VisibleForTesting;
 import ca.uhn.fhir.rest.api.SearchStyleEnum;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
+import jakarta.annotation.Nonnull;
 
 public class PractitionerDetailsEndpointHelper {
     private static final Logger logger =
@@ -160,7 +160,7 @@ public class PractitionerDetailsEndpointHelper {
         return responseBundle;
     }
 
-    @NotNull
+    @Nonnull
     public static Set<String> getAttributedLocations(List<LocationHierarchy> locationHierarchies) {
         List<ParentChildrenMap> parentChildrenList =
                 locationHierarchies.stream()
