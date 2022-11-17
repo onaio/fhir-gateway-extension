@@ -1,5 +1,0 @@
-/mnt/wizard/code/ona/server/fhir-access-proxy-plugin/src/test/java/org/smartregister/fhir/proxy/plugin/OpenSRPSyncAccessDecisionTest.java
-/mnt/wizard/code/ona/server/fhir-access-proxy-plugin/src/test/java/org/smartregister/fhir/proxy/plugin/AccessGrantedAndUpdateListTest.java
-/mnt/wizard/code/ona/server/fhir-access-proxy-plugin/src/test/java/org/smartregister/fhir/proxy/plugin/PermissionAccessCheckerTest.java
-/mnt/wizard/code/ona/server/fhir-access-proxy-plugin/src/test/java/org/smartregister/fhir/proxy/plugin/TestUtil.java
-/mnt/wizard/code/ona/server/fhir-access-proxy-plugin/src/test/java/org/smartregister/fhir/proxy/plugin/AccessCheckerTestBase.java
