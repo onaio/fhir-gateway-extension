@@ -1,0 +1,5 @@
+org/smartregister/fhir/proxy/plugin/TestUtil.class
+org/smartregister/fhir/proxy/plugin/AccessGrantedAndUpdateListTest.class
+org/smartregister/fhir/proxy/plugin/AccessCheckerTestBase.class
+org/smartregister/fhir/proxy/plugin/PermissionAccessCheckerTest.class
+org/smartregister/fhir/proxy/plugin/OpenSRPSyncAccessDecisionTest.class
