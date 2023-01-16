@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Ona Systems, Inc
+ * Copyright 2021-2023 Ona Systems, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package org.smartregister.fhir.proxy.plugin;
 import ca.uhn.fhir.context.FhirContext;
 import com.google.common.io.Resources;
 import com.google.fhir.proxy.HttpFhirClient;
-
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;

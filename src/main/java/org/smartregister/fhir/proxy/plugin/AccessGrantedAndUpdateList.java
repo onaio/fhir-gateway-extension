@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Ona Systems, Inc
+ * Copyright 2021-2023 Ona Systems, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ import com.google.fhir.proxy.FhirUtil;
 import com.google.fhir.proxy.HttpFhirClient;
 import com.google.fhir.proxy.HttpUtil;
 import com.google.fhir.proxy.interfaces.AccessDecision;
-
 import java.io.IOException;
 import java.util.Set;
 import org.apache.http.HttpResponse;
@@ -149,7 +148,5 @@ class AccessGrantedAndUpdateList implements AccessDecision {
   }
 
   @Override
-  public void preProcess(ServletRequestDetails servletRequestDetails) {
-
-  }
+  public void preProcess(ServletRequestDetails servletRequestDetails) {}
 }
