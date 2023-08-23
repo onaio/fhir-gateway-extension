@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 Ona Systems, Inc
+ * Copyright ${license.git.copyrightYears} Ona Systems, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,70 +13,50 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.smartregister.fhir.proxy.plugin;
+package com.google.fhir.gateway.plugin;
 
-import static com.google.fhir.proxy.ProxyConstants.SYNC_STRATEGY;
-import static org.hl7.fhir.r4.model.Claim.CARE_TEAM;
-import static org.smartregister.utils.Constants.LOCATION;
-import static org.smartregister.utils.Constants.ORGANIZATION;
+import static com.google.fhir.gateway.ProxyConstants.SYNC_STRATEGY;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.model.api.IQueryParameterType;
 import ca.uhn.fhir.rest.api.RequestTypeEnum;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
-import ca.uhn.fhir.rest.param.SpecialParam;
 import ca.uhn.fhir.rest.param.TokenParam;
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import com.google.fhir.proxy.BundleResources;
-import com.google.fhir.proxy.FhirProxyServer;
-import com.google.fhir.proxy.HttpFhirClient;
-import com.google.fhir.proxy.JwtUtil;
-import com.google.fhir.proxy.ResourceFinderImp;
-import com.google.fhir.proxy.interfaces.AccessChecker;
-import com.google.fhir.proxy.interfaces.AccessCheckerFactory;
-import com.google.fhir.proxy.interfaces.AccessDecision;
-import com.google.fhir.proxy.interfaces.NoOpAccessDecision;
-import com.google.fhir.proxy.interfaces.PatientFinder;
-import com.google.fhir.proxy.interfaces.RequestDetailsReader;
-import com.google.fhir.proxy.interfaces.ResourceFinder;
+import com.google.fhir.gateway.*;
+import com.google.fhir.gateway.interfaces.*;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import java.util.*;
 import java.util.stream.Collectors;
 import javax.inject.Named;
+import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartregister.model.practitioner.PractitionerDetails;
+import org.smartregister.utils.Constants;
 
 public class PermissionAccessChecker implements AccessChecker {
   private static final Logger logger = LoggerFactory.getLogger(PermissionAccessChecker.class);
   private final ResourceFinder resourceFinder;
   private final List<String> userRoles;
-  private final String applicationId;
-
-  private final List<String> careTeamIds;
-
-  private final List<String> locationIds;
-
-  private final List<String> organizationIds;
-
-  private final List<String> syncStrategy;
+  private SyncAccessDecision syncAccessDecision;
 
   private PermissionAccessChecker(
+      String keycloakUUID,
       List<String> userRoles,
-      ResourceFinder resourceFinder,
+      ResourceFinderImp resourceFinder,
       String applicationId,
       List<String> careTeamIds,
       List<String> locationIds,
       List<String> organizationIds,
-      List<String> syncStrategy) {
+      String syncStrategy) {
     Preconditions.checkNotNull(userRoles);
     Preconditions.checkNotNull(resourceFinder);
     Preconditions.checkNotNull(applicationId);
@@ -86,11 +66,16 @@ public class PermissionAccessChecker implements AccessChecker {
     Preconditions.checkNotNull(syncStrategy);
     this.resourceFinder = resourceFinder;
     this.userRoles = userRoles;
-    this.applicationId = applicationId;
-    this.careTeamIds = careTeamIds;
-    this.organizationIds = organizationIds;
-    this.locationIds = locationIds;
-    this.syncStrategy = syncStrategy;
+    this.syncAccessDecision =
+        new SyncAccessDecision(
+            keycloakUUID,
+            applicationId,
+            true,
+            locationIds,
+            careTeamIds,
+            organizationIds,
+            syncStrategy,
+            userRoles);
   }
 
   @Override
@@ -138,10 +123,7 @@ public class PermissionAccessChecker implements AccessChecker {
   }
 
   private AccessDecision getAccessDecision(boolean userHasRole) {
-    return userHasRole
-        ? new OpenSRPSyncAccessDecision(
-            applicationId, true, locationIds, careTeamIds, organizationIds, syncStrategy)
-        : NoOpAccessDecision.accessDenied();
+    return userHasRole ? syncAccessDecision : NoOpAccessDecision.accessDenied();
   }
 
   private AccessDecision processPost(boolean userHasRole) {
@@ -268,21 +250,18 @@ public class PermissionAccessChecker implements AccessChecker {
       return binary;
     }
 
-    private List<String> findSyncStrategy(Binary binary) {
+    private String findSyncStrategy(Binary binary) {
       byte[] bytes =
           binary != null && binary.getDataElement() != null
               ? Base64.getDecoder().decode(binary.getDataElement().getValueAsString())
               : null;
-      List<String> syncStrategy = new ArrayList<>();
+      String syncStrategy = Constants.EMPTY_STRING;
       if (bytes != null) {
         String json = new String(bytes);
         JsonObject jsonObject = new Gson().fromJson(json, JsonObject.class);
         JsonArray jsonArray = jsonObject.getAsJsonArray(SYNC_STRATEGY);
-        if (jsonArray != null) {
-          for (JsonElement jsonElement : jsonArray) {
-            syncStrategy.add(jsonElement.getAsString());
-          }
-        }
+        if (jsonArray != null && !jsonArray.isEmpty())
+          syncStrategy = jsonArray.get(0).getAsString();
       }
       return syncStrategy;
     }
@@ -318,13 +297,6 @@ public class PermissionAccessChecker implements AccessChecker {
       lst.add(tokenParam);
       hmOut.put(PractitionerDetails.SP_KEYCLOAK_UUID, lst);
 
-      // Adding isAuthProvided
-      SpecialParam isAuthProvided = new SpecialParam();
-      isAuthProvided.setValue("false");
-      List<IQueryParameterType> l = new ArrayList<IQueryParameterType>();
-      l.add(isAuthProvided);
-      hmOut.put(PractitionerDetails.SP_IS_AUTH_PROVIDED, l);
-
       return hmOut;
     }
 
@@ -340,55 +312,47 @@ public class PermissionAccessChecker implements AccessChecker {
       Composition composition = readCompositionResource(applicationId);
       String binaryResourceReference = getBinaryResourceReference(composition);
       Binary binary = findApplicationConfigBinaryResource(binaryResourceReference);
-      List<String> syncStrategy = findSyncStrategy(binary);
+      String syncStrategy = findSyncStrategy(binary);
       PractitionerDetails practitionerDetails = readPractitionerDetails(jwt.getSubject());
       List<CareTeam> careTeams;
       List<Organization> organizations;
-      List<Location> locations;
       List<String> careTeamIds = new ArrayList<>();
       List<String> organizationIds = new ArrayList<>();
       List<String> locationIds = new ArrayList<>();
-      if (syncStrategy.size() > 0) {
-        if (syncStrategy.contains(CARE_TEAM)) {
+      if (StringUtils.isNotBlank(syncStrategy)) {
+        if (syncStrategy.equals(Constants.CARE_TEAM)) {
           careTeams =
               practitionerDetails != null
                       && practitionerDetails.getFhirPractitionerDetails() != null
                   ? practitionerDetails.getFhirPractitionerDetails().getCareTeams()
                   : Collections.singletonList(new CareTeam());
           for (CareTeam careTeam : careTeams) {
-            if (careTeam.getIdElement() != null
-                && careTeam.getIdElement().getIdPartAsLong() != null) {
-              careTeamIds.add(careTeam.getIdElement().getIdPartAsLong().toString());
+            if (careTeam.getIdElement() != null) {
+              careTeamIds.add(careTeam.getIdElement().getIdPart());
             }
-            careTeamIds.add(careTeam.getId());
           }
-        } else if (syncStrategy.contains(ORGANIZATION)) {
+        } else if (syncStrategy.equals(Constants.ORGANIZATION)) {
           organizations =
               practitionerDetails != null
                       && practitionerDetails.getFhirPractitionerDetails() != null
                   ? practitionerDetails.getFhirPractitionerDetails().getOrganizations()
                   : Collections.singletonList(new Organization());
           for (Organization organization : organizations) {
-            if (organization.getIdElement() != null
-                && organization.getIdElement().getIdPartAsLong() != null) {
-              organizationIds.add(organization.getIdElement().getIdPartAsLong().toString());
+            if (organization.getIdElement() != null) {
+              organizationIds.add(organization.getIdElement().getIdPart());
             }
           }
-        } else if (syncStrategy.contains(LOCATION)) {
-          locations =
+        } else if (syncStrategy.equals(Constants.LOCATION)) {
+          locationIds =
               practitionerDetails != null
                       && practitionerDetails.getFhirPractitionerDetails() != null
-                  ? practitionerDetails.getFhirPractitionerDetails().getLocations()
-                  : Collections.singletonList(new Location());
-          for (Location location : locations) {
-            if (location.getIdElement() != null
-                && location.getIdElement().getIdPartAsLong() != null) {
-              locationIds.add(location.getIdElement().getIdPartAsLong().toString());
-            }
-          }
+                  ? PractitionerDetailsEndpointHelper.getAttributedLocations(
+                      practitionerDetails.getFhirPractitionerDetails().getLocationHierarchyList())
+                  : locationIds;
         }
       }
       return new PermissionAccessChecker(
+          jwt.getSubject(),
           userRoles,
           ResourceFinderImp.getInstance(fhirContext),
           applicationId,

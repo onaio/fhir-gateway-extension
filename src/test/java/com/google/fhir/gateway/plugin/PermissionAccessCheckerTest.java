@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 Ona Systems, Inc
+ * Copyright ${license.git.copyrightYears} Ona Systems, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.smartregister.fhir.proxy.plugin;
+package com.google.fhir.gateway.plugin;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -25,9 +25,9 @@ import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.io.Resources;
-import com.google.fhir.proxy.PatientFinderImp;
-import com.google.fhir.proxy.interfaces.AccessChecker;
-import com.google.fhir.proxy.interfaces.RequestDetailsReader;
+import com.google.fhir.gateway.PatientFinderImp;
+import com.google.fhir.gateway.interfaces.AccessChecker;
+import com.google.fhir.gateway.interfaces.RequestDetailsReader;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Arrays;
