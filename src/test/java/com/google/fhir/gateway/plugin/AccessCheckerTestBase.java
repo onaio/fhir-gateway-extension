@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Ona Systems, Inc
+ * Copyright ${license.git.copyrightYears} Ona Systems, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.smartregister.fhir.proxy.plugin;
+package com.google.fhir.gateway.plugin;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -28,8 +28,8 @@ import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.collect.Maps;
 import com.google.common.io.Resources;
-import com.google.fhir.proxy.interfaces.AccessChecker;
-import com.google.fhir.proxy.interfaces.RequestDetailsReader;
+import com.google.fhir.gateway.interfaces.AccessChecker;
+import com.google.fhir.gateway.interfaces.RequestDetailsReader;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Map;
@@ -75,6 +75,7 @@ public abstract class AccessCheckerTestBase {
   public void canAccessTest() {
     // Query: GET /Patient/PATIENT_AUTHORIZED_ID
     when(requestMock.getResourceName()).thenReturn("Patient");
+    when(requestMock.getRequestType()).thenReturn(RequestTypeEnum.GET);
     when(requestMock.getId()).thenReturn(PATIENT_AUTHORIZED_ID);
     AccessChecker testInstance = getInstance();
     assertThat(testInstance.checkAccess(requestMock).canAccess(), equalTo(true));
@@ -84,6 +85,7 @@ public abstract class AccessCheckerTestBase {
   public void canAccessNotAuthorized() {
     // Query: GET /Patient/PATIENT_NON_AUTHORIZED_ID
     when(requestMock.getResourceName()).thenReturn("Patient");
+    when(requestMock.getRequestType()).thenReturn(RequestTypeEnum.GET);
     when(requestMock.getId()).thenReturn(PATIENT_NON_AUTHORIZED_ID);
     AccessChecker testInstance = getInstance();
     assertThat(testInstance.checkAccess(requestMock).canAccess(), equalTo(false));
@@ -93,6 +95,7 @@ public abstract class AccessCheckerTestBase {
   public void canAccessDirectResourceNotAuthorized() {
     // Query: GET /Observation/a-random-id
     when(requestMock.getResourceName()).thenReturn("Observation");
+    when(requestMock.getRequestType()).thenReturn(RequestTypeEnum.GET);
     when(requestMock.getId()).thenReturn(new IdDt("a-random-id"));
     AccessChecker testInstance = getInstance();
     testInstance.checkAccess(requestMock).canAccess();
@@ -102,6 +105,7 @@ public abstract class AccessCheckerTestBase {
   public void canAccessDirectResourceWithParamNotAuthorized() {
     // Query: GET /Observation/a-random-id?subject=PATIENT_AUTHORIZED
     when(requestMock.getResourceName()).thenReturn("Observation");
+    when(requestMock.getRequestType()).thenReturn(RequestTypeEnum.GET);
     when(requestMock.getId()).thenReturn(new IdDt("a-random-id"));
     // This is to make sure that the presence of patient search params does not make any difference.
     Map<String, String[]> params = Maps.newHashMap();
@@ -115,6 +119,7 @@ public abstract class AccessCheckerTestBase {
   public void canAccessSearchQuery() {
     // Query: GET /Observation?subject=PATIENT_AUTHORIZED
     when(requestMock.getResourceName()).thenReturn("Observation");
+    when(requestMock.getRequestType()).thenReturn(RequestTypeEnum.GET);
     Map<String, String[]> params = Maps.newHashMap();
     params.put("subject", new String[] {PATIENT_AUTHORIZED});
     when(requestMock.getParameters()).thenReturn(params);
@@ -126,6 +131,7 @@ public abstract class AccessCheckerTestBase {
   public void canAccessSearchQueryNotAuthorized() {
     // Query: GET /Observation?subject=PATIENT_AUTHORIZED
     when(requestMock.getResourceName()).thenReturn("Observation");
+    when(requestMock.getRequestType()).thenReturn(RequestTypeEnum.GET);
     AccessChecker testInstance = getInstance();
     testInstance.checkAccess(requestMock).canAccess();
   }
@@ -218,6 +224,7 @@ public abstract class AccessCheckerTestBase {
     byte[] obsBytes = Resources.toByteArray(listUrl);
     when(requestMock.loadRequestContents()).thenReturn(obsBytes);
     when(requestMock.getRequestType()).thenReturn(RequestTypeEnum.POST);
+
     AccessChecker testInstance = getInstance();
     assertThat(testInstance.checkAccess(requestMock).canAccess(), equalTo(true));
   }
@@ -292,12 +299,22 @@ public abstract class AccessCheckerTestBase {
     testInstance.checkAccess(requestMock).canAccess();
   }
 
-  @Test(expected = InvalidRequestException.class)
-  public void canAccessBundleDeletePatient() throws IOException {
+  @Test
+  public void canAccessBundleDeleteNonPatient() throws IOException {
     // Query: POST / -d @bundle_transaction_delete.json
-    setUpFhirBundle("bundle_transaction_delete.json");
+    setUpFhirBundle("bundle_transaction_delete_non_patient.json");
     AccessChecker testInstance = getInstance();
-    testInstance.checkAccess(requestMock).canAccess();
+
+    assertThat(testInstance.checkAccess(requestMock).canAccess(), equalTo(true));
+  }
+
+  @Test
+  public void canAccessBundleDeletePatientUnAuthorized() throws IOException {
+    // Query: POST / -d @bundle_transaction_delete_patient_unauthorized.json
+    setUpFhirBundle("bundle_transaction_delete_patient_unauthorized.json");
+    AccessChecker testInstance = getInstance();
+
+    assertThat(testInstance.checkAccess(requestMock).canAccess(), equalTo(false));
   }
 
   @Test(expected = InvalidRequestException.class)
@@ -325,6 +342,7 @@ public abstract class AccessCheckerTestBase {
   @Test(expected = InvalidRequestException.class)
   public void canAccessSearchChaining() {
     when(requestMock.getResourceName()).thenReturn("Observation");
+    when(requestMock.getRequestType()).thenReturn(RequestTypeEnum.GET);
     Map<String, String[]> params = Maps.newHashMap();
     params.put("subject:Patient.name", new String[] {"random-name"});
     when(requestMock.getParameters()).thenReturn(params);
@@ -335,6 +353,7 @@ public abstract class AccessCheckerTestBase {
   @Test(expected = InvalidRequestException.class)
   public void canAccessSearchReverseChaining() {
     when(requestMock.getResourceName()).thenReturn("Observation");
+    when(requestMock.getRequestType()).thenReturn(RequestTypeEnum.GET);
     Map<String, String[]> params = Maps.newHashMap();
     params.put("subject", new String[] {PATIENT_AUTHORIZED});
     params.put("_has", new String[] {"something"});
@@ -346,6 +365,7 @@ public abstract class AccessCheckerTestBase {
   @Test(expected = InvalidRequestException.class)
   public void canAccessSearchInclude() {
     when(requestMock.getResourceName()).thenReturn("Observation");
+    when(requestMock.getRequestType()).thenReturn(RequestTypeEnum.GET);
     Map<String, String[]> params = Maps.newHashMap();
     params.put("subject", new String[] {PATIENT_AUTHORIZED});
     params.put("_include", new String[] {"something"});
@@ -357,6 +377,7 @@ public abstract class AccessCheckerTestBase {
   @Test(expected = InvalidRequestException.class)
   public void canAccessSearchRevinclude() {
     when(requestMock.getResourceName()).thenReturn("Observation");
+    when(requestMock.getRequestType()).thenReturn(RequestTypeEnum.GET);
     Map<String, String[]> params = Maps.newHashMap();
     params.put("subject", new String[] {PATIENT_AUTHORIZED});
     params.put("_revinclude", new String[] {"something"});

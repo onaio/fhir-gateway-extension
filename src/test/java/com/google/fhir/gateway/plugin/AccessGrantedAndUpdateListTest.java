@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 Ona Systems, Inc
+ * Copyright ${license.git.copyrightYears} Ona Systems, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.smartregister.fhir.proxy.plugin;
+package com.google.fhir.gateway.plugin;
 
 import ca.uhn.fhir.context.FhirContext;
 import com.google.common.io.Resources;
-import com.google.fhir.proxy.HttpFhirClient;
+import com.google.fhir.gateway.HttpFhirClient;
+import com.google.fhir.gateway.interfaces.RequestDetailsReader;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -39,6 +40,9 @@ public class AccessGrantedAndUpdateListTest {
   @Mock(answer = Answers.RETURNS_DEEP_STUBS)
   private HttpResponse responseMock;
 
+  @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+  private RequestDetailsReader requestDetailsMock;
+
   private static final FhirContext fhirContext = FhirContext.forR4();
 
   private AccessGrantedAndUpdateList testInstance;
@@ -55,7 +59,7 @@ public class AccessGrantedAndUpdateListTest {
     testInstance =
         AccessGrantedAndUpdateList.forPatientResource(
             TEST_LIST_ID, httpFhirClientMock, fhirContext);
-    testInstance.postProcess(responseMock);
+    testInstance.postProcess(requestDetailsMock, responseMock);
   }
 
   @Test
@@ -63,6 +67,6 @@ public class AccessGrantedAndUpdateListTest {
     testInstance =
         AccessGrantedAndUpdateList.forPatientResource(
             TEST_LIST_ID, httpFhirClientMock, fhirContext);
-    testInstance.postProcess(responseMock);
+    testInstance.postProcess(requestDetailsMock, responseMock);
   }
 }

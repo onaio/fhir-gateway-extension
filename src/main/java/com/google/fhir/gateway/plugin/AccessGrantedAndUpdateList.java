@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 Ona Systems, Inc
+ * Copyright ${license.git.copyrightYears} Ona Systems, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,20 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.smartregister.fhir.proxy.plugin;
+package com.google.fhir.gateway.plugin;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
-import ca.uhn.fhir.rest.server.servlet.ServletRequestDetails;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 import com.google.common.escape.Escaper;
 import com.google.common.io.CharStreams;
 import com.google.common.net.UrlEscapers;
-import com.google.fhir.proxy.FhirUtil;
-import com.google.fhir.proxy.HttpFhirClient;
-import com.google.fhir.proxy.HttpUtil;
-import com.google.fhir.proxy.interfaces.AccessDecision;
+import com.google.fhir.gateway.FhirUtil;
+import com.google.fhir.gateway.HttpFhirClient;
+import com.google.fhir.gateway.HttpUtil;
+import com.google.fhir.gateway.interfaces.AccessDecision;
+import com.google.fhir.gateway.interfaces.RequestDetailsReader;
+import com.google.fhir.gateway.interfaces.RequestMutation;
 import java.io.IOException;
 import java.util.Set;
 import org.apache.http.HttpResponse;
@@ -64,12 +65,18 @@ class AccessGrantedAndUpdateList implements AccessDecision {
   }
 
   @Override
+  public RequestMutation getRequestMutation(RequestDetailsReader requestDetailsReader) {
+    return null;
+  }
+
+  @Override
   public boolean canAccess() {
     return true;
   }
 
   @Override
-  public String postProcess(HttpResponse response) throws IOException {
+  public String postProcess(RequestDetailsReader request, HttpResponse response)
+      throws IOException {
     Preconditions.checkState(HttpUtil.isResponseValid(response));
     String content = CharStreams.toString(HttpUtil.readerFromEntity(response.getEntity()));
     IParser parser = fhirContext.newJsonParser();
@@ -90,7 +97,8 @@ class AccessGrantedAndUpdateList implements AccessDecision {
     }
 
     if (FhirUtil.isSameResourceType(resource.fhirType(), ResourceType.Bundle)) {
-      // TODO Response potentially too large to be loaded into memory b/215786247
+      // TODO Response potentially too large to be loaded into memory; see:
+      //   https://github.com/google/fhir-gateway/issues/64
       Bundle bundle = (Bundle) parser.parseResource(content);
 
       Set<String> patientIdsInResponse = Sets.newHashSet();
@@ -112,7 +120,8 @@ class AccessGrantedAndUpdateList implements AccessDecision {
 
   private void addPatientToList(String newPatient) throws IOException {
     Preconditions.checkNotNull(newPatient);
-    // TODO create this with HAPI client instead of handcrafting (b/211231483)!
+    // TODO create this with HAPI client instead of handcrafting; see:
+    //   https://github.com/google/fhir-gateway/issues/65
     String jsonPatch =
         String.format(
             "[{"
@@ -127,7 +136,8 @@ class AccessGrantedAndUpdateList implements AccessDecision {
                 + "}]",
             newPatient);
     logger.info("Updating access list {} with patch {}", patientListId, jsonPatch);
-    // TODO decide how to handle failures in access list updates (b/211243404).
+    // TODO decide how to handle failures in access list updates; see:
+    //   https://github.com/google/fhir-gateway/issues/66
     httpFhirClient.patchResource(
         String.format("List/%s", PARAM_ESCAPER.escape(patientListId)), jsonPatch);
   }
@@ -146,7 +156,4 @@ class AccessGrantedAndUpdateList implements AccessDecision {
     return new AccessGrantedAndUpdateList(
         patientListId, httpFhirClient, fhirContext, existPutPatients, ResourceType.Bundle);
   }
-
-  @Override
-  public void preProcess(ServletRequestDetails servletRequestDetails) {}
 }
