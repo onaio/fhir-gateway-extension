@@ -19,7 +19,6 @@ import static org.smartregister.utils.Constants.EMPTY_STRING;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
-import com.google.fhir.gateway.ProxyConstants;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -38,7 +37,6 @@ import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.OrganizationAffiliation;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.PractitionerRole;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartregister.model.location.LocationHierarchy;
@@ -46,8 +44,6 @@ import org.smartregister.model.location.ParentChildrenMap;
 import org.smartregister.model.practitioner.FhirPractitionerDetails;
 import org.smartregister.model.practitioner.PractitionerDetails;
 import org.smartregister.utils.Constants;
-import org.springframework.lang.Nullable;
-
 public class PractitionerDetailsEndpointHelper {
   private static final Logger logger =
       LoggerFactory.getLogger(PractitionerDetailsEndpointHelper.class);
@@ -158,7 +154,6 @@ public class PractitionerDetailsEndpointHelper {
     return responseBundle;
   }
 
-  @NotNull
   public static List<String> getAttributedLocations(List<LocationHierarchy> locationHierarchies) {
     List<ParentChildrenMap> parentChildrenList =
         locationHierarchies.stream()
@@ -410,7 +405,7 @@ public class PractitionerDetailsEndpointHelper {
             .execute();
   }
 
-  private @Nullable List<Location> getLocationsByIds(List<String> locationIds) {
+  private List<Location> getLocationsByIds(List<String> locationIds) {
     if (locationIds == null || locationIds.isEmpty()) {
       return new ArrayList<>();
     }
@@ -428,7 +423,7 @@ public class PractitionerDetailsEndpointHelper {
         .collect(Collectors.toList());
   }
 
-  private @Nullable List<String> getOfficialLocationIdentifiersByLocationIds(
+  private List<String> getOfficialLocationIdentifiersByLocationIds(
       List<String> locationIds) {
     if (locationIds == null || locationIds.isEmpty()) {
       return new ArrayList<>();
@@ -537,12 +532,14 @@ public class PractitionerDetailsEndpointHelper {
   }
 
   public static String createSearchTagValues(Map.Entry<String, String[]> entry) {
-    return entry.getKey()
-        + ProxyConstants.CODE_URL_VALUE_SEPARATOR
-        + StringUtils.join(
-            entry.getValue(),
-            ProxyConstants.PARAM_VALUES_SEPARATOR
-                + entry.getKey()
-                + ProxyConstants.CODE_URL_VALUE_SEPARATOR);
+//    return entry.getKey()
+//        + ProxyConstants.CODE_URL_VALUE_SEPARATOR
+//        + StringUtils.join(
+//            entry.getValue(),
+//            ProxyConstants.PARAM_VALUES_SEPARATOR
+//                + entry.getKey()
+//                + ProxyConstants.CODE_URL_VALUE_SEPARATOR);
+
+    return "";
   }
 }

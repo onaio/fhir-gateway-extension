@@ -47,6 +47,8 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.google.fhir.gateway.plugin.ProxyConstants.*;
+
 public class SyncAccessDecision implements AccessDecision {
   public static final String SYNC_FILTER_IGNORE_RESOURCES_FILE_ENV =
       "SYNC_FILTER_IGNORE_RESOURCES_FILE";
@@ -128,8 +130,7 @@ public class SyncAccessDecision implements AccessDecision {
         requestMutation =
             RequestMutation.builder()
                 .queryParams(
-                    Map.of(
-                        ProxyConstants.TAG_SEARCH_PARAM,
+                    Map.of(TAG_SEARCH_PARAM,
                         Arrays.asList(StringUtils.join(syncFilterParameterValues, ","))))
                 .build();
       }
@@ -301,12 +302,12 @@ public class SyncAccessDecision implements AccessDecision {
     StringBuilder sb = new StringBuilder();
     Map<String, String[]> map = new HashMap<>();
 
-    sb.append(ProxyConstants.TAG_SEARCH_PARAM);
-    sb.append(ProxyConstants.Literals.EQUALS);
+    sb.append(TAG_SEARCH_PARAM);
+    sb.append(Literals.EQUALS);
 
-    addTags(ProxyConstants.LOCATION_TAG_URL, locationIds, map, sb);
-    addTags(ProxyConstants.ORGANISATION_TAG_URL, organizationIds, map, sb);
-    addTags(ProxyConstants.CARE_TEAM_TAG_URL, careTeamIds, map, sb);
+    addTags(LOCATION_TAG_URL, locationIds, map, sb);
+    addTags(ORGANISATION_TAG_URL, organizationIds, map, sb);
+    addTags(CARE_TEAM_TAG_URL, careTeamIds, map, sb);
 
     return map;
   }
@@ -319,8 +320,8 @@ public class SyncAccessDecision implements AccessDecision {
     int len = values.size();
     if (len > 0) {
       if (urlStringBuilder.length()
-          != (ProxyConstants.TAG_SEARCH_PARAM + ProxyConstants.Literals.EQUALS).length()) {
-        urlStringBuilder.append(ProxyConstants.PARAM_VALUES_SEPARATOR);
+          != (TAG_SEARCH_PARAM + com.google.fhir.gateway.plugin.ProxyConstants.Literals.EQUALS).length()) {
+        urlStringBuilder.append(PARAM_VALUES_SEPARATOR);
       }
 
       map.put(tagUrl, values.toArray(new String[0]));
@@ -328,11 +329,11 @@ public class SyncAccessDecision implements AccessDecision {
       int i = 0;
       for (String tagValue : values) {
         urlStringBuilder.append(tagUrl);
-        urlStringBuilder.append(ProxyConstants.CODE_URL_VALUE_SEPARATOR);
+        urlStringBuilder.append(CODE_URL_VALUE_SEPARATOR);
         urlStringBuilder.append(tagValue);
 
         if (i != len - 1) {
-          urlStringBuilder.append(ProxyConstants.PARAM_VALUES_SEPARATOR);
+          urlStringBuilder.append(PARAM_VALUES_SEPARATOR);
         }
         i++;
       }
@@ -352,7 +353,7 @@ public class SyncAccessDecision implements AccessDecision {
 
   private boolean isResourceTypeRequest(String requestPath) {
     if (!TextUtils.isEmpty(requestPath)) {
-      String[] sections = requestPath.split(ProxyConstants.HTTP_URL_SEPARATOR);
+      String[] sections = requestPath.split(HTTP_URL_SEPARATOR);
 
       return sections.length == 1 || (sections.length == 2 && TextUtils.isEmpty(sections[1]));
     }
