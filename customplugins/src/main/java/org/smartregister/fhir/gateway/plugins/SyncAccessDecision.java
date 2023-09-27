@@ -15,6 +15,8 @@
  */
 package org.smartregister.fhir.gateway.plugins;
 
+import static org.smartregister.fhir.gateway.plugins.ProxyConstants.PARAM_VALUES_SEPARATOR;
+
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.api.RequestTypeEnum;
@@ -321,7 +323,7 @@ public class SyncAccessDecision implements AccessDecision {
           != (com.google.fhir.gateway.ProxyConstants.TAG_SEARCH_PARAM
                   + com.google.fhir.gateway.ProxyConstants.Literals.EQUALS)
               .length()) {
-        urlStringBuilder.append(com.google.fhir.gateway.ProxyConstants.PARAM_VALUES_SEPARATOR);
+        urlStringBuilder.append(PARAM_VALUES_SEPARATOR);
       }
 
       map.put(tagUrl, values.toArray(new String[0]));

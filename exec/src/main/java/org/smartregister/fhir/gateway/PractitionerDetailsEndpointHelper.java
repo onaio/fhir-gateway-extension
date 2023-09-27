@@ -15,6 +15,8 @@
  */
 package org.smartregister.fhir.gateway;
 
+import static org.smartregister.fhir.gateway.PractitionerDetailEndpoint.CODE_URL_VALUE_SEPARATOR;
+import static org.smartregister.fhir.gateway.PractitionerDetailEndpoint.PARAM_VALUES_SEPARATOR;
 import static org.smartregister.utils.Constants.EMPTY_STRING;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
@@ -25,7 +27,9 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.*;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartregister.model.location.LocationHierarchy;
@@ -33,6 +37,7 @@ import org.smartregister.model.location.ParentChildrenMap;
 import org.smartregister.model.practitioner.FhirPractitionerDetails;
 import org.smartregister.model.practitioner.PractitionerDetails;
 import org.smartregister.utils.Constants;
+import org.springframework.lang.Nullable;
 
 public class PractitionerDetailsEndpointHelper {
   private static final Logger logger =
@@ -144,6 +149,7 @@ public class PractitionerDetailsEndpointHelper {
     return responseBundle;
   }
 
+  @NotNull
   public static List<String> getAttributedLocations(List<LocationHierarchy> locationHierarchies) {
     List<ParentChildrenMap> parentChildrenList =
         locationHierarchies.stream()
@@ -395,7 +401,7 @@ public class PractitionerDetailsEndpointHelper {
             .execute();
   }
 
-  private List<Location> getLocationsByIds(List<String> locationIds) {
+  private @Nullable List<Location> getLocationsByIds(List<String> locationIds) {
     if (locationIds == null || locationIds.isEmpty()) {
       return new ArrayList<>();
     }
@@ -413,7 +419,8 @@ public class PractitionerDetailsEndpointHelper {
         .collect(Collectors.toList());
   }
 
-  private List<String> getOfficialLocationIdentifiersByLocationIds(List<String> locationIds) {
+  private @Nullable List<String> getOfficialLocationIdentifiersByLocationIds(
+      List<String> locationIds) {
     if (locationIds == null || locationIds.isEmpty()) {
       return new ArrayList<>();
     }
@@ -521,14 +528,9 @@ public class PractitionerDetailsEndpointHelper {
   }
 
   public static String createSearchTagValues(Map.Entry<String, String[]> entry) {
-    //    return entry.getKey()
-    //        + ProxyConstants.CODE_URL_VALUE_SEPARATOR
-    //        + StringUtils.join(
-    //            entry.getValue(),
-    //            ProxyConstants.PARAM_VALUES_SEPARATOR
-    //                + entry.getKey()
-    //                + ProxyConstants.CODE_URL_VALUE_SEPARATOR);
-
-    return "";
+    return entry.getKey()
+        + CODE_URL_VALUE_SEPARATOR
+        + StringUtils.join(
+            entry.getValue(), PARAM_VALUES_SEPARATOR + entry.getKey() + CODE_URL_VALUE_SEPARATOR);
   }
 }

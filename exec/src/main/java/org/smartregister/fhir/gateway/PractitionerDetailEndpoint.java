@@ -15,16 +15,15 @@
  */
 package org.smartregister.fhir.gateway;
 
-import static com.google.fhir.gateway.util.Constants.PROXY_TO_ENV;
-import static org.smartregister.utils.Constants.EMPTY_STRING;
+import static org.smartregister.utils.Constants.*;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.fhir.gateway.FhirClientFactory;
 import com.google.fhir.gateway.HttpFhirClient;
-import com.google.fhir.gateway.ProxyConstants;
 import com.google.fhir.gateway.TokenVerifier;
 import java.io.IOException;
 import java.util.*;
@@ -48,7 +47,6 @@ import org.smartregister.model.location.LocationHierarchy;
 import org.smartregister.model.location.ParentChildrenMap;
 import org.smartregister.model.practitioner.FhirPractitionerDetails;
 import org.smartregister.model.practitioner.PractitionerDetails;
-import org.smartregister.utils.Constants;
 import org.springframework.lang.Nullable;
 
 /**
@@ -72,15 +70,28 @@ public class PractitionerDetailEndpoint extends HttpServlet {
 
   public static final String PRACTITIONER_GROUP_CODE = "405623001";
   public static final String HTTP_SNOMED_INFO_SCT = "http://snomed.info/sct";
+
+  public static final String CODE_URL_VALUE_SEPARATOR = "|";
+
+  public static final String HTTP_URL_SEPARATOR = "/";
+
+  public static final String PARAM_VALUES_SEPARATOR = ",";
   public static final Bundle EMPTY_BUNDLE = new Bundle();
-  private IGenericClient r4FhirClient;
-  private PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
+
+  String PROXY_TO_ENV = "PROXY_TO";
 
   private FhirContext fhirR4Context = FhirContext.forR4();
+  private IGenericClient r4FhirClient =
+      fhirR4Context.newRestfulGenericClient(System.getenv(PROXY_TO_ENV));
+
+  private IParser fhirR4JsonParser = fhirR4Context.newJsonParser().setPrettyPrint(true);
+  private LocationHierarchyEndpointHelper locationHierarchyEndpointHelper;
+  private LocationHierarchyEndpoint locationHierarchyEndpoint;
 
   public PractitionerDetailEndpoint() throws IOException {
     this.tokenVerifier = TokenVerifier.createFromEnvVars();
     this.fhirClient = FhirClientFactory.createFhirClientFromEnvVars();
+    this.locationHierarchyEndpointHelper = new LocationHierarchyEndpointHelper();
   }
 
   @Override
@@ -109,9 +120,11 @@ public class PractitionerDetailEndpoint extends HttpServlet {
 
     } else {
       logger.error("Practitioner with KC identifier: " + keycloakUuid + " not found");
-      practitionerDetails.setId(Constants.PRACTITIONER_NOT_FOUND);
+      practitionerDetails.setId(PRACTITIONER_NOT_FOUND);
     }
-    response.getOutputStream().print("Your patient are: " + String.join(" ", patientIds));
+    String resultContent = fhirR4JsonParser.encodeResourceToString(practitionerDetails);
+
+    response.getOutputStream().print(resultContent);
     response.setStatus(HttpStatus.SC_OK);
   }
 
@@ -391,7 +404,7 @@ public class PractitionerDetailEndpoint extends HttpServlet {
                         .map(
                             it ->
                                 Enumerations.ResourceType.ORGANIZATION.toCode()
-                                    + Constants.FORWARD_SLASH
+                                    + FORWARD_SLASH
                                     + it)
                         .collect(Collectors.toList())))
             .returnBundle(Bundle.class)
@@ -411,9 +424,7 @@ public class PractitionerDetailEndpoint extends HttpServlet {
         .forResource(CareTeam.class)
         .where(
             CareTeam.PARTICIPANT.hasId(
-                Enumerations.ResourceType.PRACTITIONER.toCode()
-                    + Constants.FORWARD_SLASH
-                    + practitionerId))
+                Enumerations.ResourceType.PRACTITIONER.toCode() + FORWARD_SLASH + practitionerId))
         .returnBundle(Bundle.class)
         .execute();
   }
@@ -429,7 +440,7 @@ public class PractitionerDetailEndpoint extends HttpServlet {
   }
 
   private static String getReferenceIDPart(String reference) {
-    return reference.substring(reference.indexOf(Constants.FORWARD_SLASH) + 1);
+    return reference.substring(reference.indexOf(FORWARD_SLASH) + 1);
   }
 
   private Bundle getOrganizationsById(List<String> organizationIds) {
@@ -556,30 +567,23 @@ public class PractitionerDetailEndpoint extends HttpServlet {
       List<String> officialLocationIdentifiers) {
     if (officialLocationIdentifiers.isEmpty()) return new ArrayList<>();
 
-    Bundle bundle =
-        getFhirClientForR4()
-            .search()
-            .forResource(LocationHierarchy.class)
-            .where(LocationHierarchy.IDENTIFIER.exactly().codes(officialLocationIdentifiers))
-            .returnBundle(Bundle.class)
-            .execute();
-
-    return bundle.getEntry().stream()
-        .map(it -> ((LocationHierarchy) it.getResource()))
-        .collect(Collectors.toList());
+    List<LocationHierarchy> locationHierarchyList = new ArrayList<>();
+    for (String officialLocationIdentifier : officialLocationIdentifiers) {
+      LocationHierarchy locationHierarchy =
+          locationHierarchyEndpointHelper.getLocationHierarchy(officialLocationIdentifier);
+      locationHierarchyList.add(locationHierarchy);
+    }
+    return locationHierarchyList;
   }
 
   public static String createSearchTagValues(Map.Entry<String, String[]> entry) {
     return entry.getKey()
-        + com.google.fhir.gateway.ProxyConstants.CODE_URL_VALUE_SEPARATOR
+        + CODE_URL_VALUE_SEPARATOR
         + StringUtils.join(
-            entry.getValue(),
-            com.google.fhir.gateway.ProxyConstants.PARAM_VALUES_SEPARATOR
-                + entry.getKey()
-                + ProxyConstants.CODE_URL_VALUE_SEPARATOR);
+            entry.getValue(), PARAM_VALUES_SEPARATOR + entry.getKey() + CODE_URL_VALUE_SEPARATOR);
   }
 
   private IGenericClient getFhirClientForR4() {
-    return fhirR4Context.newRestfulGenericClient(System.getenv(PROXY_TO_ENV));
+    return r4FhirClient;
   }
 }

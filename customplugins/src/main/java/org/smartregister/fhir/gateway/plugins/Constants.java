@@ -61,4 +61,8 @@ public interface Constants {
 
   String EQUALS_TO_SIGN = "=";
   String HTTP_GET_METHOD = "GET";
+
+  public static final String CODE_URL_VALUE_SEPARATOR = "|";
+
+  public static final String HTTP_URL_SEPARATOR = "/";
 }

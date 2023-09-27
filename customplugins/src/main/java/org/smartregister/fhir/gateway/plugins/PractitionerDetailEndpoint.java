@@ -15,6 +15,9 @@
  */
 package org.smartregister.fhir.gateway.plugins;
 
+import static org.smartregister.fhir.gateway.plugins.Constants.CODE_URL_VALUE_SEPARATOR;
+import static org.smartregister.fhir.gateway.plugins.ProxyConstants.PARAM_VALUES_SEPARATOR;
+import static org.smartregister.utils.Constants.*;
 import static org.smartregister.utils.Constants.EMPTY_STRING;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
@@ -22,7 +25,6 @@ import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.fhir.gateway.FhirClientFactory;
 import com.google.fhir.gateway.HttpFhirClient;
-import com.google.fhir.gateway.ProxyConstants;
 import com.google.fhir.gateway.TokenVerifier;
 import java.io.IOException;
 import java.util.*;
@@ -46,7 +48,6 @@ import org.smartregister.model.location.LocationHierarchy;
 import org.smartregister.model.location.ParentChildrenMap;
 import org.smartregister.model.practitioner.FhirPractitionerDetails;
 import org.smartregister.model.practitioner.PractitionerDetails;
-import org.smartregister.utils.Constants;
 import org.springframework.lang.Nullable;
 
 /**
@@ -105,7 +106,7 @@ public class PractitionerDetailEndpoint extends HttpServlet {
 
     } else {
       logger.error("Practitioner with KC identifier: " + keycloakUuid + " not found");
-      practitionerDetails.setId(Constants.PRACTITIONER_NOT_FOUND);
+      practitionerDetails.setId(PRACTITIONER_NOT_FOUND);
     }
     response.getOutputStream().print("Your patient are: " + String.join(" ", patientIds));
     response.setStatus(HttpStatus.SC_OK);
@@ -387,7 +388,7 @@ public class PractitionerDetailEndpoint extends HttpServlet {
                         .map(
                             it ->
                                 Enumerations.ResourceType.ORGANIZATION.toCode()
-                                    + Constants.FORWARD_SLASH
+                                    + FORWARD_SLASH
                                     + it)
                         .collect(Collectors.toList())))
             .returnBundle(Bundle.class)
@@ -407,9 +408,7 @@ public class PractitionerDetailEndpoint extends HttpServlet {
         .forResource(CareTeam.class)
         .where(
             CareTeam.PARTICIPANT.hasId(
-                Enumerations.ResourceType.PRACTITIONER.toCode()
-                    + Constants.FORWARD_SLASH
-                    + practitionerId))
+                Enumerations.ResourceType.PRACTITIONER.toCode() + FORWARD_SLASH + practitionerId))
         .returnBundle(Bundle.class)
         .execute();
   }
@@ -425,7 +424,7 @@ public class PractitionerDetailEndpoint extends HttpServlet {
   }
 
   private static String getReferenceIDPart(String reference) {
-    return reference.substring(reference.indexOf(Constants.FORWARD_SLASH) + 1);
+    return reference.substring(reference.indexOf(FORWARD_SLASH) + 1);
   }
 
   private Bundle getOrganizationsById(List<String> organizationIds) {
@@ -567,12 +566,9 @@ public class PractitionerDetailEndpoint extends HttpServlet {
 
   public static String createSearchTagValues(Map.Entry<String, String[]> entry) {
     return entry.getKey()
-        + com.google.fhir.gateway.ProxyConstants.CODE_URL_VALUE_SEPARATOR
+        + CODE_URL_VALUE_SEPARATOR
         + StringUtils.join(
-            entry.getValue(),
-            com.google.fhir.gateway.ProxyConstants.PARAM_VALUES_SEPARATOR
-                + entry.getKey()
-                + ProxyConstants.CODE_URL_VALUE_SEPARATOR);
+            entry.getValue(), PARAM_VALUES_SEPARATOR + entry.getKey() + CODE_URL_VALUE_SEPARATOR);
   }
 
   private IGenericClient getFhirClientForR4() {
