@@ -33,7 +33,7 @@
 
   <modules>
     <module>exec</module>
-    <module>customplugins</module>
+    <module>plugins</module>
   </modules>
 
   <dependencies>
@@ -43,5 +43,18 @@
       <version>${hapifhir_version}</version>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>com.mycila</groupId>
+        <artifactId>license-maven-plugin</artifactId>
+        <version>4.1</version>
+        <configuration>
+          <skip>true</skip>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 
 </project>
