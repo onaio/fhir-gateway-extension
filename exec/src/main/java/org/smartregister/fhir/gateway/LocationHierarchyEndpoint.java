@@ -74,6 +74,7 @@ public class LocationHierarchyEndpoint extends HttpServlet {
     LocationHierarchy locationHierarchy =
         locationHierarchyEndpointHelper.getLocationHierarchy(identifier);
     String resultContent = fhirR4JsonParser.encodeResourceToString(locationHierarchy);
+    response.setContentType("application/json");
     response.getOutputStream().print(resultContent);
     response.setStatus(HttpStatus.SC_OK);
   }

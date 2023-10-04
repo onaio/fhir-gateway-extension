@@ -27,16 +27,31 @@ import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import com.google.fhir.gateway.*;
-import com.google.fhir.gateway.interfaces.*;
+import com.google.fhir.gateway.FhirProxyServer;
+import com.google.fhir.gateway.HttpFhirClient;
+import com.google.fhir.gateway.JwtUtil;
+import com.google.fhir.gateway.interfaces.RequestDetailsReader;
+import com.google.fhir.gateway.interfaces.ResourceFinder;
+import com.google.fhir.gateway.interfaces.AccessChecker;
+import com.google.fhir.gateway.interfaces.AccessDecision;
+import com.google.fhir.gateway.interfaces.NoOpAccessDecision;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import java.util.*;
+
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 import javax.inject.Named;
 import org.apache.commons.lang3.StringUtils;
-import org.hl7.fhir.r4.model.*;
+import org.hl7.fhir.r4.model.Binary;
+import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Composition;
+import org.hl7.fhir.r4.model.Reference;
+import org.hl7.fhir.r4.model.CareTeam;
+import org.hl7.fhir.r4.model.Organization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartregister.model.practitioner.PractitionerDetails;
@@ -80,7 +95,7 @@ public class PermissionAccessChecker implements AccessChecker {
 
   @Override
   public AccessDecision checkAccess(RequestDetailsReader requestDetails) {
-    //     For a Bundle requestDetails.getResourceName() returns null
+    //  For a Bundle requestDetails.getResourceName() returns null
     if (requestDetails.getRequestType() == RequestTypeEnum.POST
         && requestDetails.getResourceName() == null) {
       return processBundle(requestDetails);
