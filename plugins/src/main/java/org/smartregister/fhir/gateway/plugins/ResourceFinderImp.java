@@ -19,10 +19,8 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.api.RequestTypeEnum;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
-import com.google.fhir.gateway.BundleResources;
 import com.google.fhir.gateway.ExceptionUtil;
 import com.google.fhir.gateway.interfaces.RequestDetailsReader;
-import com.google.fhir.gateway.interfaces.ResourceFinder;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -32,6 +30,7 @@ import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.smartregister.fhir.gateway.plugins.interfaces.ResourceFinder;
 
 public final class ResourceFinderImp implements ResourceFinder {
   private static final Logger logger = LoggerFactory.getLogger(ResourceFinderImp.class);

@@ -15,11 +15,12 @@
  */
 package org.smartregister.fhir.gateway.plugins;
 
+import static org.smartregister.fhir.gateway.plugins.Constants.CODE_URL_VALUE_SEPARATOR;
+import static org.smartregister.fhir.gateway.plugins.ProxyConstants.PARAM_VALUES_SEPARATOR;
 import static org.smartregister.utils.Constants.EMPTY_STRING;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
-import com.google.fhir.gateway.ProxyConstants;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -538,11 +539,8 @@ public class PractitionerDetailsEndpointHelper {
 
   public static String createSearchTagValues(Map.Entry<String, String[]> entry) {
     return entry.getKey()
-        + com.google.fhir.gateway.ProxyConstants.CODE_URL_VALUE_SEPARATOR
+        + CODE_URL_VALUE_SEPARATOR
         + StringUtils.join(
-            entry.getValue(),
-            com.google.fhir.gateway.ProxyConstants.PARAM_VALUES_SEPARATOR
-                + entry.getKey()
-                + ProxyConstants.CODE_URL_VALUE_SEPARATOR);
+            entry.getValue(), PARAM_VALUES_SEPARATOR + entry.getKey() + CODE_URL_VALUE_SEPARATOR);
   }
 }

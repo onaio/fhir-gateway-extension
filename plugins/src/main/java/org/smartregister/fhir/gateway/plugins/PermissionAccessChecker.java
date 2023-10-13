@@ -15,7 +15,7 @@
  */
 package org.smartregister.fhir.gateway.plugins;
 
-import static com.google.fhir.gateway.ProxyConstants.SYNC_STRATEGY;
+import static org.smartregister.fhir.gateway.plugins.ProxyConstants.SYNC_STRATEGY;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.model.api.IQueryParameterType;
@@ -30,30 +30,23 @@ import com.google.common.base.Preconditions;
 import com.google.fhir.gateway.FhirProxyServer;
 import com.google.fhir.gateway.HttpFhirClient;
 import com.google.fhir.gateway.JwtUtil;
-import com.google.fhir.gateway.interfaces.RequestDetailsReader;
-import com.google.fhir.gateway.interfaces.ResourceFinder;
-import com.google.fhir.gateway.interfaces.AccessChecker;
-import com.google.fhir.gateway.interfaces.AccessDecision;
-import com.google.fhir.gateway.interfaces.NoOpAccessDecision;
+import com.google.fhir.gateway.interfaces.*;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.HashMap;
+import java.util.*;
 import java.util.stream.Collectors;
 import javax.inject.Named;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Binary;
 import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.Composition;
-import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.CareTeam;
+import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.Organization;
+import org.hl7.fhir.r4.model.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.smartregister.fhir.gateway.plugins.interfaces.ResourceFinder;
 import org.smartregister.model.practitioner.PractitionerDetails;
 import org.smartregister.utils.Constants;
 

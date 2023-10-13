@@ -17,6 +17,7 @@ package org.smartregister.fhir.gateway.plugins;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.smartregister.fhir.gateway.plugins.ProxyConstants.*;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.api.RequestTypeEnum;
@@ -28,7 +29,6 @@ import ca.uhn.fhir.rest.gclient.ITransactionTyped;
 import ca.uhn.fhir.rest.server.servlet.ServletRequestDetails;
 import com.google.common.collect.Maps;
 import com.google.common.io.Resources;
-import com.google.fhir.gateway.ProxyConstants;
 import com.google.fhir.gateway.interfaces.RequestDetailsReader;
 import com.google.fhir.gateway.interfaces.RequestMutation;
 import java.io.IOException;
@@ -96,7 +96,7 @@ public class SyncAccessDecisionTest {
       Assert.assertFalse(requestDetails.getCompleteUrl().contains(locationId));
       Assert.assertFalse(requestDetails.getRequestPath().contains(locationId));
 
-      locationTagToValuesList.add(ProxyConstants.LOCATION_TAG_URL + "|" + locationId);
+      locationTagToValuesList.add(LOCATION_TAG_URL + "|" + locationId);
     }
 
     Assert.assertTrue(
@@ -111,7 +111,7 @@ public class SyncAccessDecisionTest {
     for (String careTeamId : careTeamIds) {
       Assert.assertFalse(requestDetails.getCompleteUrl().contains(careTeamId));
       Assert.assertFalse(requestDetails.getRequestPath().contains(careTeamId));
-      careteamTagToValuesList.add(ProxyConstants.LOCATION_TAG_URL + "|" + careTeamId);
+      careteamTagToValuesList.add(LOCATION_TAG_URL + "|" + careTeamId);
     }
 
     Assert.assertTrue(
@@ -131,9 +131,7 @@ public class SyncAccessDecisionTest {
             .getQueryParams()
             .get("_tag")
             .get(0)
-            .contains(
-                StringUtils.join(
-                    organisationIds, "," + ProxyConstants.ORGANISATION_TAG_URL + "|")));
+            .contains(StringUtils.join(organisationIds, "," + ORGANISATION_TAG_URL + "|")));
   }
 
   @Test
@@ -163,11 +161,11 @@ public class SyncAccessDecisionTest {
             .getQueryParams()
             .get("_tag")
             .get(0)
-            .contains(StringUtils.join(locationIds, "," + ProxyConstants.LOCATION_TAG_URL + "|")));
+            .contains(StringUtils.join(locationIds, "," + LOCATION_TAG_URL + "|")));
 
     for (String param : mutatedRequest.getQueryParams().get("_tag")) {
-      Assert.assertFalse(param.contains(ProxyConstants.CARE_TEAM_TAG_URL));
-      Assert.assertFalse(param.contains(ProxyConstants.ORGANISATION_TAG_URL));
+      Assert.assertFalse(param.contains(CARE_TEAM_TAG_URL));
+      Assert.assertFalse(param.contains(ORGANISATION_TAG_URL));
     }
   }
 
@@ -199,11 +197,11 @@ public class SyncAccessDecisionTest {
             .getQueryParams()
             .get("_tag")
             .get(0)
-            .contains(StringUtils.join(careTeamIds, "," + ProxyConstants.CARE_TEAM_TAG_URL + "|")));
+            .contains(StringUtils.join(careTeamIds, "," + CARE_TEAM_TAG_URL + "|")));
 
     for (String param : mutatedRequest.getQueryParams().get("_tag")) {
-      Assert.assertFalse(param.contains(ProxyConstants.LOCATION_TAG_URL));
-      Assert.assertFalse(param.contains(ProxyConstants.ORGANISATION_TAG_URL));
+      Assert.assertFalse(param.contains(LOCATION_TAG_URL));
+      Assert.assertFalse(param.contains(ORGANISATION_TAG_URL));
     }
   }
 
@@ -232,12 +230,12 @@ public class SyncAccessDecisionTest {
           mutatedRequest
               .getQueryParams()
               .get("_tag")
-              .contains(ProxyConstants.ORGANISATION_TAG_URL + "|" + locationId));
+              .contains(ORGANISATION_TAG_URL + "|" + locationId));
     }
 
     for (String param : mutatedRequest.getQueryParams().get("_tag")) {
-      Assert.assertFalse(param.contains(ProxyConstants.LOCATION_TAG_URL));
-      Assert.assertFalse(param.contains(ProxyConstants.CARE_TEAM_TAG_URL));
+      Assert.assertFalse(param.contains(LOCATION_TAG_URL));
+      Assert.assertFalse(param.contains(CARE_TEAM_TAG_URL));
     }
   }
 
@@ -268,9 +266,7 @@ public class SyncAccessDecisionTest {
             .getQueryParams()
             .get("_tag")
             .get(0)
-            .contains(
-                StringUtils.join(
-                    organisationIds, "," + ProxyConstants.ORGANISATION_TAG_URL + "|")));
+            .contains(StringUtils.join(organisationIds, "," + ORGANISATION_TAG_URL + "|")));
   }
 
   @Test
@@ -356,16 +352,13 @@ public class SyncAccessDecisionTest {
     RequestMutation mutatedRequest =
         testInstance.getRequestMutation(new TestRequestDetailsToReader(requestDetails));
 
-    List<String> searchParamArrays =
-        mutatedRequest.getQueryParams().get(ProxyConstants.TAG_SEARCH_PARAM);
+    List<String> searchParamArrays = mutatedRequest.getQueryParams().get(TAG_SEARCH_PARAM);
     Assert.assertNotNull(searchParamArrays);
 
     Assert.assertTrue(
         searchParamArrays
             .get(0)
-            .contains(
-                StringUtils.join(
-                    organisationIds, "," + ProxyConstants.ORGANISATION_TAG_URL + "|")));
+            .contains(StringUtils.join(organisationIds, "," + ORGANISATION_TAG_URL + "|")));
   }
 
   @Test(expected = RuntimeException.class)

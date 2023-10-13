@@ -15,7 +15,8 @@
  */
 package org.smartregister.fhir.gateway.plugins;
 
-import static org.smartregister.fhir.gateway.plugins.ProxyConstants.PARAM_VALUES_SEPARATOR;
+import static org.smartregister.fhir.gateway.plugins.ProxyConstants.*;
+import static org.smartregister.fhir.gateway.plugins.ProxyConstants.Literals.EQUALS;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
@@ -130,7 +131,7 @@ public class SyncAccessDecision implements AccessDecision {
             RequestMutation.builder()
                 .queryParams(
                     Map.of(
-                        com.google.fhir.gateway.ProxyConstants.TAG_SEARCH_PARAM,
+                        TAG_SEARCH_PARAM,
                         Arrays.asList(StringUtils.join(syncFilterParameterValues, ","))))
                 .build();
       }
@@ -302,12 +303,12 @@ public class SyncAccessDecision implements AccessDecision {
     StringBuilder sb = new StringBuilder();
     Map<String, String[]> map = new HashMap<>();
 
-    sb.append(com.google.fhir.gateway.ProxyConstants.TAG_SEARCH_PARAM);
-    sb.append(com.google.fhir.gateway.ProxyConstants.Literals.EQUALS);
+    sb.append(TAG_SEARCH_PARAM);
+    sb.append(EQUALS);
 
-    addTags(com.google.fhir.gateway.ProxyConstants.LOCATION_TAG_URL, locationIds, map, sb);
-    addTags(com.google.fhir.gateway.ProxyConstants.ORGANISATION_TAG_URL, organizationIds, map, sb);
-    addTags(com.google.fhir.gateway.ProxyConstants.CARE_TEAM_TAG_URL, careTeamIds, map, sb);
+    addTags(LOCATION_TAG_URL, locationIds, map, sb);
+    addTags(ORGANISATION_TAG_URL, organizationIds, map, sb);
+    addTags(CARE_TEAM_TAG_URL, careTeamIds, map, sb);
 
     return map;
   }
@@ -319,10 +320,7 @@ public class SyncAccessDecision implements AccessDecision {
       StringBuilder urlStringBuilder) {
     int len = values.size();
     if (len > 0) {
-      if (urlStringBuilder.length()
-          != (com.google.fhir.gateway.ProxyConstants.TAG_SEARCH_PARAM
-                  + com.google.fhir.gateway.ProxyConstants.Literals.EQUALS)
-              .length()) {
+      if (urlStringBuilder.length() != (TAG_SEARCH_PARAM + EQUALS).length()) {
         urlStringBuilder.append(PARAM_VALUES_SEPARATOR);
       }
 
@@ -331,11 +329,11 @@ public class SyncAccessDecision implements AccessDecision {
       int i = 0;
       for (String tagValue : values) {
         urlStringBuilder.append(tagUrl);
-        urlStringBuilder.append(com.google.fhir.gateway.ProxyConstants.CODE_URL_VALUE_SEPARATOR);
+        urlStringBuilder.append(CODE_URL_VALUE_SEPARATOR);
         urlStringBuilder.append(tagValue);
 
         if (i != len - 1) {
-          urlStringBuilder.append(com.google.fhir.gateway.ProxyConstants.PARAM_VALUES_SEPARATOR);
+          urlStringBuilder.append(PARAM_VALUES_SEPARATOR);
         }
         i++;
       }
