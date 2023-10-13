@@ -24,8 +24,8 @@ import org.springframework.boot.web.servlet.ServletComponentScan;
  * plugins defined in "com.google.fhir.gateway.plugin".
  */
 @SpringBootApplication(
-    scanBasePackages = {"org.smartregister.fhir.gateway.plugins", "com.google.fhir.gateway.plugin"})
-@ServletComponentScan({"org.smartregister.fhir.gateway", "com.google.fhir.gateway"})
+    scanBasePackages = {"org.smartregister.fhir.gateway", "com.google.fhir.gateway.plugin"})
+@ServletComponentScan({"org.smartregister.fhir.gateway.plugins", "com.google.fhir.gateway"})
 public class MainApp {
 
   public static void main(String[] args) {

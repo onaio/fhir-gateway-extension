@@ -55,13 +55,13 @@
     <dependency>
       <groupId>com.google.fhir.gateway</groupId>
       <artifactId>server</artifactId>
-      <version>0.2.1-SNAPSHOT</version>
+      <version>0.3.1</version>
     </dependency>
 
     <dependency>
       <groupId>com.google.fhir.gateway</groupId>
       <artifactId>plugins</artifactId>
-      <version>0.2.1-SNAPSHOT</version>
+      <version>0.3.1</version>
     </dependency>
 
     <!-- For Spring -->
@@ -81,6 +81,12 @@
       <artifactId>fhir-common-utils</artifactId>
       <version>0.0.9-SNAPSHOT</version>
       <scope>compile</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.smartregister</groupId>
+      <artifactId>plugins</artifactId>
+      <version>1.0.0</version>
     </dependency>
 
     <dependency>

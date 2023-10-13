@@ -22,7 +22,9 @@ import static org.smartregister.utils.Constants.EMPTY_STRING;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
+import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.google.fhir.gateway.ExceptionUtil;
 import com.google.fhir.gateway.FhirClientFactory;
 import com.google.fhir.gateway.HttpFhirClient;
 import com.google.fhir.gateway.TokenVerifier;
@@ -83,33 +85,46 @@ public class PractitionerDetailEndpoint extends HttpServlet {
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
-    // Check the Bearer token to be a valid JWT with required claims.
-    String authHeader = request.getHeader("Authorization");
-    if (authHeader == null) {
-      throw new ServletException("No Authorization header provided!");
+    try {
+      String authHeader = request.getHeader("Authorization");
+      if (authHeader == null) {
+        ExceptionUtil.throwRuntimeExceptionAndLog(
+                logger, "No Authorization header provided!", new AuthenticationException());
+      }
+      List<String> patientIds = new ArrayList<>();
+      // Note for a more meaningful HTTP status code, we can catch AuthenticationException in:
+      DecodedJWT jwt = tokenVerifier.decodeAndVerifyBearerToken(authHeader);
+      String keycloakUuid = request.getParameter("keycloak-uuid");
+      //    PractitionerDetails practitionerDetails =
+      //        practitionerDetailsEndpointHelper.getPractitionerDetailsByKeycloakId(keycloakUuid);
+
+      PractitionerDetails practitionerDetails = new PractitionerDetails();
+
+      logger.info("Searching for practitioner with identifier: " + keycloakUuid);
+      Practitioner practitioner = getPractitionerByIdentifier(keycloakUuid);
+
+      if (practitioner != null) {
+
+        practitionerDetails = getPractitionerDetailsByPractitioner(practitioner);
+
+      } else {
+        logger.error("Practitioner with KC identifier: " + keycloakUuid + " not found");
+        practitionerDetails.setId(PRACTITIONER_NOT_FOUND);
+      }
+      response.getOutputStream().print("Your patient are: " + String.join(" ", patientIds));
+      response.setStatus(HttpStatus.SC_OK);
     }
-    List<String> patientIds = new ArrayList<>();
-    // Note for a more meaningful HTTP status code, we can catch AuthenticationException in:
-    DecodedJWT jwt = tokenVerifier.decodeAndVerifyBearerToken(authHeader);
-    String keycloakUuid = request.getParameter("keycloak-uuid");
-    //    PractitionerDetails practitionerDetails =
-    //        practitionerDetailsEndpointHelper.getPractitionerDetailsByKeycloakId(keycloakUuid);
-
-    PractitionerDetails practitionerDetails = new PractitionerDetails();
-
-    logger.info("Searching for practitioner with identifier: " + keycloakUuid);
-    Practitioner practitioner = getPractitionerByIdentifier(keycloakUuid);
-
-    if (practitioner != null) {
-
-      practitionerDetails = getPractitionerDetailsByPractitioner(practitioner);
-
-    } else {
-      logger.error("Practitioner with KC identifier: " + keycloakUuid + " not found");
-      practitionerDetails.setId(PRACTITIONER_NOT_FOUND);
+    catch (AuthenticationException authenticationException) {
+      response.setContentType("application/json");
+      response.getOutputStream().print(authenticationException.getMessage());
+      response.setStatus(authenticationException.getStatusCode());
     }
-    response.getOutputStream().print("Your patient are: " + String.join(" ", patientIds));
-    response.setStatus(HttpStatus.SC_OK);
+    catch (Exception exception) {
+      response.setContentType("application/json");
+      response.getOutputStream().print(exception.getMessage());
+      response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+    }
+
   }
 
   public Bundle getSupervisorPractitionerDetailsByKeycloakId(String keycloakUuid) {

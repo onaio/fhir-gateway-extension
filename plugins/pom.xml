@@ -40,12 +40,12 @@
     <dependency>
       <groupId>com.google.fhir.gateway</groupId>
       <artifactId>server</artifactId>
-      <version>0.3.0</version>
+      <version>0.3.1</version>
     </dependency>
     <dependency>
       <groupId>com.google.fhir.gateway</groupId>
       <artifactId>plugins</artifactId>
-      <version>0.3.0</version>
+      <version>0.3.1</version>
     </dependency>
     <!-- Needed for JEE/Servlet support -->
     <dependency>
