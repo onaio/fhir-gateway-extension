@@ -65,18 +65,18 @@ public class PractitionerDetailsEndpointHelper {
     return r4FhirClient;
   }
 
-  public PractitionerDetails getPractitionerDetailsByKeycloakId(String keycloakUuid) {
+  public PractitionerDetails getPractitionerDetailsByKeycloakId(String keycloakUUID) {
     PractitionerDetails practitionerDetails = new PractitionerDetails();
 
-    logger.info("Searching for practitioner with identifier: " + keycloakUuid);
-    Practitioner practitioner = getPractitionerByIdentifier(keycloakUuid);
+    logger.info("Searching for practitioner with identifier: " + keycloakUUID);
+    Practitioner practitioner = getPractitionerByIdentifier(keycloakUUID);
 
     if (practitioner != null) {
 
       practitionerDetails = getPractitionerDetailsByPractitioner(practitioner);
 
     } else {
-      logger.error("Practitioner with KC identifier: " + keycloakUuid + " not found");
+      logger.error("Practitioner with KC identifier: " + keycloakUUID + " not found");
       practitionerDetails.setId(Constants.PRACTITIONER_NOT_FOUND);
     }
 
@@ -110,12 +110,15 @@ public class PractitionerDetailsEndpointHelper {
 
     List<String> careTeamManagingOrganizationIds =
         getManagingOrganizationsOfCareTeamIds(careTeamList);
-    List<String> supervisorCareTeamOrganizationLocationIds =
+    List<OrganizationAffiliation> organizationAffiliations =
         getOrganizationAffiliationsByOrganizationIds(careTeamManagingOrganizationIds);
+
+    List<String> supervisorCareTeamOrganizationLocationIds =
+        getLocationIdsByOrganizationAffiliations(organizationAffiliations);
     List<String> officialLocationIds =
         getOfficialLocationIdentifiersByLocationIds(supervisorCareTeamOrganizationLocationIds);
     List<LocationHierarchy> locationHierarchies =
-        getLocationsHierarchyByOfficialLocationIdentifiers(officialLocationIds);
+        getLocationsHierarchyByLocationIds(supervisorCareTeamOrganizationLocationIds);
     List<String> attributedLocationsList = getAttributedLocations(locationHierarchies);
     List<String> attributedOrganizationIds =
         getOrganizationIdsByLocationIds(attributedLocationsList);
@@ -248,7 +251,7 @@ public class PractitionerDetailsEndpointHelper {
     // TODO Fix Distinct
     List<Organization> bothOrganizations =
         Stream.concat(managingOrganizationTeams.stream(), teams.stream())
-            .distinct()
+            .filter(distinctByKey(Organization::getId))
             .collect(Collectors.toList());
 
     fhirPractitionerDetails.setOrganizations(bothOrganizations);
@@ -275,17 +278,11 @@ public class PractitionerDetailsEndpointHelper {
 
     fhirPractitionerDetails.setOrganizationAffiliations(organizationAffiliations);
 
-    List<String> locationIds =
-        getLocationIdentifiersByOrganizationAffiliations(organizationAffiliations);
-
-    List<String> locationsIdentifiers =
-        getOfficialLocationIdentifiersByLocationIds(
-            locationIds); // TODO Investigate why the Location ID and official identifiers are
-    // different
+    List<String> locationIds = getLocationIdsByOrganizationAffiliations(organizationAffiliations);
 
     logger.info("Searching for location hierarchy list by locations identifiers");
-    List<LocationHierarchy> locationHierarchyList =
-        getLocationsHierarchyByOfficialLocationIdentifiers(locationsIdentifiers);
+    List<LocationHierarchy> locationHierarchyList = getLocationsHierarchyByLocationIds(locationIds);
+
     fhirPractitionerDetails.setLocationHierarchyList(locationHierarchyList);
 
     logger.info("Searching for locations by ids");
@@ -314,9 +311,9 @@ public class PractitionerDetailsEndpointHelper {
         .execute();
   }
 
-  public static <T> Predicate<T> distinctByKey(Function<? super T, ?> keyExtractor) {
+  public static <T> Predicate<T> distinctByKey(Function<? super T, ?> uniqueKeyExtractor) {
     Set<Object> seen = ConcurrentHashMap.newKeySet();
-    return t -> seen.add(keyExtractor.apply(t));
+    return t -> seen.add(uniqueKeyExtractor.apply(t));
   }
 
   private List<PractitionerRole> getPractitionerRolesByPractitionerId(String practitionerId) {
@@ -449,15 +446,14 @@ public class PractitionerDetailsEndpointHelper {
         .collect(Collectors.toList());
   }
 
-  private List<String> getOrganizationAffiliationsByOrganizationIds(List<String> organizationIds) {
+  private List<OrganizationAffiliation> getOrganizationAffiliationsByOrganizationIds(
+      List<String> organizationIds) {
     if (organizationIds == null || organizationIds.isEmpty()) {
       return new ArrayList<>();
     }
     Bundle organizationAffiliationsBundle =
         getOrganizationAffiliationsByOrganizationIdsBundle(organizationIds);
-    List<OrganizationAffiliation> organizationAffiliations =
-        mapBundleToOrganizationAffiliation(organizationAffiliationsBundle);
-    return getLocationIdentifiersByOrganizationAffiliations(organizationAffiliations);
+    return mapBundleToOrganizationAffiliation(organizationAffiliationsBundle);
   }
 
   private Bundle getOrganizationAffiliationsByOrganizationIdsBundle(List<String> organizationIds) {
@@ -471,7 +467,7 @@ public class PractitionerDetailsEndpointHelper {
             .execute();
   }
 
-  private List<String> getLocationIdentifiersByOrganizationAffiliations(
+  private List<String> getLocationIdsByOrganizationAffiliations(
       List<OrganizationAffiliation> organizationAffiliations) {
 
     return organizationAffiliations.stream()
@@ -520,18 +516,16 @@ public class PractitionerDetailsEndpointHelper {
         .collect(Collectors.toList());
   }
 
-  private List<LocationHierarchy> getLocationsHierarchyByOfficialLocationIdentifiers(
-      List<String> officialLocationIdentifiers) {
-    if (officialLocationIdentifiers.isEmpty()) return new ArrayList<>();
+  private List<LocationHierarchy> getLocationsHierarchyByLocationIds(List<String> locationIds) {
+    if (locationIds.isEmpty()) return new ArrayList<>();
 
     Bundle bundle =
         getFhirClientForR4()
             .search()
             .forResource(LocationHierarchy.class)
-            .where(LocationHierarchy.IDENTIFIER.exactly().codes(officialLocationIdentifiers))
+            .where(LocationHierarchy.RES_ID.exactly().codes(locationIds))
             .returnBundle(Bundle.class)
             .execute();
-
     return bundle.getEntry().stream()
         .map(it -> ((LocationHierarchy) it.getResource()))
         .collect(Collectors.toList());
