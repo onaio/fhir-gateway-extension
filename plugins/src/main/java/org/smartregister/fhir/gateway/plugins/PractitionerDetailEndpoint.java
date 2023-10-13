@@ -16,12 +16,16 @@
 package org.smartregister.fhir.gateway.plugins;
 
 import static org.smartregister.fhir.gateway.plugins.Constants.CODE_URL_VALUE_SEPARATOR;
+import static org.smartregister.fhir.gateway.plugins.Constants.PROXY_TO_ENV;
 import static org.smartregister.fhir.gateway.plugins.ProxyConstants.PARAM_VALUES_SEPARATOR;
 import static org.smartregister.utils.Constants.*;
 import static org.smartregister.utils.Constants.EMPTY_STRING;
 
+import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
+import ca.uhn.fhir.rest.param.TokenParam;
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.fhir.gateway.ExceptionUtil;
@@ -74,12 +78,21 @@ public class PractitionerDetailEndpoint extends HttpServlet {
   public static final String PRACTITIONER_GROUP_CODE = "405623001";
   public static final String HTTP_SNOMED_INFO_SCT = "http://snomed.info/sct";
   public static final Bundle EMPTY_BUNDLE = new Bundle();
-  private IGenericClient r4FhirClient;
+
+  private FhirContext fhirR4Context = FhirContext.forR4();
+  private IGenericClient r4FhirClient =
+      fhirR4Context.newRestfulGenericClient(System.getenv(PROXY_TO_ENV));
+
+  private IParser fhirR4JsonParser = fhirR4Context.newJsonParser().setPrettyPrint(true);
+
   private PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
+
+  private LocationHierarchyEndpointHelper locationHierarchyEndpointHelper;
 
   public PractitionerDetailEndpoint() throws IOException {
     this.tokenVerifier = TokenVerifier.createFromEnvVars();
     this.fhirClient = FhirClientFactory.createFhirClientFromEnvVars();
+    this.locationHierarchyEndpointHelper = new LocationHierarchyEndpointHelper();
   }
 
   @Override
@@ -89,7 +102,7 @@ public class PractitionerDetailEndpoint extends HttpServlet {
       String authHeader = request.getHeader("Authorization");
       if (authHeader == null) {
         ExceptionUtil.throwRuntimeExceptionAndLog(
-                logger, "No Authorization header provided!", new AuthenticationException());
+            logger, "No Authorization header provided!", new AuthenticationException());
       }
       List<String> patientIds = new ArrayList<>();
       // Note for a more meaningful HTTP status code, we can catch AuthenticationException in:
@@ -111,20 +124,19 @@ public class PractitionerDetailEndpoint extends HttpServlet {
         logger.error("Practitioner with KC identifier: " + keycloakUuid + " not found");
         practitionerDetails.setId(PRACTITIONER_NOT_FOUND);
       }
-      response.getOutputStream().print("Your patient are: " + String.join(" ", patientIds));
+      String resultContent = fhirR4JsonParser.encodeResourceToString(practitionerDetails);
+      response.setContentType("application/json");
+      response.getOutputStream().print(resultContent);
       response.setStatus(HttpStatus.SC_OK);
-    }
-    catch (AuthenticationException authenticationException) {
+    } catch (AuthenticationException authenticationException) {
       response.setContentType("application/json");
       response.getOutputStream().print(authenticationException.getMessage());
       response.setStatus(authenticationException.getStatusCode());
-    }
-    catch (Exception exception) {
+    } catch (Exception exception) {
       response.setContentType("application/json");
       response.getOutputStream().print(exception.getMessage());
       response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
     }
-
   }
 
   public Bundle getSupervisorPractitionerDetailsByKeycloakId(String keycloakUuid) {
@@ -158,8 +170,7 @@ public class PractitionerDetailEndpoint extends HttpServlet {
         getOrganizationAffiliationsByOrganizationIds(careTeamManagingOrganizationIds);
     List<String> officialLocationIds =
         getOfficialLocationIdentifiersByLocationIds(supervisorCareTeamOrganizationLocationIds);
-    List<LocationHierarchy> locationHierarchies =
-        getLocationsHierarchyByOfficialLocationIdentifiers(officialLocationIds);
+    List<LocationHierarchy> locationHierarchies = getLocationsHierarchy(officialLocationIds);
     List<String> attributedLocationsList = getAttributedLocations(locationHierarchies);
     List<String> attributedOrganizationIds =
         getOrganizationIdsByLocationIds(attributedLocationsList);
@@ -328,8 +339,7 @@ public class PractitionerDetailEndpoint extends HttpServlet {
     // different
 
     logger.info("Searching for location hierarchy list by locations identifiers");
-    List<LocationHierarchy> locationHierarchyList =
-        getLocationsHierarchyByOfficialLocationIdentifiers(locationsIdentifiers);
+    List<LocationHierarchy> locationHierarchyList = getLocationsHierarchy(locationsIdentifiers);
     fhirPractitionerDetails.setLocationHierarchyList(locationHierarchyList);
 
     logger.info("Searching for locations by ids");
@@ -562,28 +572,24 @@ public class PractitionerDetailEndpoint extends HttpServlet {
         .collect(Collectors.toList());
   }
 
-  private List<LocationHierarchy> getLocationsHierarchyByOfficialLocationIdentifiers(
-      List<String> officialLocationIdentifiers) {
-    if (officialLocationIdentifiers.isEmpty()) return new ArrayList<>();
-
-    Bundle bundle =
-        getFhirClientForR4()
-            .search()
-            .forResource(LocationHierarchy.class)
-            .where(LocationHierarchy.IDENTIFIER.exactly().codes(officialLocationIdentifiers))
-            .returnBundle(Bundle.class)
-            .execute();
-
-    return bundle.getEntry().stream()
-        .map(it -> ((LocationHierarchy) it.getResource()))
-        .collect(Collectors.toList());
-  }
+  // a
 
   public static String createSearchTagValues(Map.Entry<String, String[]> entry) {
     return entry.getKey()
         + CODE_URL_VALUE_SEPARATOR
         + StringUtils.join(
             entry.getValue(), PARAM_VALUES_SEPARATOR + entry.getKey() + CODE_URL_VALUE_SEPARATOR);
+  }
+
+  private List<LocationHierarchy> getLocationsHierarchy(List<String> locationsIdentifiers) {
+    List<LocationHierarchy> locationHierarchyList = new ArrayList<>();
+    TokenParam identifier;
+    LocationHierarchy locationHierarchy;
+    for (String locationsIdentifier : locationsIdentifiers) {
+      locationHierarchy = locationHierarchyEndpointHelper.getLocationHierarchy(locationsIdentifier);
+      locationHierarchyList.add(locationHierarchy);
+    }
+    return locationHierarchyList;
   }
 
   private IGenericClient getFhirClientForR4() {
