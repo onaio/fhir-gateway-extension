@@ -54,7 +54,6 @@ public class SyncAccessDecision implements AccessDecision {
       "SYNC_FILTER_IGNORE_RESOURCES_FILE";
   public static final String MATCHES_ANY_VALUE = "ANY_VALUE";
   private static final Logger logger = LoggerFactory.getLogger(SyncAccessDecision.class);
-  private static final int LENGTH_OF_SEARCH_PARAM_AND_EQUALS = 5;
   private final String syncStrategy;
   private final String applicationId;
   private final boolean accessGranted;
@@ -65,13 +64,14 @@ public class SyncAccessDecision implements AccessDecision {
   private IgnoredResourcesConfig config;
   private String keycloakUUID;
   private Gson gson = new Gson();
-  private FhirContext fhirR4Context = FhirContext.forR4();
-  private IParser fhirR4JsonParser = fhirR4Context.newJsonParser();
+  private FhirContext fhirR4Context;
+  private IParser fhirR4JsonParser;
   private IGenericClient fhirR4Client;
 
   private PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
 
   public SyncAccessDecision(
+      FhirContext fhirContext,
       String keycloakUUID,
       String applicationId,
       boolean accessGranted,
@@ -80,6 +80,7 @@ public class SyncAccessDecision implements AccessDecision {
       List<String> organizationIds,
       String syncStrategy,
       List<String> roles) {
+    this.fhirR4Context = fhirContext;
     this.keycloakUUID = keycloakUUID;
     this.applicationId = applicationId;
     this.accessGranted = accessGranted;
@@ -96,7 +97,7 @@ public class SyncAccessDecision implements AccessDecision {
     } catch (NullPointerException e) {
       logger.error(e.getMessage());
     }
-
+    this.fhirR4JsonParser = fhirR4Context.newJsonParser();
     this.practitionerDetailsEndpointHelper = new PractitionerDetailsEndpointHelper(fhirR4Client);
   }
 
@@ -169,7 +170,7 @@ public class SyncAccessDecision implements AccessDecision {
     if (StringUtils.isNotBlank(gatewayMode)) {
 
       resultContent = new BasicResponseHandler().handleResponse(response);
-      IBaseResource responseResource = fhirR4JsonParser.parseResource(resultContent);
+      IBaseResource responseResource = this.fhirR4JsonParser.parseResource(resultContent);
 
       switch (gatewayMode) {
         case Constants.LIST_ENTRIES:
@@ -187,14 +188,14 @@ public class SyncAccessDecision implements AccessDecision {
       }
 
       if (resultContentBundle != null)
-        resultContent = fhirR4JsonParser.encodeResourceToString(resultContentBundle);
+        resultContent = this.fhirR4JsonParser.encodeResourceToString(resultContentBundle);
     }
 
     if (includeAttributedPractitioners(request.getRequestPath())) {
       Bundle practitionerDetailsBundle =
           this.practitionerDetailsEndpointHelper.getSupervisorPractitionerDetailsByKeycloakId(
               keycloakUUID);
-      resultContent = fhirR4JsonParser.encodeResourceToString(practitionerDetailsBundle);
+      resultContent = this.fhirR4JsonParser.encodeResourceToString(practitionerDetailsBundle);
     }
 
     return resultContent;

@@ -33,7 +33,6 @@ import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CareTeam;
 import org.hl7.fhir.r4.model.Enumerations;
 import org.hl7.fhir.r4.model.Group;
-import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.OrganizationAffiliation;
@@ -55,14 +54,14 @@ public class PractitionerDetailsEndpointHelper {
   public static final String PRACTITIONER_GROUP_CODE = "405623001";
   public static final String HTTP_SNOMED_INFO_SCT = "http://snomed.info/sct";
   public static final Bundle EMPTY_BUNDLE = new Bundle();
-  private IGenericClient r4FhirClient;
+  private IGenericClient r4FHIRClient;
 
   public PractitionerDetailsEndpointHelper(IGenericClient fhirClient) {
-    this.r4FhirClient = fhirClient;
+    this.r4FHIRClient = fhirClient;
   }
 
   private IGenericClient getFhirClientForR4() {
-    return r4FhirClient;
+    return r4FHIRClient;
   }
 
   public PractitionerDetails getPractitionerDetailsByKeycloakId(String keycloakUUID) {
@@ -115,8 +114,7 @@ public class PractitionerDetailsEndpointHelper {
 
     List<String> supervisorCareTeamOrganizationLocationIds =
         getLocationIdsByOrganizationAffiliations(organizationAffiliations);
-    List<String> officialLocationIds =
-        getOfficialLocationIdentifiersByLocationIds(supervisorCareTeamOrganizationLocationIds);
+
     List<LocationHierarchy> locationHierarchies =
         getLocationsHierarchyByLocationIds(supervisorCareTeamOrganizationLocationIds);
     List<String> attributedLocationsList = getAttributedLocations(locationHierarchies);
@@ -248,7 +246,7 @@ public class PractitionerDetailsEndpointHelper {
     Bundle practitionerOrganizations = getOrganizationsById(practitionerOrganizationIds);
 
     List<Organization> teams = mapBundleToOrganizations(practitionerOrganizations);
-    // TODO Fix Distinct
+
     List<Organization> bothOrganizations =
         Stream.concat(managingOrganizationTeams.stream(), teams.stream())
             .filter(distinctByKey(Organization::getId))
@@ -423,26 +421,6 @@ public class PractitionerDetailsEndpointHelper {
 
     return locationsBundle.getEntry().stream()
         .map(bundleEntryComponent -> ((Location) bundleEntryComponent.getResource()))
-        .collect(Collectors.toList());
-  }
-
-  private @Nullable List<String> getOfficialLocationIdentifiersByLocationIds(
-      List<String> locationIds) {
-    if (locationIds == null || locationIds.isEmpty()) {
-      return new ArrayList<>();
-    }
-
-    List<Location> locations = getLocationsByIds(locationIds);
-
-    return locations.stream()
-        .map(
-            it ->
-                it.getIdentifier().stream()
-                    .filter(
-                        id -> id.hasUse() && id.getUse().equals(Identifier.IdentifierUse.OFFICIAL))
-                    .map(it2 -> it2.getValue())
-                    .collect(Collectors.toList()))
-        .flatMap(it3 -> it3.stream())
         .collect(Collectors.toList());
   }
 
