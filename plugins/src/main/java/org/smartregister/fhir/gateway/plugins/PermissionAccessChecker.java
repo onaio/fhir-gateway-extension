@@ -35,7 +35,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.util.*;
-import java.util.stream.Collectors;
 import javax.inject.Named;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Binary;
@@ -236,17 +235,18 @@ public class PermissionAccessChecker implements AccessChecker {
 
       String id = "";
       if (composition != null && composition.getSection() != null) {
-        Optional<Integer> firstIndex = composition.getSection().stream()
-            .filter(
-                v ->
-                    v.getFocus().getIdentifier() != null
-                        && v.getFocus().getIdentifier().getValue() != null
-                        && v.getFocus()
-                            .getIdentifier()
-                            .getValue()
-                            .equals(ProxyConstants.APPLICATION))
-            .map(v -> composition.getSection().indexOf(v))
-            .findFirst();
+        Optional<Integer> firstIndex =
+            composition.getSection().stream()
+                .filter(
+                    v ->
+                        v.getFocus().getIdentifier() != null
+                            && v.getFocus().getIdentifier().getValue() != null
+                            && v.getFocus()
+                                .getIdentifier()
+                                .getValue()
+                                .equals(ProxyConstants.APPLICATION))
+                .map(v -> composition.getSection().indexOf(v))
+                .findFirst();
 
         Integer result = firstIndex.orElse(-1);
         Composition.SectionComponent sectionComponent = composition.getSection().get(result);
