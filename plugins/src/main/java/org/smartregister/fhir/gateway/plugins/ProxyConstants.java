@@ -39,6 +39,8 @@ public class ProxyConstants {
   public static final String SYNC_STRATEGY = "syncStrategy";
   public static final String REALM_ACCESS = "realm_access";
 
+  public static final String APPLICATION = "application";
+
   public interface Literals {
     String EQUALS = "=";
   }

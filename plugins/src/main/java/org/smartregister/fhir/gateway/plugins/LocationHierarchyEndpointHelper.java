@@ -17,7 +17,6 @@ package org.smartregister.fhir.gateway.plugins;
 
 import static org.smartregister.utils.Constants.*;
 
-import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
 import ca.uhn.fhir.rest.gclient.TokenClientParam;
@@ -39,11 +38,16 @@ public class LocationHierarchyEndpointHelper {
 
   private static final Logger logger =
       LoggerFactory.getLogger(LocationHierarchyEndpointHelper.class);
-  String PROXY_TO_ENV = "PROXY_TO";
 
-  private FhirContext fhirR4Context = FhirContext.forR4();
-  private IGenericClient r4FhirClient =
-      fhirR4Context.newRestfulGenericClient(System.getenv(PROXY_TO_ENV));
+  private IGenericClient r4FHIRClient;
+
+  public LocationHierarchyEndpointHelper(IGenericClient fhirClient) {
+    this.r4FHIRClient = fhirClient;
+  }
+
+  private IGenericClient getFhirClientForR4() {
+    return r4FHIRClient;
+  }
 
   public LocationHierarchy getLocationHierarchy(String identifier) {
     Location location = getLocationsByIdentifier(identifier);
@@ -132,9 +136,5 @@ public class LocationHierarchyEndpointHelper {
               .map(bundleEntryComponent -> ((Location) bundleEntryComponent.getResource()))
               .collect(Collectors.toList());
     return locationsList.size() > 0 ? locationsList.get(0) : new Location();
-  }
-
-  private IGenericClient getFhirClientForR4() {
-    return r4FhirClient;
   }
 }

@@ -31,7 +31,7 @@ public class LocationHierarchyEndpoint extends HttpServlet {
   String PROXY_TO_ENV = "PROXY_TO";
 
   private FhirContext fhirR4Context = FhirContext.forR4();
-  private IGenericClient r4FhirClient =
+  private IGenericClient r4FHIRClient =
       fhirR4Context.newRestfulGenericClient(System.getenv(PROXY_TO_ENV));
 
   private IParser fhirR4JsonParser = fhirR4Context.newJsonParser().setPrettyPrint(true);
@@ -41,7 +41,7 @@ public class LocationHierarchyEndpoint extends HttpServlet {
   public LocationHierarchyEndpoint() throws IOException {
     this.tokenVerifier = TokenVerifier.createFromEnvVars();
     this.fhirClient = FhirClientFactory.createFhirClientFromEnvVars();
-    this.locationHierarchyEndpointHelper = new LocationHierarchyEndpointHelper();
+    this.locationHierarchyEndpointHelper = new LocationHierarchyEndpointHelper(r4FHIRClient);
   }
 
   @Override
@@ -78,6 +78,6 @@ public class LocationHierarchyEndpoint extends HttpServlet {
   }
 
   private IGenericClient getFhirClientForR4() {
-    return r4FhirClient;
+    return r4FHIRClient;
   }
 }
