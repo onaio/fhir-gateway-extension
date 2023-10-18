@@ -56,8 +56,11 @@ public class PractitionerDetailsEndpointHelper {
   public static final Bundle EMPTY_BUNDLE = new Bundle();
   private IGenericClient r4FHIRClient;
 
+  private LocationHierarchyEndpointHelper locationHierarchyEndpointHelper;
+
   public PractitionerDetailsEndpointHelper(IGenericClient fhirClient) {
     this.r4FHIRClient = fhirClient;
+    this.locationHierarchyEndpointHelper = new LocationHierarchyEndpointHelper();
   }
 
   private IGenericClient getFhirClientForR4() {
@@ -116,7 +119,7 @@ public class PractitionerDetailsEndpointHelper {
         getLocationIdsByOrganizationAffiliations(organizationAffiliations);
 
     List<LocationHierarchy> locationHierarchies =
-        getLocationsHierarchyByLocationIds(supervisorCareTeamOrganizationLocationIds);
+        getLocationsHierarchy(supervisorCareTeamOrganizationLocationIds);
     List<String> attributedLocationsList = getAttributedLocations(locationHierarchies);
     List<String> attributedOrganizationIds =
         getOrganizationIdsByLocationIds(attributedLocationsList);
@@ -212,7 +215,7 @@ public class PractitionerDetailsEndpointHelper {
     return practitionerId;
   }
 
-  private PractitionerDetails getPractitionerDetailsByPractitioner(Practitioner practitioner) {
+  public PractitionerDetails getPractitionerDetailsByPractitioner(Practitioner practitioner) {
 
     PractitionerDetails practitionerDetails = new PractitionerDetails();
     FhirPractitionerDetails fhirPractitionerDetails = new FhirPractitionerDetails();
@@ -279,7 +282,7 @@ public class PractitionerDetailsEndpointHelper {
     List<String> locationIds = getLocationIdsByOrganizationAffiliations(organizationAffiliations);
 
     logger.info("Searching for location hierarchy list by locations identifiers");
-    List<LocationHierarchy> locationHierarchyList = getLocationsHierarchyByLocationIds(locationIds);
+    List<LocationHierarchy> locationHierarchyList = getLocationsHierarchy(locationIds);
 
     fhirPractitionerDetails.setLocationHierarchyList(locationHierarchyList);
 
@@ -494,19 +497,14 @@ public class PractitionerDetailsEndpointHelper {
         .collect(Collectors.toList());
   }
 
-  private List<LocationHierarchy> getLocationsHierarchyByLocationIds(List<String> locationIds) {
-    if (locationIds.isEmpty()) return new ArrayList<>();
-
-    Bundle bundle =
-        getFhirClientForR4()
-            .search()
-            .forResource(LocationHierarchy.class)
-            .where(LocationHierarchy.RES_ID.exactly().codes(locationIds))
-            .returnBundle(Bundle.class)
-            .execute();
-    return bundle.getEntry().stream()
-        .map(it -> ((LocationHierarchy) it.getResource()))
-        .collect(Collectors.toList());
+  private List<LocationHierarchy> getLocationsHierarchy(List<String> locationsIdentifiers) {
+    List<LocationHierarchy> locationHierarchyList = new ArrayList<>();
+    LocationHierarchy locationHierarchy;
+    for (String locationsIdentifier : locationsIdentifiers) {
+      locationHierarchy = locationHierarchyEndpointHelper.getLocationHierarchy(locationsIdentifier);
+      locationHierarchyList.add(locationHierarchy);
+    }
+    return locationHierarchyList;
   }
 
   public static String createSearchTagValues(Map.Entry<String, String[]> entry) {
