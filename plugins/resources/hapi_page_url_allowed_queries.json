@@ -14,6 +14,7 @@
       "queryParams": {
         "identifier":"ANY_VALUE"
       },
+      "allowUnauthenticatedRequests": true,
       "allowExtraParams": true,
       "allParamsRequired": false,
       "requestType": "GET"
@@ -23,6 +24,7 @@
       "queryParams": {
         "_id":"ANY_VALUE"
       },
+      "allowUnauthenticatedRequests": true,
       "allowExtraParams": true,
       "allParamsRequired": false,
       "requestType": "GET"
