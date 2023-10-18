@@ -487,9 +487,8 @@ public class SyncAccessDecisionTest {
     URL listUrl = Resources.getResource("test_list_resource.json");
     String testListJson = Resources.toString(listUrl, StandardCharsets.UTF_8);
 
-    FhirContext realFhirContext = FhirContext.forR4();
     ListResource listResource =
-        (ListResource) realFhirContext.newJsonParser().parseResource(testListJson);
+        (ListResource) FhirContext.forR4().newJsonParser().parseResource(testListJson);
 
     Bundle bundle = new Bundle();
     Bundle.BundleEntryComponent bundleEntryComponent = new Bundle.BundleEntryComponent();
@@ -500,10 +499,10 @@ public class SyncAccessDecisionTest {
     HttpResponse fhirResponseMock = Mockito.mock(HttpResponse.class, Answers.RETURNS_DEEP_STUBS);
 
     TestUtil.setUpFhirResponseMock(
-        fhirResponseMock, realFhirContext.newJsonParser().encodeResourceToString(bundle));
+        fhirResponseMock, FhirContext.forR4().newJsonParser().encodeResourceToString(bundle));
 
     testInstance.setFhirR4Client(iGenericClient);
-    testInstance.setFhirR4Context(fhirR4Context);
+    testInstance.setFhirR4Context(FhirContext.forR4());
     String resultContent = testInstance.postProcess(requestDetailsSpy, fhirResponseMock);
 
     Mockito.verify(iTransaction).withBundle(bundleArgumentCaptor.capture());
@@ -538,8 +537,10 @@ public class SyncAccessDecisionTest {
   }
 
   private SyncAccessDecision createSyncAccessDecisionTestInstance() {
+    FhirContext fhirR4Context = FhirContext.forR4();
     SyncAccessDecision accessDecision =
         new SyncAccessDecision(
+            fhirR4Context,
             "sample-keycloak-id",
             "sample-application-id",
             true,
