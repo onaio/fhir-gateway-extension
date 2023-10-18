@@ -233,10 +233,10 @@ public class PermissionAccessChecker implements AccessChecker {
     }
 
     private String getBinaryResourceReference(Composition composition) {
-      List<Integer> indexes = new ArrayList<>();
+
       String id = "";
       if (composition != null && composition.getSection() != null) {
-        composition.getSection().stream()
+        Optional<Integer> firstIndex = composition.getSection().stream()
             .filter(
                 v ->
                     v.getFocus().getIdentifier() != null
@@ -246,8 +246,10 @@ public class PermissionAccessChecker implements AccessChecker {
                             .getValue()
                             .equals(ProxyConstants.APPLICATION))
             .map(v -> composition.getSection().indexOf(v))
-            .collect(Collectors.toList());
-        Composition.SectionComponent sectionComponent = composition.getSection().get(0);
+            .findFirst();
+
+        Integer result = firstIndex.orElse(-1);
+        Composition.SectionComponent sectionComponent = composition.getSection().get(result);
         Reference focus = sectionComponent != null ? sectionComponent.getFocus() : null;
         id = focus != null ? focus.getReference() : null;
       }
