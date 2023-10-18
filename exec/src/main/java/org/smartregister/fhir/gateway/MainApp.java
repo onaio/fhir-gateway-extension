@@ -29,7 +29,6 @@ import org.springframework.boot.web.servlet.ServletComponentScan;
 public class MainApp {
 
   public static void main(String[] args) {
-    System.out.println("Running exec module");
     SpringApplication.run(MainApp.class, args);
   }
 }

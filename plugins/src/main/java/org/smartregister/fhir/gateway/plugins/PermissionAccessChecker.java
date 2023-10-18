@@ -237,9 +237,14 @@ public class PermissionAccessChecker implements AccessChecker {
       String id = "";
       if (composition != null && composition.getSection() != null) {
         composition.getSection().stream()
-            .filter(v -> v.getFocus().getIdentifier() != null)
-            .filter(v -> v.getFocus().getIdentifier().getValue() != null)
-            .filter(v -> v.getFocus().getIdentifier().getValue().equals("application"))
+            .filter(
+                v ->
+                    v.getFocus().getIdentifier() != null
+                        && v.getFocus().getIdentifier().getValue() != null
+                        && v.getFocus()
+                            .getIdentifier()
+                            .getValue()
+                            .equals(ProxyConstants.APPLICATION))
             .map(v -> composition.getSection().indexOf(v))
             .collect(Collectors.toList());
         Composition.SectionComponent sectionComponent = composition.getSection().get(0);

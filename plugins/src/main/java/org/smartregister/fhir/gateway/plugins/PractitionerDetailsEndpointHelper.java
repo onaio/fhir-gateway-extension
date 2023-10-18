@@ -60,7 +60,7 @@ public class PractitionerDetailsEndpointHelper {
 
   public PractitionerDetailsEndpointHelper(IGenericClient fhirClient) {
     this.r4FHIRClient = fhirClient;
-    this.locationHierarchyEndpointHelper = new LocationHierarchyEndpointHelper();
+    this.locationHierarchyEndpointHelper = new LocationHierarchyEndpointHelper(r4FHIRClient);
   }
 
   private IGenericClient getFhirClientForR4() {

@@ -51,6 +51,14 @@
   </dependencyManagement>
 
   <dependencies>
+
+    <!-- This dependency includes the HAPI FHIR Server Framework -->
+    <dependency>
+      <groupId>ca.uhn.hapi.fhir</groupId>
+      <artifactId>hapi-fhir-server</artifactId>
+      <version>${hapifhir_version}</version>
+    </dependency>
+
     <!-- This merges the server and sample plugins together -->
     <dependency>
       <groupId>com.google.fhir.gateway</groupId>
