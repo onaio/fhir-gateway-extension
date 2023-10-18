@@ -10,21 +10,21 @@
       "requestType": "GET"
     },
     {
-      "path": "Composition",
+      "path": "Composition/",
       "queryParams": {
         "identifier":"ANY_VALUE"
       },
       "allowExtraParams": true,
-      "allParamsRequired": true,
+      "allParamsRequired": false,
       "requestType": "GET"
     },
     {
-      "path": "Binary",
+      "path": "Binary/",
       "queryParams": {
         "_id":"ANY_VALUE"
       },
       "allowExtraParams": true,
-      "allParamsRequired": true,
+      "allParamsRequired": false,
       "requestType": "GET"
     }
 
