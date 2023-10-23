@@ -27,7 +27,7 @@
   </parent>
 
   <groupId>org.smartregister</groupId>
-  <artifactId>opensrp-fhir-proxy-plugin</artifactId>
+  <artifactId>gateway</artifactId>
   <version>1.0.0</version>
   <packaging>pom</packaging>
 

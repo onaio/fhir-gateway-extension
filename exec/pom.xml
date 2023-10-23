@@ -20,7 +20,7 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>org.smartregister</groupId>
-    <artifactId>opensrp-fhir-proxy-plugin</artifactId>
+    <artifactId>gateway</artifactId>
     <version>1.0.0</version>
   </parent>
 
