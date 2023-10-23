@@ -1,1 +1,0 @@
-# FHIR Gateway Plugin
