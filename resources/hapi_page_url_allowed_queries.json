@@ -1,0 +1,34 @@
+{
+  "entries": [
+    {
+      "path": "",
+      "queryParams": {
+        "_getpages": "ANY_VALUE"
+      },
+      "allowExtraParams": true,
+      "allParamsRequired": false,
+      "requestType": "GET"
+    },
+    {
+      "path": "Composition/ANY_VALUE",
+      "queryParams": {
+        "identifier":"ANY_VALUE"
+      },
+      "allowUnauthenticatedRequests": true,
+      "allowExtraParams": true,
+      "allParamsRequired": false,
+      "requestType": "GET"
+    },
+    {
+      "path": "Binary/ANY_VALUE",
+      "queryParams": {
+        "_id":"ANY_VALUE"
+      },
+      "allowUnauthenticatedRequests": true,
+      "allowExtraParams": true,
+      "allParamsRequired": false,
+      "requestType": "GET"
+    }
+
+  ]
+}
