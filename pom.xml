@@ -19,6 +19,10 @@
     <module>plugins</module>
   </modules>
 
+  <properties>
+    <spotless.version>2.30.0</spotless.version>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>ca.uhn.hapi.fhir</groupId>
@@ -36,6 +40,42 @@
         <configuration>
           <skip>true</skip>
         </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>${spotless.version}</version>
+        <configuration>
+          <formats>
+            <format>
+              <includes>
+                <include>*.factories</include>
+                <include>*.xml</include>
+                <include>.gitignore</include>
+              </includes>
+              <trimTrailingWhitespace/>
+              <endWithNewline/>
+              <indent>
+                <spaces>true</spaces>
+              </indent>
+            </format>
+          </formats>
+          <java>
+            <googleJavaFormat>
+              <version>1.15.0</version>
+              <style>AOSP</style>
+            </googleJavaFormat>
+          </java>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <phase>compile</phase>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
