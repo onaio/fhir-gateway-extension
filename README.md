@@ -1,7 +1,12 @@
 # fhir-gateway-plugin
 
-This repo holds the OpenSRP permissions checker and data access checker along
-with custom Rest Endpoints i.e. PractitionerDetails and LocationHierarchy.
+This repository holds the custom OpenSRP logic in form of Plugins that should be deployed alongside th FHIR Info Gateway.
+
+The Plugins functionality added include: 
+- **Permissions Checker** - Authorization per FHIR Endpoint per HTTP Verb
+- **Data Access Checker** - Data filtering based on user assignment (Sync strategy enhancements) i.e. Support for sync by Team/Organization, Location, Practitioner, Careteam 
+- **Data Requesting** - Data fetching mechanism for FHIR Resources defining patient data vs OpenSRP 2.0 application sync config resources
+- Custom FHIR Resources REST endpoints i.e. **PractitionerDetails** and **LocationHierarchy**.
 
 ## Getting Started
 
@@ -9,13 +14,18 @@ with custom Rest Endpoints i.e. PractitionerDetails and LocationHierarchy.
 
 ### FHIR Server (JPA Server):
 
-The FHIR server must be configured to accept connections from the gateway
-plugin.
+The FHIR server must be configured to accept connections from the FHIR Info Gateway plugin.
+
+The latest Docker image can be found here https://hub.docker.com/r/hapiproject/hapi/tags
 
 ### Keycloak Server
 
-The keycloak server must be configured to perform authentication via the gateway
+The keycloak server must be configured to perform authentication via the FHIR Info Gateway
 plugin.
+
+### FHIR Info Gateway Server
+
+The FHIR Info Gateway server must be configured as documented here https://github.com/google/fhir-gateway
 
 ## Development setup
 
@@ -24,64 +34,36 @@ plugin.
 #### plugins
 
 There is a module plugins that holds custom access checkers and custom
-end-points built on top of the Google's Gateway server and HAPI FHIR instance.
+end-points built on top of the Google's FHIR Info Gateway server and HAPI FHIR instance.
 
 #### exec
 
 There is also a sample exec module which shows how all pieces can be woven
-together into a single Spring Boot app.
-
-### Configuration parameters
-
-The configuration parameters are provided through environment variables:
-
-`PROXY_TO`: The base url of the FHIR store. `TOKEN_ISSUER`: The URL of the
-access token issuer. `ACCESS_CHECKER`: The access-checker to use. Each
-access-checker has a name and this variable should be set to the name of the
-plugin to use. `ALLOWED_QUERIES_FILE`: A list of URL requests that should bypass
-the access checker and always be allowed. AllowedQueriesChecker compares the
-incoming request with a configured set of allowed-queries. The intended use of
-this checker is to override all other access-checkers for certain user-defined
-criteria. The user defines their criteria in a config file and if the URL query
-matches an entry in the config file, access is granted. AllowedQueriesConfig
-provides all the supported configurations. `BACKEND_TYPE:` The type of backend,
-either HAPI or GCP. HAPI should be used for most FHIR servers, while GCP should
-be used for GCP FHIR stores. `SYNC_FILTER_IGNORE_RESOURCES_FILE`: A list of URL
-requests that should bypass the sync data filteration logic inside the
-permission access checker.
-
-Examples: `export PROXY_TO=http://localhost:8090/fhir`
-`export TOKEN_ISSUER=http://localhost:8180/auth/realms/fhir-core`
-`export ACCESS_CHECKER=permission`
-`export ALLOWED_QUERIES_FILE="resources/hapi_page_url_allowed_queries.json`
-`export BACKEND_TYPE=HAPI`
-`export SYNC_FILTER_IGNORE_RESOURCES_FILE=resources/hapi_sync_filter_ignored_queries.json`
-
-### Build Project
-
-To build all modules, from the root run:
-
-`mvn clean install`
+together into a single Spring Boot app, [documention here](https://github.com/google/fhir-gateway#modules)
 
 ### Generating the Plugins JAR
 To generate the plugins JAR file, execute the following command from the plugins module:
-`mvn clean package`
 
-The generated JAR file can be found in the target directory.
-Please note we are not running plugins jar explicitly. Instead we are running an exec module.
+```sh
+mvn clean package
+```
+
+The generated JAR file can be found in the `/target` directory.
+Please note, we are not running the plugins jar explicitly. Instead we are running an _exec module_.
 
 ### Run project
 
-After a successful build, the built-in Tomcat container will automatically
-deploy your Spring Boot application. You can access your application in a web
-browser by navigating to http://localhost:8080 or the specified port in your
-application's configuration.
+As document on the Info Gateway modules [section here](https://github.com/google/fhir-gateway#modules), the command to run is:
 
-## Authors/Team
+```sh
+java -Dloader.path="PATH-TO-ADDITIONAL-PLUGINGS/custom-plugins.jar" \
+  -jar exec/target/exec-0.1.0.jar --server.port=8081
+```
 
-The OpenSRP team
-
-See the list of contributors who participated in this project from the
-Contributors link
+After a successful build, the built-in _Tomcat container_ will automatically deploy your _Spring Boot application_. You can access your application in a web
+browser by navigating to http://localhost:8080 (default) or the specified port in your application's configuration.
 
 ## Documentation
+
+- HAPI FHIR JPA Starter project https://github.com/hapifhir/hapi-fhir-jpaserver-starter
+- FHIR Info Gateway project https://github.com/google/fhir-gateway
