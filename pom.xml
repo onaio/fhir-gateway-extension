@@ -47,7 +47,56 @@
         <artifactId>spotless-maven-plugin</artifactId>
         <version>${spotless.version}</version>
         <configuration>
+          <pom>
+            <sortPom>
+              <expandEmptyElements>false</expandEmptyElements>
+            </sortPom>
+            <trimTrailingWhitespace/>
+            <endWithNewline/>
+            <indent>
+              <spaces>true</spaces>
+            </indent>
+          </pom>
           <formats>
+            <format>
+              <!-- define the files to apply to -->
+              <includes>
+                <include>**/*.sh</include>
+                <include>**/*.xml</include>
+                <include>.gitignore</include>
+              </includes>
+              <!-- ignore build files -->
+              <excludes>
+                <exclude>.idea/**</exclude>
+                <exclude>.settings/**</exclude>
+                <exclude>**/target/**</exclude>
+                <exclude>bin/**</exclude>
+                <exclude>tmp/**</exclude>
+              </excludes>
+              <trimTrailingWhitespace/>
+              <endWithNewline/>
+              <indent>
+                <spaces>true</spaces>
+              </indent>
+            </format>
+            <format>
+              <includes>
+                <include>**/*.md</include>
+              </includes>
+              <excludes>
+                <exclude>**/target/**</exclude>
+                <exclude>.github/PULL_REQUEST_TEMPLATE.md</exclude>
+              </excludes>
+              <prettier>
+                <!-- Formatter that Spotless supports and can format Markdown:
+                     https://github.com/diffplug/spotless/tree/main/plugin-maven#prettier
+                   Only Spotless-supported formatter that can be configured to
+                   force line wrap -->
+                <config>
+                  <proseWrap>always</proseWrap>
+                </config>
+              </prettier>
+            </format>
             <format>
               <includes>
                 <include>*.factories</include>
