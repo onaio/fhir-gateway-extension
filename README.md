@@ -63,6 +63,13 @@ To build all modules, from the root run:
 
 `mvn clean install`
 
+### Generating the Plugins JAR
+To generate the plugins JAR file, execute the following command from the plugins module:
+`mvn clean package`
+
+The generated JAR file can be found in the target directory.
+Please note we are not running plugins jar explicitly. Instead we are running an exec module.
+
 ### Run project
 
 After a successful build, the built-in Tomcat container will automatically
