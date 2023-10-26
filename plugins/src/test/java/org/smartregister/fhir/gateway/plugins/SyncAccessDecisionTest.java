@@ -2,15 +2,11 @@ package org.smartregister.fhir.gateway.plugins;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.smartregister.fhir.gateway.plugins.ProxyConstants.*;
 
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpResponse;
@@ -84,7 +80,7 @@ public class SyncAccessDecisionTest {
             Assert.assertFalse(requestDetails.getCompleteUrl().contains(locationId));
             Assert.assertFalse(requestDetails.getRequestPath().contains(locationId));
 
-            locationTagToValuesList.add(LOCATION_TAG_URL + "|" + locationId);
+            locationTagToValuesList.add(Constants.LOCATION_TAG_URL + "|" + locationId);
         }
 
         Assert.assertTrue(
@@ -99,7 +95,7 @@ public class SyncAccessDecisionTest {
         for (String careTeamId : careTeamIds) {
             Assert.assertFalse(requestDetails.getCompleteUrl().contains(careTeamId));
             Assert.assertFalse(requestDetails.getRequestPath().contains(careTeamId));
-            careteamTagToValuesList.add(LOCATION_TAG_URL + "|" + careTeamId);
+            careteamTagToValuesList.add(Constants.LOCATION_TAG_URL + "|" + careTeamId);
         }
 
         Assert.assertTrue(
@@ -121,7 +117,8 @@ public class SyncAccessDecisionTest {
                         .get(0)
                         .contains(
                                 StringUtils.join(
-                                        organisationIds, "," + ORGANISATION_TAG_URL + "|")));
+                                        organisationIds,
+                                        "," + Constants.ORGANISATION_TAG_URL + "|")));
     }
 
     @Test
@@ -151,11 +148,13 @@ public class SyncAccessDecisionTest {
                         .getQueryParams()
                         .get("_tag")
                         .get(0)
-                        .contains(StringUtils.join(locationIds, "," + LOCATION_TAG_URL + "|")));
+                        .contains(
+                                StringUtils.join(
+                                        locationIds, "," + Constants.LOCATION_TAG_URL + "|")));
 
         for (String param : mutatedRequest.getQueryParams().get("_tag")) {
-            Assert.assertFalse(param.contains(CARE_TEAM_TAG_URL));
-            Assert.assertFalse(param.contains(ORGANISATION_TAG_URL));
+            Assert.assertFalse(param.contains(Constants.CARE_TEAM_TAG_URL));
+            Assert.assertFalse(param.contains(Constants.ORGANISATION_TAG_URL));
         }
     }
 
@@ -187,11 +186,13 @@ public class SyncAccessDecisionTest {
                         .getQueryParams()
                         .get("_tag")
                         .get(0)
-                        .contains(StringUtils.join(careTeamIds, "," + CARE_TEAM_TAG_URL + "|")));
+                        .contains(
+                                StringUtils.join(
+                                        careTeamIds, "," + Constants.CARE_TEAM_TAG_URL + "|")));
 
         for (String param : mutatedRequest.getQueryParams().get("_tag")) {
-            Assert.assertFalse(param.contains(LOCATION_TAG_URL));
-            Assert.assertFalse(param.contains(ORGANISATION_TAG_URL));
+            Assert.assertFalse(param.contains(Constants.LOCATION_TAG_URL));
+            Assert.assertFalse(param.contains(Constants.ORGANISATION_TAG_URL));
         }
     }
 
@@ -220,12 +221,12 @@ public class SyncAccessDecisionTest {
                     mutatedRequest
                             .getQueryParams()
                             .get("_tag")
-                            .contains(ORGANISATION_TAG_URL + "|" + locationId));
+                            .contains(Constants.ORGANISATION_TAG_URL + "|" + locationId));
         }
 
         for (String param : mutatedRequest.getQueryParams().get("_tag")) {
-            Assert.assertFalse(param.contains(LOCATION_TAG_URL));
-            Assert.assertFalse(param.contains(CARE_TEAM_TAG_URL));
+            Assert.assertFalse(param.contains(Constants.LOCATION_TAG_URL));
+            Assert.assertFalse(param.contains(Constants.CARE_TEAM_TAG_URL));
         }
     }
 
@@ -258,7 +259,8 @@ public class SyncAccessDecisionTest {
                         .get(0)
                         .contains(
                                 StringUtils.join(
-                                        organisationIds, "," + ORGANISATION_TAG_URL + "|")));
+                                        organisationIds,
+                                        "," + Constants.ORGANISATION_TAG_URL + "|")));
     }
 
     @Test
@@ -344,7 +346,8 @@ public class SyncAccessDecisionTest {
         RequestMutation mutatedRequest =
                 testInstance.getRequestMutation(new TestRequestDetailsToReader(requestDetails));
 
-        List<String> searchParamArrays = mutatedRequest.getQueryParams().get(TAG_SEARCH_PARAM);
+        List<String> searchParamArrays =
+                mutatedRequest.getQueryParams().get(Constants.TAG_SEARCH_PARAM);
         Assert.assertNotNull(searchParamArrays);
 
         Assert.assertTrue(
@@ -352,7 +355,8 @@ public class SyncAccessDecisionTest {
                         .get(0)
                         .contains(
                                 StringUtils.join(
-                                        organisationIds, "," + ORGANISATION_TAG_URL + "|")));
+                                        organisationIds,
+                                        "," + Constants.ORGANISATION_TAG_URL + "|")));
     }
 
     @Test(expected = RuntimeException.class)
@@ -545,9 +549,7 @@ public class SyncAccessDecisionTest {
                         "sample-keycloak-id",
                         "sample-application-id",
                         true,
-                        locationIds,
-                        careTeamIds,
-                        organisationIds,
+                        new HashMap<>(),
                         null,
                         userRoles);
 

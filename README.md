@@ -57,13 +57,40 @@ together into a single Spring Boot app,
 To generate the plugins JAR file, execute the following command from the plugins
 module:
 
-```sh
-mvn clean package
+```console
+$ mvn clean package
 ```
 
 The generated JAR file can be found in the `/target` directory. Please note, we
 are not running the plugins jar explicitly. Instead we are running an _exec
 module_.
+
+## Configuration Parameters
+
+**Access Checker** To specify the OpenSRP Access Checker, we pass a value xxx to
+`ACCESS_CHECKER` e.g.
+
+```bash
+export ACCESS_CHECKER=permission
+```
+
+For more on Access Checkers
+[read documentation here](https://github.com/google/fhir-gateway/wiki/Understanding-access-checker-plugins).
+
+**Caching**
+
+The plugins implementation supports caching for the sync strategy details which
+are expensive to fetch per request. By default, the sync strategy ids are cached
+for _60 seconds_. You can however override this by passing a value to the
+`OPENSRP_CACHE_EXPIRY_SECONDS` environment variable. For this to work, one needs
+to pass a value greater than `0` e.g.
+
+```bash
+export OPENSRP_CACHE_EXPIRY_SECONDS=30
+```
+
+To disable caching, set the value to `0`. Note, the value provided is in
+**seconds**. This configuration is optional.
 
 ### Run project
 
@@ -71,8 +98,8 @@ As document on the Info Gateway modules
 [section here](https://github.com/google/fhir-gateway#modules), the command to
 run is:
 
-```sh
-java -Dloader.path="PATH-TO-ADDITIONAL-PLUGINGS/custom-plugins.jar" \
+```console
+$ java -Dloader.path="PATH-TO-ADDITIONAL-PLUGINGS/custom-plugins.jar" \
   -jar exec/target/exec-0.1.0.jar --server.port=8081
 ```
 
@@ -86,3 +113,5 @@ in your application's configuration.
 - HAPI FHIR JPA Starter project
   https://github.com/hapifhir/hapi-fhir-jpaserver-starter
 - FHIR Info Gateway project https://github.com/google/fhir-gateway
+- Gateway Access Checkers
+  https://github.com/google/fhir-gateway/wiki/Understanding-access-checker-plugins

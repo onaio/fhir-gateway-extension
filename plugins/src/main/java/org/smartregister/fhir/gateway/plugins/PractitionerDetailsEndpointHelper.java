@@ -1,9 +1,5 @@
 package org.smartregister.fhir.gateway.plugins;
 
-import static org.smartregister.fhir.gateway.plugins.Constants.CODE_URL_VALUE_SEPARATOR;
-import static org.smartregister.fhir.gateway.plugins.ProxyConstants.PARAM_VALUES_SEPARATOR;
-import static org.smartregister.utils.Constants.EMPTY_STRING;
-
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -29,7 +25,6 @@ import org.smartregister.model.location.LocationHierarchy;
 import org.smartregister.model.location.ParentChildrenMap;
 import org.smartregister.model.practitioner.FhirPractitionerDetails;
 import org.smartregister.model.practitioner.PractitionerDetails;
-import org.smartregister.utils.Constants;
 import org.springframework.lang.Nullable;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
@@ -66,7 +61,7 @@ public class PractitionerDetailsEndpointHelper {
 
         } else {
             logger.error("Practitioner with KC identifier: " + keycloakUUID + " not found");
-            practitionerDetails.setId(Constants.PRACTITIONER_NOT_FOUND);
+            practitionerDetails.setId(org.smartregister.utils.Constants.PRACTITIONER_NOT_FOUND);
         }
 
         return practitionerDetails;
@@ -206,7 +201,7 @@ public class PractitionerDetailsEndpointHelper {
     }
 
     private String getPractitionerIdentifier(Practitioner practitioner) {
-        String practitionerId = EMPTY_STRING;
+        String practitionerId = Constants.EMPTY_STRING;
         if (practitioner.getIdElement() != null
                 && practitioner.getIdElement().getIdPart() != null) {
             practitionerId = practitioner.getIdElement().getIdPart();
@@ -364,7 +359,9 @@ public class PractitionerDetailsEndpointHelper {
                                                                 Enumerations.ResourceType
                                                                                 .ORGANIZATION
                                                                                 .toCode()
-                                                                        + Constants.FORWARD_SLASH
+                                                                        + org.smartregister.utils
+                                                                                .Constants
+                                                                                .FORWARD_SLASH
                                                                         + it)
                                                 .collect(Collectors.toList())))
                         .returnBundle(Bundle.class)
@@ -385,7 +382,7 @@ public class PractitionerDetailsEndpointHelper {
                 .where(
                         CareTeam.PARTICIPANT.hasId(
                                 Enumerations.ResourceType.PRACTITIONER.toCode()
-                                        + Constants.FORWARD_SLASH
+                                        + org.smartregister.utils.Constants.FORWARD_SLASH
                                         + practitionerId))
                 .returnBundle(Bundle.class)
                 .execute();
@@ -402,7 +399,8 @@ public class PractitionerDetailsEndpointHelper {
     }
 
     private static String getReferenceIDPart(String reference) {
-        return reference.substring(reference.indexOf(Constants.FORWARD_SLASH) + 1);
+        return reference.substring(
+                reference.indexOf(org.smartregister.utils.Constants.FORWARD_SLASH) + 1);
     }
 
     private Bundle getOrganizationsById(List<String> organizationIds) {
@@ -527,9 +525,11 @@ public class PractitionerDetailsEndpointHelper {
 
     public static String createSearchTagValues(Map.Entry<String, String[]> entry) {
         return entry.getKey()
-                + CODE_URL_VALUE_SEPARATOR
+                + Constants.CODE_URL_VALUE_SEPARATOR
                 + StringUtils.join(
                         entry.getValue(),
-                        PARAM_VALUES_SEPARATOR + entry.getKey() + CODE_URL_VALUE_SEPARATOR);
+                        Constants.PARAM_VALUES_SEPARATOR
+                                + entry.getKey()
+                                + Constants.CODE_URL_VALUE_SEPARATOR);
     }
 }
