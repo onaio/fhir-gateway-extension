@@ -1,6 +1,12 @@
 package org.smartregister.fhir.gateway.plugins;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import javax.inject.Named;
@@ -26,7 +32,12 @@ import com.google.common.base.Preconditions;
 import com.google.fhir.gateway.FhirProxyServer;
 import com.google.fhir.gateway.HttpFhirClient;
 import com.google.fhir.gateway.JwtUtil;
-import com.google.fhir.gateway.interfaces.*;
+import com.google.fhir.gateway.interfaces.AccessChecker;
+import com.google.fhir.gateway.interfaces.AccessCheckerFactory;
+import com.google.fhir.gateway.interfaces.AccessDecision;
+import com.google.fhir.gateway.interfaces.NoOpAccessDecision;
+import com.google.fhir.gateway.interfaces.PatientFinder;
+import com.google.fhir.gateway.interfaces.RequestDetailsReader;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -211,7 +222,7 @@ public class PermissionAccessChecker implements AccessChecker {
                             ? compositionBundle.getEntry()
                             : Collections.singletonList(new Bundle.BundleEntryComponent());
             Bundle.BundleEntryComponent compositionEntry =
-                    compositionEntries.size() > 0 ? compositionEntries.get(0) : null;
+                    !compositionEntries.isEmpty() ? compositionEntries.get(0) : null;
             return compositionEntry != null ? (Composition) compositionEntry.getResource() : null;
         }
 

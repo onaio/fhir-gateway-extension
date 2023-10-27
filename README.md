@@ -1,16 +1,14 @@
 # fhir-gateway-plugin
 
-This repository holds the custom OpenSRP logic in form of Plugins that should be
-deployed alongside th FHIR Info Gateway.
+This repository extends the FHIR Info Gateway code base release artifact found
+here https://github.com/google/fhir-gateway and adds custom OpenSRP logic.
 
-The Plugins functionality added include:
+The custom functionality added includes:
 
 - **Permissions Checker** - Authorization per FHIR Endpoint per HTTP Verb
 - **Data Access Checker** - Data filtering based on user assignment (Sync
   strategy enhancements) i.e. Support for sync by Team/Organization, Location,
   Practitioner, Careteam
-- **Data Requesting** - Data fetching mechanism for FHIR Resources defining
-  patient data vs OpenSRP 2.0 application sync config resources
 - Custom FHIR Resources REST endpoints i.e. **PractitionerDetails** and
   **LocationHierarchy**.
 
@@ -30,11 +28,6 @@ https://hub.docker.com/r/hapiproject/hapi/tags
 
 The keycloak server must be configured to perform authentication via the FHIR
 Info Gateway plugin.
-
-### FHIR Info Gateway Server
-
-The FHIR Info Gateway server must be configured as documented here
-https://github.com/google/fhir-gateway
 
 ## Development setup
 
@@ -67,6 +60,9 @@ module_.
 
 ## Configuration Parameters
 
+The FHIR Info Gateway server must be configured as documented here
+https://github.com/google/fhir-gateway
+
 **Access Checker** To specify the OpenSRP Access Checker, we pass a value xxx to
 `ACCESS_CHECKER` e.g.
 
@@ -92,6 +88,43 @@ export OPENSRP_CACHE_EXPIRY_SECONDS=30
 To disable caching, set the value to `0`. Note, the value provided is in
 **seconds**. This configuration is optional.
 
+## Other Configuration parameters
+
+The other configuration parameters are provided through environment variables as
+inherited from the [FHIR Info Gateway](https://github.com/google/fhir-gateway)
+
+- `PROXY_TO`: The base url of the FHIR store e.g.:
+
+  ```shell
+  export PROXY_TO=https://example.com/fhir
+  ```
+
+- `TOKEN_ISSUER`: The URL of the access token issuer, e.g.:
+
+  ```shell
+  export TOKEN_ISSUER=http://localhost:9080/auth/realms/test
+  ```
+
+- `ALLOWED_QUERIES_FILE`: A list of URL requests that should bypass the access
+  checker and always be allowed.
+  [`AllowedQueriesChecker`](https://github.com/google/fhir-gateway/blob/main/server/src/main/java/com/google/fhir/gateway/AllowedQueriesChecker.java)
+  compares the incoming request with a configured set of allowed-queries. The
+  intended use of this checker is to override all other access-checkers for
+  certain user-defined criteria. The user defines their criteria in a config
+  file and if the URL query matches an entry in the config file, access is
+  granted.
+  [AllowedQueriesConfig](https://github.com/google/fhir-gateway/blob/main/server/src/main/java/com/google/fhir/gateway/AllowedQueriesConfig.java)
+  provides all the supported configurations. An example of this is
+  [`hapi_page_url_allowed_queries.json`](https://github.com/google/fhir-gateway/blob/main/resources/hapi_page_url_allowed_queries.json).
+  To use this file with `ALLOWED_QUERIES_FILE`:
+
+  ```shell
+  export ALLOWED_QUERIES_FILE="resources/hapi_page_url_allowed_queries.json"
+  ```
+
+- `BACKEND_TYPE`: The type of backend, either `HAPI` or `GCP`. `HAPI` should be
+  used for most FHIR servers, while `GCP` should be used for GCP FHIR stores.
+
 ### Run project
 
 As document on the Info Gateway modules
@@ -99,8 +132,7 @@ As document on the Info Gateway modules
 run is:
 
 ```console
-$ java -Dloader.path="PATH-TO-ADDITIONAL-PLUGINGS/custom-plugins.jar" \
-  -jar exec/target/exec-0.1.0.jar --server.port=8081
+$ java -jar exec/target/exec-1.0.0.jar --server.port=8081
 ```
 
 After a successful build, the built-in _Tomcat container_ will automatically

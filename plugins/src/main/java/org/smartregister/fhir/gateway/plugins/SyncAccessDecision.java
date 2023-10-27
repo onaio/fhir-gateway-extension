@@ -1,10 +1,12 @@
 package org.smartregister.fhir.gateway.plugins;
 
-import static org.smartregister.fhir.gateway.plugins.Constants.*;
-
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
@@ -94,7 +96,7 @@ public class SyncAccessDecision implements AccessDecision {
 
         RequestMutation requestMutation = null;
         if (isSyncUrl(requestDetailsReader)) {
-            if (syncStrategyIds.isEmpty()) {
+            if (syncStrategyIds.isEmpty() || StringUtils.isBlank(syncStrategy)) {
 
                 ForbiddenOperationException forbiddenOperationException =
                         new ForbiddenOperationException(
@@ -118,7 +120,7 @@ public class SyncAccessDecision implements AccessDecision {
                         RequestMutation.builder()
                                 .queryParams(
                                         Map.of(
-                                                TAG_SEARCH_PARAM,
+                                                Constants.TAG_SEARCH_PARAM,
                                                 Arrays.asList(
                                                         StringUtils.join(
                                                                 syncFilterParameterValues, ","))))
@@ -153,7 +155,7 @@ public class SyncAccessDecision implements AccessDecision {
 
         String resultContent = null;
         Resource resultContentBundle;
-        String gatewayMode = request.getHeader(SyncAccessDecision.Constants.FHIR_GATEWAY_MODE);
+        String gatewayMode = request.getHeader(SyncAccessDecisionConstants.FHIR_GATEWAY_MODE);
 
         if (StringUtils.isNotBlank(gatewayMode)) {
 
@@ -161,7 +163,7 @@ public class SyncAccessDecision implements AccessDecision {
             IBaseResource responseResource = this.fhirR4JsonParser.parseResource(resultContent);
 
             switch (gatewayMode) {
-                case SyncAccessDecision.Constants.LIST_ENTRIES:
+                case SyncAccessDecisionConstants.LIST_ENTRIES:
                     resultContentBundle = postProcessModeListEntries(responseResource);
                     break;
 
@@ -191,9 +193,9 @@ public class SyncAccessDecision implements AccessDecision {
     }
 
     private boolean includeAttributedPractitioners(String requestPath) {
-        return SyncAccessDecision.Constants.SYNC_STRATEGY_LOCATION.equalsIgnoreCase(syncStrategy)
-                && roles.contains(SyncAccessDecision.Constants.ROLE_SUPERVISOR)
-                && SyncAccessDecision.Constants.ENDPOINT_PRACTITIONER_DETAILS.equals(requestPath);
+        return Constants.LOCATION.equalsIgnoreCase(syncStrategy)
+                && roles.contains(SyncAccessDecisionConstants.ROLE_SUPERVISOR)
+                && SyncAccessDecisionConstants.ENDPOINT_PRACTITIONER_DETAILS.equals(requestPath);
     }
 
     @NotNull
@@ -298,29 +300,15 @@ public class SyncAccessDecision implements AccessDecision {
         StringBuilder sb = new StringBuilder();
         Map<String, String[]> map = new HashMap<>();
 
-        sb.append(org.smartregister.fhir.gateway.plugins.Constants.TAG_SEARCH_PARAM);
-        sb.append(org.smartregister.fhir.gateway.plugins.Constants.Literals.EQUALS);
+        sb.append(Constants.TAG_SEARCH_PARAM);
+        sb.append(Constants.Literals.EQUALS);
 
-        if (org.smartregister.fhir.gateway.plugins.Constants.LOCATION.equals(syncStrategy)) {
-            addTags(
-                    org.smartregister.fhir.gateway.plugins.Constants.LOCATION_TAG_URL,
-                    syncStrategyIds.get(syncStrategy),
-                    map,
-                    sb);
-        } else if (org.smartregister.fhir.gateway.plugins.Constants.ORGANIZATION.equals(
-                syncStrategy)) {
-            addTags(
-                    org.smartregister.fhir.gateway.plugins.Constants.ORGANISATION_TAG_URL,
-                    syncStrategyIds.get(syncStrategy),
-                    map,
-                    sb);
-        } else if (org.smartregister.fhir.gateway.plugins.Constants.CARE_TEAM.equals(
-                syncStrategy)) {
-            addTags(
-                    org.smartregister.fhir.gateway.plugins.Constants.CARE_TEAM_TAG_URL,
-                    syncStrategyIds.get(syncStrategy),
-                    map,
-                    sb);
+        if (Constants.LOCATION.equals(syncStrategy)) {
+            addTags(Constants.LOCATION_TAG_URL, syncStrategyIds.get(syncStrategy), map, sb);
+        } else if (Constants.ORGANIZATION.equals(syncStrategy)) {
+            addTags(Constants.ORGANISATION_TAG_URL, syncStrategyIds.get(syncStrategy), map, sb);
+        } else if (Constants.CARE_TEAM.equals(syncStrategy)) {
+            addTags(Constants.CARE_TEAM_TAG_URL, syncStrategyIds.get(syncStrategy), map, sb);
         }
 
         return map;
@@ -334,11 +322,8 @@ public class SyncAccessDecision implements AccessDecision {
         int len = values.size();
         if (len > 0) {
             if (urlStringBuilder.length()
-                    != (TAG_SEARCH_PARAM
-                                    + org.smartregister.fhir.gateway.plugins.Constants.Literals
-                                            .EQUALS)
-                            .length()) {
-                urlStringBuilder.append(PARAM_VALUES_SEPARATOR);
+                    != (Constants.TAG_SEARCH_PARAM + Constants.Literals.EQUALS).length()) {
+                urlStringBuilder.append(Constants.PARAM_VALUES_SEPARATOR);
             }
 
             map.put(tagUrl, values.toArray(new String[0]));
@@ -346,11 +331,11 @@ public class SyncAccessDecision implements AccessDecision {
             int i = 0;
             for (String tagValue : values) {
                 urlStringBuilder.append(tagUrl);
-                urlStringBuilder.append(CODE_URL_VALUE_SEPARATOR);
+                urlStringBuilder.append(Constants.CODE_URL_VALUE_SEPARATOR);
                 urlStringBuilder.append(tagValue);
 
                 if (i != len - 1) {
-                    urlStringBuilder.append(PARAM_VALUES_SEPARATOR);
+                    urlStringBuilder.append(Constants.PARAM_VALUES_SEPARATOR);
                 }
                 i++;
             }
@@ -492,11 +477,10 @@ public class SyncAccessDecision implements AccessDecision {
         }
     }
 
-    public static final class Constants {
+    public static final class SyncAccessDecisionConstants {
         public static final String FHIR_GATEWAY_MODE = "fhir-gateway-mode";
         public static final String LIST_ENTRIES = "list-entries";
         public static final String ROLE_SUPERVISOR = "SUPERVISOR";
         public static final String ENDPOINT_PRACTITIONER_DETAILS = "practitioner-details";
-        public static final String SYNC_STRATEGY_LOCATION = "Location";
     }
 }
