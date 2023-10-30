@@ -113,13 +113,25 @@ inherited from the [FHIR Info Gateway](https://github.com/google/fhir-gateway)
   certain user-defined criteria. The user defines their criteria in a config
   file and if the URL query matches an entry in the config file, access is
   granted.
-  [AllowedQueriesConfig](https://github.com/google/fhir-gateway/blob/main/server/src/main/java/com/google/fhir/gateway/AllowedQueriesConfig.java)
+  [AllowedQueriesConfig](https://github.com/google/fhir-gateway-plugin/blob/main/server/src/main/java/com/google/fhir/gateway/AllowedQueriesConfig.java)
   provides all the supported configurations. An example of this is
   [`hapi_page_url_allowed_queries.json`](https://github.com/google/fhir-gateway/blob/main/resources/hapi_page_url_allowed_queries.json).
   To use this file with `ALLOWED_QUERIES_FILE`:
 
   ```shell
   export ALLOWED_QUERIES_FILE="resources/hapi_page_url_allowed_queries.json"
+  ```
+
+  - `SYNC_FILTER_IGNORE_RESOURCES_FILE`: A list of URL requests that should
+    bypass the sync filter (sync by strategy)
+    [`IgnoredResourcesConfig`](https://github.com/onaio/fhir-gateway-plugin/blob/main/plugins/src/main/java/org/smartregister/fhir/gateway/plugins/SyncAccessDecision.java#IgnoredResourcesConfig)
+
+  An example of this is
+  [`hapi_sync_filter_ignored_queries.json`](https://github.com/onaio/fhir-gateway-plugin/blob/main/resources/hapi_sync_filter_ignored_queries.json).
+  To use this file with `ALLOWED_QUERIES_FILE`:
+
+  ```shell
+  export SYNC_FILTER_IGNORE_RESOURCES_FILE="resources/hapi_sync_filter_ignored_queries.json"
   ```
 
 - `BACKEND_TYPE`: The type of backend, either `HAPI` or `GCP`. `HAPI` should be
