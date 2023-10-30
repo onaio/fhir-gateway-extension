@@ -1,11 +1,12 @@
 package org.smartregister.fhir.gateway.plugins;
 
-import static org.smartregister.fhir.gateway.plugins.ProxyConstants.*;
-import static org.smartregister.fhir.gateway.plugins.ProxyConstants.Literals.EQUALS;
-
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
@@ -46,9 +47,7 @@ public class SyncAccessDecision implements AccessDecision {
     private final String syncStrategy;
     private final String applicationId;
     private final boolean accessGranted;
-    private final List<String> careTeamIds;
-    private final List<String> locationIds;
-    private final List<String> organizationIds;
+    private final Map<String, List<String>> syncStrategyIds;
     private final List<String> roles;
     private IgnoredResourcesConfig config;
     private String keycloakUUID;
@@ -64,18 +63,14 @@ public class SyncAccessDecision implements AccessDecision {
             String keycloakUUID,
             String applicationId,
             boolean accessGranted,
-            List<String> locationIds,
-            List<String> careTeamIds,
-            List<String> organizationIds,
+            Map<String, List<String>> syncStrategyIds,
             String syncStrategy,
             List<String> roles) {
         this.fhirR4Context = fhirContext;
         this.keycloakUUID = keycloakUUID;
         this.applicationId = applicationId;
         this.accessGranted = accessGranted;
-        this.careTeamIds = careTeamIds;
-        this.locationIds = locationIds;
-        this.organizationIds = organizationIds;
+        this.syncStrategyIds = syncStrategyIds;
         this.syncStrategy = syncStrategy;
         this.config = getSkippedResourcesConfigs();
         this.roles = roles;
@@ -101,7 +96,10 @@ public class SyncAccessDecision implements AccessDecision {
 
         RequestMutation requestMutation = null;
         if (isSyncUrl(requestDetailsReader)) {
-            if (locationIds.isEmpty() && careTeamIds.isEmpty() && organizationIds.isEmpty()) {
+            if (syncStrategyIds.isEmpty()
+                    || StringUtils.isBlank(syncStrategy)
+                    || (syncStrategyIds.containsKey(syncStrategy)
+                            && syncStrategyIds.get(syncStrategy).isEmpty())) {
 
                 ForbiddenOperationException forbiddenOperationException =
                         new ForbiddenOperationException(
@@ -120,12 +118,12 @@ public class SyncAccessDecision implements AccessDecision {
             // Skip app-wide global resource requests
             if (!shouldSkipDataFiltering(requestDetailsReader)) {
                 List<String> syncFilterParameterValues =
-                        addSyncFilters(getSyncTags(locationIds, careTeamIds, organizationIds));
+                        addSyncFilters(getSyncTags(this.syncStrategy, this.syncStrategyIds));
                 requestMutation =
                         RequestMutation.builder()
                                 .queryParams(
                                         Map.of(
-                                                TAG_SEARCH_PARAM,
+                                                Constants.TAG_SEARCH_PARAM,
                                                 Arrays.asList(
                                                         StringUtils.join(
                                                                 syncFilterParameterValues, ","))))
@@ -160,7 +158,7 @@ public class SyncAccessDecision implements AccessDecision {
 
         String resultContent = null;
         Resource resultContentBundle;
-        String gatewayMode = request.getHeader(Constants.FHIR_GATEWAY_MODE);
+        String gatewayMode = request.getHeader(SyncAccessDecisionConstants.FHIR_GATEWAY_MODE);
 
         if (StringUtils.isNotBlank(gatewayMode)) {
 
@@ -168,7 +166,7 @@ public class SyncAccessDecision implements AccessDecision {
             IBaseResource responseResource = this.fhirR4JsonParser.parseResource(resultContent);
 
             switch (gatewayMode) {
-                case Constants.LIST_ENTRIES:
+                case SyncAccessDecisionConstants.LIST_ENTRIES:
                     resultContentBundle = postProcessModeListEntries(responseResource);
                     break;
 
@@ -198,9 +196,9 @@ public class SyncAccessDecision implements AccessDecision {
     }
 
     private boolean includeAttributedPractitioners(String requestPath) {
-        return Constants.SYNC_STRATEGY_LOCATION.equalsIgnoreCase(syncStrategy)
-                && roles.contains(Constants.ROLE_SUPERVISOR)
-                && Constants.ENDPOINT_PRACTITIONER_DETAILS.equals(requestPath);
+        return Constants.LOCATION.equalsIgnoreCase(syncStrategy)
+                && roles.contains(SyncAccessDecisionConstants.ROLE_SUPERVISOR)
+                && SyncAccessDecisionConstants.ENDPOINT_PRACTITIONER_DETAILS.equals(requestPath);
     }
 
     @NotNull
@@ -255,7 +253,7 @@ public class SyncAccessDecision implements AccessDecision {
     }
 
     @NotNull
-    private static Bundle.BundleEntryComponent createBundleEntryComponent(
+    static Bundle.BundleEntryComponent createBundleEntryComponent(
             Bundle.HTTPVerb method, String requestPath, @Nullable String condition) {
 
         Bundle.BundleEntryComponent bundleEntryComponent = new Bundle.BundleEntryComponent();
@@ -293,26 +291,28 @@ public class SyncAccessDecision implements AccessDecision {
         return fhirR4Client.transaction().withBundle(requestBundle).execute();
     }
 
-    /**
-     * Generates a map of Code.url to multiple Code.Value which contains all the possible filters
-     * that will be used in syncing
+    /* Generates a map of Code.url to multiple Code.Value which contains all the possible filters that
+     * will be used in syncing
      *
-     * @param locationIds
-     * @param careTeamIds
-     * @param organizationIds
+     * @param syncStrategy
+     * @param syncStrategyIds
      * @return Pair of URL to [Code.url, [Code.Value]] map. The URL is complete url
      */
     private Map<String, String[]> getSyncTags(
-            List<String> locationIds, List<String> careTeamIds, List<String> organizationIds) {
+            String syncStrategy, Map<String, List<String>> syncStrategyIds) {
         StringBuilder sb = new StringBuilder();
         Map<String, String[]> map = new HashMap<>();
 
-        sb.append(TAG_SEARCH_PARAM);
-        sb.append(EQUALS);
+        sb.append(Constants.TAG_SEARCH_PARAM);
+        sb.append(Constants.Literals.EQUALS);
 
-        addTags(LOCATION_TAG_URL, locationIds, map, sb);
-        addTags(ORGANISATION_TAG_URL, organizationIds, map, sb);
-        addTags(CARE_TEAM_TAG_URL, careTeamIds, map, sb);
+        if (Constants.LOCATION.equals(syncStrategy)) {
+            addTags(Constants.LOCATION_TAG_URL, syncStrategyIds.get(syncStrategy), map, sb);
+        } else if (Constants.ORGANIZATION.equals(syncStrategy)) {
+            addTags(Constants.ORGANISATION_TAG_URL, syncStrategyIds.get(syncStrategy), map, sb);
+        } else if (Constants.CARE_TEAM.equals(syncStrategy)) {
+            addTags(Constants.CARE_TEAM_TAG_URL, syncStrategyIds.get(syncStrategy), map, sb);
+        }
 
         return map;
     }
@@ -324,8 +324,9 @@ public class SyncAccessDecision implements AccessDecision {
             StringBuilder urlStringBuilder) {
         int len = values.size();
         if (len > 0) {
-            if (urlStringBuilder.length() != (TAG_SEARCH_PARAM + EQUALS).length()) {
-                urlStringBuilder.append(PARAM_VALUES_SEPARATOR);
+            if (urlStringBuilder.length()
+                    != (Constants.TAG_SEARCH_PARAM + Constants.Literals.EQUALS).length()) {
+                urlStringBuilder.append(Constants.PARAM_VALUES_SEPARATOR);
             }
 
             map.put(tagUrl, values.toArray(new String[0]));
@@ -333,11 +334,11 @@ public class SyncAccessDecision implements AccessDecision {
             int i = 0;
             for (String tagValue : values) {
                 urlStringBuilder.append(tagUrl);
-                urlStringBuilder.append(CODE_URL_VALUE_SEPARATOR);
+                urlStringBuilder.append(Constants.CODE_URL_VALUE_SEPARATOR);
                 urlStringBuilder.append(tagValue);
 
                 if (i != len - 1) {
-                    urlStringBuilder.append(PARAM_VALUES_SEPARATOR);
+                    urlStringBuilder.append(Constants.PARAM_VALUES_SEPARATOR);
                 }
                 i++;
             }
@@ -479,11 +480,10 @@ public class SyncAccessDecision implements AccessDecision {
         }
     }
 
-    public static final class Constants {
+    public static final class SyncAccessDecisionConstants {
         public static final String FHIR_GATEWAY_MODE = "fhir-gateway-mode";
         public static final String LIST_ENTRIES = "list-entries";
         public static final String ROLE_SUPERVISOR = "SUPERVISOR";
         public static final String ENDPOINT_PRACTITIONER_DETAILS = "practitioner-details";
-        public static final String SYNC_STRATEGY_LOCATION = "Location";
     }
 }

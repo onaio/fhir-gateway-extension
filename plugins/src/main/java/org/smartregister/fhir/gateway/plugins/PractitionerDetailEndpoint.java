@@ -1,10 +1,8 @@
 package org.smartregister.fhir.gateway.plugins;
 
-import static org.smartregister.fhir.gateway.plugins.Constants.PROXY_TO_ENV;
-import static org.smartregister.utils.Constants.*;
-
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -12,7 +10,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.http.HttpStatus;
-import org.hl7.fhir.r4.model.*;
+import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Practitioner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartregister.model.practitioner.PractitionerDetails;
@@ -44,7 +43,7 @@ public class PractitionerDetailEndpoint extends HttpServlet {
     private final TokenVerifier tokenVerifier;
     private FhirContext fhirR4Context = FhirContext.forR4();
     private IGenericClient r4FhirClient =
-            fhirR4Context.newRestfulGenericClient(System.getenv(PROXY_TO_ENV));
+            fhirR4Context.newRestfulGenericClient(System.getenv(Constants.PROXY_TO_ENV));
 
     private IParser fhirR4JsonParser = fhirR4Context.newJsonParser().setPrettyPrint(true);
 
