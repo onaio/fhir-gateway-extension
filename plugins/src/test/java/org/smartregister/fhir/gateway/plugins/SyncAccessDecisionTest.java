@@ -2,13 +2,13 @@ package org.smartregister.fhir.gateway.plugins;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.smartregister.fhir.gateway.plugins.ProxyConstants.*;
 
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -53,13 +53,11 @@ public class SyncAccessDecisionTest {
     private SyncAccessDecision testInstance;
 
     @Test
-    public void
-            preprocessShouldAddAllFiltersWhenIdsForLocationsOrganisationsAndCareTeamsAreProvided() {
-        locationIds.addAll(Arrays.asList("my-location-id", "my-location-id2"));
-        careTeamIds.add("my-careteam-id");
-        organisationIds.add("my-organization-id");
-
-        testInstance = createSyncAccessDecisionTestInstance();
+    public void preProcessShouldAddLocationIdFiltersWhenUserIsAssignedToLocationsOnly()
+            throws IOException {
+        locationIds.add("locationid12");
+        locationIds.add("locationid2");
+        testInstance = createSyncAccessDecisionTestInstance(Constants.LOCATION);
 
         RequestDetails requestDetails = new ServletRequestDetails();
         requestDetails.setRequestType(RequestTypeEnum.GET);
@@ -69,51 +67,13 @@ public class SyncAccessDecisionTest {
         requestDetails.setCompleteUrl("https://smartregister.org/fhir/Patient");
         requestDetails.setRequestPath("Patient");
 
-        // Call the method under testing
         RequestMutation mutatedRequest =
                 testInstance.getRequestMutation(new TestRequestDetailsToReader(requestDetails));
-
-        List<String> allIds = new ArrayList<>();
-        allIds.addAll(locationIds);
-        allIds.addAll(organisationIds);
-        allIds.addAll(careTeamIds);
-
-        List<String> locationTagToValuesList = new ArrayList<>();
 
         for (String locationId : locationIds) {
             Assert.assertFalse(requestDetails.getCompleteUrl().contains(locationId));
             Assert.assertFalse(requestDetails.getRequestPath().contains(locationId));
-
-            locationTagToValuesList.add(LOCATION_TAG_URL + "|" + locationId);
         }
-
-        Assert.assertTrue(
-                mutatedRequest
-                        .getQueryParams()
-                        .get("_tag")
-                        .get(0)
-                        .contains(StringUtils.join(locationTagToValuesList, ",")));
-
-        List<String> careteamTagToValuesList = new ArrayList<>();
-
-        for (String careTeamId : careTeamIds) {
-            Assert.assertFalse(requestDetails.getCompleteUrl().contains(careTeamId));
-            Assert.assertFalse(requestDetails.getRequestPath().contains(careTeamId));
-            careteamTagToValuesList.add(LOCATION_TAG_URL + "|" + careTeamId);
-        }
-
-        Assert.assertTrue(
-                mutatedRequest
-                        .getQueryParams()
-                        .get("_tag")
-                        .get(0)
-                        .contains(StringUtils.join(locationTagToValuesList, ",")));
-
-        for (String organisationId : organisationIds) {
-            Assert.assertFalse(requestDetails.getCompleteUrl().contains(organisationId));
-            Assert.assertFalse(requestDetails.getRequestPath().contains(organisationId));
-        }
-
         Assert.assertTrue(
                 mutatedRequest
                         .getQueryParams()
@@ -121,41 +81,11 @@ public class SyncAccessDecisionTest {
                         .get(0)
                         .contains(
                                 StringUtils.join(
-                                        organisationIds, "," + ORGANISATION_TAG_URL + "|")));
-    }
-
-    @Test
-    public void preProcessShouldAddLocationIdFiltersWhenUserIsAssignedToLocationsOnly()
-            throws IOException {
-        locationIds.add("locationid12");
-        locationIds.add("locationid2");
-        testInstance = createSyncAccessDecisionTestInstance();
-
-        RequestDetails requestDetails = new ServletRequestDetails();
-        requestDetails.setRequestType(RequestTypeEnum.GET);
-        requestDetails.setRestOperationType(RestOperationTypeEnum.SEARCH_TYPE);
-        requestDetails.setResourceName("Patient");
-        requestDetails.setFhirServerBase("https://smartregister.org/fhir");
-        requestDetails.setCompleteUrl("https://smartregister.org/fhir/Patient");
-        requestDetails.setRequestPath("Patient");
-
-        RequestMutation mutatedRequest =
-                testInstance.getRequestMutation(new TestRequestDetailsToReader(requestDetails));
-
-        for (String locationId : locationIds) {
-            Assert.assertFalse(requestDetails.getCompleteUrl().contains(locationId));
-            Assert.assertFalse(requestDetails.getRequestPath().contains(locationId));
-        }
-        Assert.assertTrue(
-                mutatedRequest
-                        .getQueryParams()
-                        .get("_tag")
-                        .get(0)
-                        .contains(StringUtils.join(locationIds, "," + LOCATION_TAG_URL + "|")));
+                                        locationIds, "," + Constants.LOCATION_TAG_URL + "|")));
 
         for (String param : mutatedRequest.getQueryParams().get("_tag")) {
-            Assert.assertFalse(param.contains(CARE_TEAM_TAG_URL));
-            Assert.assertFalse(param.contains(ORGANISATION_TAG_URL));
+            Assert.assertFalse(param.contains(Constants.CARE_TEAM_TAG_URL));
+            Assert.assertFalse(param.contains(Constants.ORGANISATION_TAG_URL));
         }
     }
 
@@ -164,7 +94,7 @@ public class SyncAccessDecisionTest {
             throws IOException {
         careTeamIds.add("careteamid1");
         careTeamIds.add("careteamid2");
-        testInstance = createSyncAccessDecisionTestInstance();
+        testInstance = createSyncAccessDecisionTestInstance(Constants.CARE_TEAM);
 
         RequestDetails requestDetails = new ServletRequestDetails();
         requestDetails.setRequestType(RequestTypeEnum.GET);
@@ -187,11 +117,13 @@ public class SyncAccessDecisionTest {
                         .getQueryParams()
                         .get("_tag")
                         .get(0)
-                        .contains(StringUtils.join(careTeamIds, "," + CARE_TEAM_TAG_URL + "|")));
+                        .contains(
+                                StringUtils.join(
+                                        careTeamIds, "," + Constants.CARE_TEAM_TAG_URL + "|")));
 
         for (String param : mutatedRequest.getQueryParams().get("_tag")) {
-            Assert.assertFalse(param.contains(LOCATION_TAG_URL));
-            Assert.assertFalse(param.contains(ORGANISATION_TAG_URL));
+            Assert.assertFalse(param.contains(Constants.LOCATION_TAG_URL));
+            Assert.assertFalse(param.contains(Constants.ORGANISATION_TAG_URL));
         }
     }
 
@@ -200,7 +132,7 @@ public class SyncAccessDecisionTest {
             throws IOException {
         organisationIds.add("organizationid1");
         organisationIds.add("organizationid2");
-        testInstance = createSyncAccessDecisionTestInstance();
+        testInstance = createSyncAccessDecisionTestInstance(Constants.ORGANIZATION);
 
         RequestDetails requestDetails = new ServletRequestDetails();
         requestDetails.setRequestType(RequestTypeEnum.GET);
@@ -220,12 +152,12 @@ public class SyncAccessDecisionTest {
                     mutatedRequest
                             .getQueryParams()
                             .get("_tag")
-                            .contains(ORGANISATION_TAG_URL + "|" + locationId));
+                            .contains(Constants.ORGANISATION_TAG_URL + "|" + locationId));
         }
 
         for (String param : mutatedRequest.getQueryParams().get("_tag")) {
-            Assert.assertFalse(param.contains(LOCATION_TAG_URL));
-            Assert.assertFalse(param.contains(CARE_TEAM_TAG_URL));
+            Assert.assertFalse(param.contains(Constants.LOCATION_TAG_URL));
+            Assert.assertFalse(param.contains(Constants.CARE_TEAM_TAG_URL));
         }
     }
 
@@ -233,7 +165,7 @@ public class SyncAccessDecisionTest {
     public void preProcessShouldAddFiltersWhenResourceNotInSyncFilterIgnoredResourcesFile() {
         organisationIds.add("organizationid1");
         organisationIds.add("organizationid2");
-        testInstance = createSyncAccessDecisionTestInstance();
+        testInstance = createSyncAccessDecisionTestInstance(Constants.ORGANIZATION);
 
         RequestDetails requestDetails = new ServletRequestDetails();
         requestDetails.setRequestType(RequestTypeEnum.GET);
@@ -258,14 +190,15 @@ public class SyncAccessDecisionTest {
                         .get(0)
                         .contains(
                                 StringUtils.join(
-                                        organisationIds, "," + ORGANISATION_TAG_URL + "|")));
+                                        organisationIds,
+                                        "," + Constants.ORGANISATION_TAG_URL + "|")));
     }
 
     @Test
     public void preProcessShouldSkipAddingFiltersWhenResourceInSyncFilterIgnoredResourcesFile() {
         organisationIds.add("organizationid1");
         organisationIds.add("organizationid2");
-        testInstance = createSyncAccessDecisionTestInstance();
+        testInstance = createSyncAccessDecisionTestInstance(Constants.ORGANIZATION);
 
         RequestDetails requestDetails = new ServletRequestDetails();
         requestDetails.setRequestType(RequestTypeEnum.GET);
@@ -290,7 +223,7 @@ public class SyncAccessDecisionTest {
             preProcessShouldSkipAddingFiltersWhenSearchResourceByIdsInSyncFilterIgnoredResourcesFile() {
         organisationIds.add("organizationid1");
         organisationIds.add("organizationid2");
-        testInstance = createSyncAccessDecisionTestInstance();
+        testInstance = createSyncAccessDecisionTestInstance(Constants.ORGANIZATION);
 
         RequestDetails requestDetails = new ServletRequestDetails();
         requestDetails.setRequestType(RequestTypeEnum.GET);
@@ -321,7 +254,7 @@ public class SyncAccessDecisionTest {
             preProcessShouldAddFiltersWhenSearchResourceByIdsDoNotMatchSyncFilterIgnoredResources() {
         organisationIds.add("organizationid1");
         organisationIds.add("organizationid2");
-        testInstance = createSyncAccessDecisionTestInstance();
+        testInstance = createSyncAccessDecisionTestInstance(Constants.ORGANIZATION);
 
         RequestDetails requestDetails = new ServletRequestDetails();
         requestDetails.setRequestType(RequestTypeEnum.GET);
@@ -344,7 +277,8 @@ public class SyncAccessDecisionTest {
         RequestMutation mutatedRequest =
                 testInstance.getRequestMutation(new TestRequestDetailsToReader(requestDetails));
 
-        List<String> searchParamArrays = mutatedRequest.getQueryParams().get(TAG_SEARCH_PARAM);
+        List<String> searchParamArrays =
+                mutatedRequest.getQueryParams().get(Constants.TAG_SEARCH_PARAM);
         Assert.assertNotNull(searchParamArrays);
 
         Assert.assertTrue(
@@ -352,12 +286,13 @@ public class SyncAccessDecisionTest {
                         .get(0)
                         .contains(
                                 StringUtils.join(
-                                        organisationIds, "," + ORGANISATION_TAG_URL + "|")));
+                                        organisationIds,
+                                        "," + Constants.ORGANISATION_TAG_URL + "|")));
     }
 
     @Test(expected = RuntimeException.class)
     public void preprocessShouldThrowRuntimeExceptionWhenNoSyncStrategyFilterIsProvided() {
-        testInstance = createSyncAccessDecisionTestInstance();
+        testInstance = createSyncAccessDecisionTestInstance(null);
 
         RequestDetails requestDetails = new ServletRequestDetails();
         requestDetails.setRequestType(RequestTypeEnum.GET);
@@ -374,7 +309,7 @@ public class SyncAccessDecisionTest {
     @Test
     public void testPostProcessWithListModeHeaderShouldFetchListEntriesBundle() throws IOException {
         locationIds.add("Location-1");
-        testInstance = Mockito.spy(createSyncAccessDecisionTestInstance());
+        testInstance = Mockito.spy(createSyncAccessDecisionTestInstance(Constants.LOCATION));
 
         FhirContext fhirR4Context = mock(FhirContext.class);
         IGenericClient iGenericClient = mock(IGenericClient.class);
@@ -398,8 +333,10 @@ public class SyncAccessDecisionTest {
 
         RequestDetailsReader requestDetailsSpy = Mockito.mock(RequestDetailsReader.class);
 
-        Mockito.when(requestDetailsSpy.getHeader(SyncAccessDecision.Constants.FHIR_GATEWAY_MODE))
-                .thenReturn(SyncAccessDecision.Constants.LIST_ENTRIES);
+        Mockito.when(
+                        requestDetailsSpy.getHeader(
+                                SyncAccessDecision.SyncAccessDecisionConstants.FHIR_GATEWAY_MODE))
+                .thenReturn(SyncAccessDecision.SyncAccessDecisionConstants.LIST_ENTRIES);
 
         URL listUrl = Resources.getResource("test_list_resource.json");
         String testListJson = Resources.toString(listUrl, StandardCharsets.UTF_8);
@@ -439,10 +376,12 @@ public class SyncAccessDecisionTest {
 
     @Test
     public void testPostProcessWithoutListModeHeaderShouldShouldReturnNull() throws IOException {
-        testInstance = createSyncAccessDecisionTestInstance();
+        testInstance = createSyncAccessDecisionTestInstance(Constants.LOCATION);
 
         RequestDetailsReader requestDetailsSpy = Mockito.mock(RequestDetailsReader.class);
-        Mockito.when(requestDetailsSpy.getHeader(SyncAccessDecision.Constants.FHIR_GATEWAY_MODE))
+        Mockito.when(
+                        requestDetailsSpy.getHeader(
+                                SyncAccessDecision.SyncAccessDecisionConstants.FHIR_GATEWAY_MODE))
                 .thenReturn("");
 
         String resultContent =
@@ -456,7 +395,7 @@ public class SyncAccessDecisionTest {
     public void testPostProcessWithListModeHeaderSearchByTagShouldFetchListEntriesBundle()
             throws IOException {
         locationIds.add("Location-1");
-        testInstance = Mockito.spy(createSyncAccessDecisionTestInstance());
+        testInstance = Mockito.spy(createSyncAccessDecisionTestInstance(Constants.LOCATION));
 
         FhirContext fhirR4Context = mock(FhirContext.class);
         IGenericClient iGenericClient = mock(IGenericClient.class);
@@ -478,8 +417,10 @@ public class SyncAccessDecisionTest {
 
         RequestDetailsReader requestDetailsSpy = Mockito.mock(RequestDetailsReader.class);
 
-        Mockito.when(requestDetailsSpy.getHeader(SyncAccessDecision.Constants.FHIR_GATEWAY_MODE))
-                .thenReturn(SyncAccessDecision.Constants.LIST_ENTRIES);
+        Mockito.when(
+                        requestDetailsSpy.getHeader(
+                                SyncAccessDecision.SyncAccessDecisionConstants.FHIR_GATEWAY_MODE))
+                .thenReturn(SyncAccessDecision.SyncAccessDecisionConstants.LIST_ENTRIES);
 
         URL listUrl = Resources.getResource("test_list_resource.json");
         String testListJson = Resources.toString(listUrl, StandardCharsets.UTF_8);
@@ -537,18 +478,22 @@ public class SyncAccessDecisionTest {
         organisationIds.clear();
     }
 
-    private SyncAccessDecision createSyncAccessDecisionTestInstance() {
+    private SyncAccessDecision createSyncAccessDecisionTestInstance(String syncStrategy) {
         FhirContext fhirR4Context = FhirContext.forR4();
+
+        Map<String, List<String>> syncStrategyIds = new HashMap<>();
+        syncStrategyIds.put(Constants.LOCATION, locationIds);
+        syncStrategyIds.put(Constants.CARE_TEAM, careTeamIds);
+        syncStrategyIds.put(Constants.ORGANIZATION, organisationIds);
+
         SyncAccessDecision accessDecision =
                 new SyncAccessDecision(
                         fhirR4Context,
                         "sample-keycloak-id",
                         "sample-application-id",
                         true,
-                        locationIds,
-                        careTeamIds,
-                        organisationIds,
-                        null,
+                        syncStrategyIds,
+                        syncStrategy,
                         userRoles);
 
         URL configFileUrl = Resources.getResource("hapi_sync_filter_ignored_queries.json");

@@ -1,6 +1,7 @@
 package org.smartregister.fhir.gateway.plugins;
 
-import static org.smartregister.utils.Constants.*;
+import static org.smartregister.utils.Constants.LOCATION_RESOURCE;
+import static org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,7 +40,7 @@ public class LocationHierarchyEndpointHelper {
 
     public LocationHierarchy getLocationHierarchy(String identifier) {
         Location location = getLocationsByIdentifier(identifier);
-        String locationId = EMPTY_STRING;
+        String locationId = Constants.EMPTY_STRING;
         if (location != null && location.getIdElement() != null) {
             locationId = location.getIdElement().getIdPart();
         }
