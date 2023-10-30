@@ -122,7 +122,7 @@ inherited from the [FHIR Info Gateway](https://github.com/google/fhir-gateway)
   export ALLOWED_QUERIES_FILE="resources/hapi_page_url_allowed_queries.json"
   ```
 
-  - `SYNC_FILTER_IGNORE_RESOURCES_FILE`: A list of URL requests that should
+- `SYNC_FILTER_IGNORE_RESOURCES_FILE`: A list of URL requests that should
     bypass the sync filter (sync by strategy)
     [`IgnoredResourcesConfig`](https://github.com/onaio/fhir-gateway-plugin/blob/main/plugins/src/main/java/org/smartregister/fhir/gateway/plugins/SyncAccessDecision.java#IgnoredResourcesConfig)
 
