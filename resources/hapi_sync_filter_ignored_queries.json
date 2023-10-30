@@ -8,6 +8,13 @@
       }
     },
     {
+      "path": "StructureMap",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
       "path": "List",
       "methodType": "GET",
       "queryParams": {
@@ -15,14 +22,38 @@
       }
     },
     {
-      "path": "StructureMap",
+      "path": "PlanDefinition",
       "methodType": "GET",
       "queryParams": {
-        "_id": [
-          "1000",
-          "2000",
-          "3000"
-        ]
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "Library",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "Measure",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "LocationHierarchy/",
+      "methodType": "GET",
+      "queryParams": {
+        "identifier": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "PractitionerDetails",
+      "methodType": "GET",
+      "queryParams": {
+        "keycloak-uuid": "ANY_VALUE"
       }
     }
   ]
