@@ -96,7 +96,10 @@ public class SyncAccessDecision implements AccessDecision {
 
         RequestMutation requestMutation = null;
         if (isSyncUrl(requestDetailsReader)) {
-            if (syncStrategyIds.isEmpty() || StringUtils.isBlank(syncStrategy)) {
+            if (syncStrategyIds.isEmpty()
+                    || StringUtils.isBlank(syncStrategy)
+                    || (syncStrategyIds.containsKey(syncStrategy)
+                            && syncStrategyIds.get(syncStrategy).isEmpty())) {
 
                 ForbiddenOperationException forbiddenOperationException =
                         new ForbiddenOperationException(
