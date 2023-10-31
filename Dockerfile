@@ -23,10 +23,4 @@ COPY --from=build /app/exec/target/opensrp-gateway-plugin-exec.jar /app/
 COPY resources/hapi_page_url_allowed_queries.json resources/hapi_page_url_allowed_queries.json
 COPY resources/hapi_sync_filter_ignored_queries.json resources/hapi_sync_filter_ignored_queries.json
 
-ENV TOKEN_ISSUER="http://localhost/auth/realms/test"
-ENV PROXY_TO="http://localhost:8080/fhir"
-ENV BACKEND_TYPE="HAPI"
-ENV ACCESS_CHECKER="list"
-ENV RUN_MODE="PROD"
-
 CMD ["/app/opensrp-gateway-plugin-exec.jar"]
