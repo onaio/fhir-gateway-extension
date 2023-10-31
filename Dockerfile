@@ -19,7 +19,7 @@ FROM gcr.io/distroless/java17-debian12:nonroot as default
 
 USER 65532:65532
 
-COPY --from=build /app/exec/target/opensrp-gateway-plugin-exec.jar /
+COPY --from=build /app/exec/target/opensrp-gateway-plugin-exec.jar /app/
 COPY resources/hapi_page_url_allowed_queries.json resources/hapi_page_url_allowed_queries.json
 COPY resources/hapi_sync_filter_ignored_queries.json resources/hapi_sync_filter_ignored_queries.json
 
@@ -29,4 +29,4 @@ ENV BACKEND_TYPE="HAPI"
 ENV ACCESS_CHECKER="list"
 ENV RUN_MODE="PROD"
 
-CMD ["/opensrp-gateway-plugin-exec.jar"]
+CMD ["/app/opensrp-gateway-plugin-exec.jar"]
