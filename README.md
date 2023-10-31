@@ -54,8 +54,8 @@ module:
 $ mvn clean package
 ```
 
-The generated JAR file can be found in the `/target` directory. Please note, we
-are not running the plugins jar explicitly. Instead we are running an _exec
+The generated JAR file can be found in the `exec/target` directory. Please note,
+we are not running the plugins jar explicitly. Instead we are running an _exec
 module_.
 
 ## Configuration Parameters
@@ -88,7 +88,7 @@ export OPENSRP_CACHE_EXPIRY_SECONDS=30
 To disable caching, set the value to `0`. Note, the value provided is in
 **seconds**. This configuration is optional.
 
-## Other Configuration parameters
+## Other configuration parameters (Required)
 
 The other configuration parameters are provided through environment variables as
 inherited from the [FHIR Info Gateway](https://github.com/google/fhir-gateway)
@@ -122,9 +122,9 @@ inherited from the [FHIR Info Gateway](https://github.com/google/fhir-gateway)
   export ALLOWED_QUERIES_FILE="resources/hapi_page_url_allowed_queries.json"
   ```
 
-- `SYNC_FILTER_IGNORE_RESOURCES_FILE`: A list of URL requests that should
-    bypass the sync filter (sync by strategy)
-    [`IgnoredResourcesConfig`](https://github.com/onaio/fhir-gateway-plugin/blob/main/plugins/src/main/java/org/smartregister/fhir/gateway/plugins/SyncAccessDecision.java#IgnoredResourcesConfig)
+- `SYNC_FILTER_IGNORE_RESOURCES_FILE`: A list of URL requests that should bypass
+  the sync filter (sync by strategy)
+  [`IgnoredResourcesConfig`](https://github.com/onaio/fhir-gateway-plugin/blob/main/plugins/src/main/java/org/smartregister/fhir/gateway/plugins/SyncAccessDecision.java#IgnoredResourcesConfig)
 
   An example of this is
   [`hapi_sync_filter_ignored_queries.json`](https://github.com/onaio/fhir-gateway-plugin/blob/main/resources/hapi_sync_filter_ignored_queries.json).
@@ -144,7 +144,7 @@ As document on the Info Gateway modules
 run is:
 
 ```console
-$ java -jar exec/target/exec-1.0.0.jar --server.port=8081
+$ java -jar exec/target/opensrp-gateway-plugin-exec.jar --server.port=8081
 ```
 
 After a successful build, the built-in _Tomcat container_ will automatically
