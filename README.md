@@ -54,8 +54,8 @@ module:
 $ mvn clean package
 ```
 
-The generated JAR file can be found in the `/target` directory. Please note, we
-are not running the plugins jar explicitly. Instead we are running an _exec
+The generated JAR file can be found in the `exec/target` directory. Please note,
+we are not running the plugins jar explicitly. Instead we are running an _exec
 module_.
 
 ## Configuration Parameters
@@ -88,7 +88,7 @@ export OPENSRP_CACHE_EXPIRY_SECONDS=30
 To disable caching, set the value to `0`. Note, the value provided is in
 **seconds**. This configuration is optional.
 
-## Other Configuration parameters
+## Other configuration parameters (Required)
 
 The other configuration parameters are provided through environment variables as
 inherited from the [FHIR Info Gateway](https://github.com/google/fhir-gateway)
@@ -144,7 +144,7 @@ As document on the Info Gateway modules
 run is:
 
 ```console
-$ java -jar exec/target/exec-1.0.0.jar --server.port=8081
+$ java -jar exec/target/opensrp-gateway-plugin-exec.jar --server.port=8081
 ```
 
 After a successful build, the built-in _Tomcat container_ will automatically
