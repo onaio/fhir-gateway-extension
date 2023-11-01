@@ -16,6 +16,11 @@ public class Constants {
     public static final String SYNC_STRATEGY = "syncStrategy";
     public static final String TAG_SEARCH_PARAM = "_tag";
 
+    public static final String AUTHORIZATION = "Authorization";
+
+    public static final String KEYCLOAK_UUID = "keycloak-uuid";
+    public static final String IDENTIFIER = "identifier";
+
     public interface Literals {
         String EQUALS = "=";
     }
