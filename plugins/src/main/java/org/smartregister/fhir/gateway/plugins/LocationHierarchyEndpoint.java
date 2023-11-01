@@ -1,8 +1,8 @@
 package org.smartregister.fhir.gateway.plugins;
 
+import static org.smartregister.fhir.gateway.plugins.Constants.IDENTIFIER;
+
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -14,8 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartregister.model.location.LocationHierarchy;
 
-import com.auth0.jwt.interfaces.DecodedJWT;
-import com.google.fhir.gateway.ExceptionUtil;
 import com.google.fhir.gateway.FhirClientFactory;
 import com.google.fhir.gateway.HttpFhirClient;
 import com.google.fhir.gateway.TokenVerifier;
@@ -51,18 +49,9 @@ public class LocationHierarchyEndpoint extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
-        // Check the Bearer token to be a valid JWT with required claims.
         try {
-
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader == null) {
-                ExceptionUtil.throwRuntimeExceptionAndLog(
-                        logger, "No Authorization header provided!", new AuthenticationException());
-            }
-            List<String> patientIds = new ArrayList<>();
-            // Note for a more meaningful HTTP status code, we can catch AuthenticationException in:
-            DecodedJWT jwt = tokenVerifier.decodeAndVerifyBearerToken(authHeader);
-            String identifier = request.getParameter("identifier");
+            RestUtils.checkAuthentication(request, tokenVerifier);
+            String identifier = request.getParameter(IDENTIFIER);
 
             LocationHierarchy locationHierarchy =
                     locationHierarchyEndpointHelper.getLocationHierarchy(identifier);
@@ -79,9 +68,5 @@ public class LocationHierarchyEndpoint extends HttpServlet {
             response.getOutputStream().print(exception.getMessage());
             response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
         }
-    }
-
-    private IGenericClient getFhirClientForR4() {
-        return r4FHIRClient;
     }
 }
