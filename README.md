@@ -9,7 +9,7 @@ The custom functionality added includes:
 - **Data Access Checker** - Data filtering based on user assignment (Sync
   strategy enhancements) i.e. Support for sync by Team/Organization, Location,
   Practitioner, Careteam
-- Custom FHIR Resources REST endpoints i.e. **PractitionerDetails** and
+- Custom FHIR resources REST endpoints i.e. **PractitionerDetails** and
   **LocationHierarchy**.
 
 ## Getting Started
@@ -21,13 +21,15 @@ The custom functionality added includes:
 The FHIR server must be configured to accept connections from the FHIR Info
 Gateway plugin.
 
-The latest Docker image can be found here
-https://hub.docker.com/r/hapiproject/hapi/tags
+Project and documentation can be found here
+https://github.com/hapifhir/hapi-fhir-jpaserver-starter
 
 ### Keycloak Server
 
 The keycloak server must be configured to perform authentication via the FHIR
 Info Gateway plugin.
+
+Project and documentation can be found here https://github.com/keycloak/keycloak
 
 ## Development setup
 
@@ -42,8 +44,8 @@ instance.
 #### exec
 
 There is also a sample exec module which shows how all pieces can be woven
-together into a single Spring Boot app,
-[documention here](https://github.com/google/fhir-gateway#modules)
+together into a single Spring Boot application.</br>
+[See documention here](https://github.com/google/fhir-gateway#modules)
 
 ### Generating the Plugins JAR
 
@@ -60,46 +62,26 @@ module_.
 
 ## Configuration Parameters
 
-The FHIR Info Gateway server must be configured as documented here
-https://github.com/google/fhir-gateway
+Most of the configuration parameters are inherited from the
+[FHIR Info Gateway](https://github.com/google/fhir-gateway) and provided as
+environment variables. Below is a list of the required configurations.
 
-**Access Checker** To specify the OpenSRP Access Checker, we pass a value xxx to
-`ACCESS_CHECKER` e.g.
+- `ACCESS_CHECKER`: Specify the OpenSRP Access Checker e.g.
 
-```bash
-export ACCESS_CHECKER=permission
-```
-
-For more on Access Checkers
-[read documentation here](https://github.com/google/fhir-gateway/wiki/Understanding-access-checker-plugins).
-
-**Caching**
-
-The plugins implementation supports caching for the sync strategy details which
-are expensive to fetch per request. By default, the sync strategy ids are cached
-for _60 seconds_. You can however override this by passing a value to the
-`OPENSRP_CACHE_EXPIRY_SECONDS` environment variable. For this to work, one needs
-to pass a value greater than `0` e.g.
-
-```bash
-export OPENSRP_CACHE_EXPIRY_SECONDS=30
-```
-
-To disable caching, set the value to `0`. Note, the value provided is in
-**seconds**. This configuration is optional.
-
-## Other configuration parameters (Required)
-
-The other configuration parameters are provided through environment variables as
-inherited from the [FHIR Info Gateway](https://github.com/google/fhir-gateway)
-
-- `PROXY_TO`: The base url of the FHIR store e.g.:
-
-  ```shell
-  export PROXY_TO=https://example.com/fhir
+  ```bash
+   export ACCESS_CHECKER=permission
   ```
 
-- `TOKEN_ISSUER`: The URL of the access token issuer, e.g.:
+  For more on Access Checkers
+  [read documentation here](https://github.com/google/fhir-gateway/wiki/Understanding-access-checker-plugins).
+
+- `PROXY_TO`: The base url of the FHIR store e.g.
+
+  ```shell
+     export PROXY_TO=https://example.com/fhir
+  ```
+
+- `TOKEN_ISSUER`: The URL of the access token issuer, e.g.
 
   ```shell
   export TOKEN_ISSUER=http://localhost:9080/auth/realms/test
@@ -137,6 +119,21 @@ inherited from the [FHIR Info Gateway](https://github.com/google/fhir-gateway)
 - `BACKEND_TYPE`: The type of backend, either `HAPI` or `GCP`. `HAPI` should be
   used for most FHIR servers, while `GCP` should be used for GCP FHIR stores.
 
+**Caching**
+
+The plugins implementation supports caching for the sync strategy details which
+are expensive to fetch per request. By default, the sync strategy ids are cached
+for _60 seconds_. You can however override this by passing a value to the
+`OPENSRP_CACHE_EXPIRY_SECONDS` environment variable. For this to work, one needs
+to pass a value greater than `0` e.g.
+
+```bash
+export OPENSRP_CACHE_EXPIRY_SECONDS=30
+```
+
+To disable caching, set the value to `0`. Note, the value provided is in
+**seconds**. This configuration is _optional_.
+
 ### Run project
 
 As document on the Info Gateway modules
@@ -151,6 +148,17 @@ After a successful build, the built-in _Tomcat container_ will automatically
 deploy your _Spring Boot application_. You can access your application in a web
 browser by navigating to http://localhost:8080 (default) or the specified port
 in your application's configuration.
+
+### Tests
+
+To run the unit tests use the command below which both runs tests and generates
+a code coverage report.
+
+```shell
+$ mvn clean test jacoco:report
+```
+
+The test report is located at `/plugins/target/site/jacoco/index.html`
 
 ## Documentation
 

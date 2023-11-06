@@ -8,5 +8,6 @@ Resolves [link to issue]
       bug fixes
 - [ ] I have run `mvn spotless:check` to check my code follows the project's
       style guide
-- [ ] I have confirmed all new and existing **tests passed**.
+- [ ] I have run `mvn clean test` to confirm all new and existing **tests
+      passed**.
 - [ ] I ran `mvn clean package` right before creating this pull request.
