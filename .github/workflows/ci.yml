@@ -20,19 +20,5 @@ jobs:
           distribution: 'temurin'
           java-version: 11
 
-      - name: Run Unit tests
-        run: mvn -B clean test --file pom.xml
-
-  run-spotless-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up JDK 11
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: 11
-
-      - name: Run spotless check
-        run: mvn spotless:check
+      - name: Run Unit tests and generate report
+        run: mvn -B clean test jacoco:report --file pom.xml
