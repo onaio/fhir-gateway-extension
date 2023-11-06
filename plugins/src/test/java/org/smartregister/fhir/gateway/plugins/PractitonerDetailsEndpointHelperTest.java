@@ -36,7 +36,7 @@ public class PractitonerDetailsEndpointHelperTest {
                 .search()
                 .forResource(eq(Practitioner.class))
                 .where(any(ICriterion.class))
-                .returnBundle((Class<IBaseBundle>)any())
+                .returnBundle(any())
                 .execute();
 
         when(whenObj).thenReturn(bundlePractitioner);
