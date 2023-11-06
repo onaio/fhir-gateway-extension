@@ -404,6 +404,7 @@ public class SyncAccessDecision implements AccessDecision {
      */
     private boolean shouldSkipDataFiltering(RequestDetailsReader requestDetailsReader) {
         if (config == null) return false;
+        if (this.roles.contains(SyncAccessDecisionConstants.ROLE_SERVICE_ACCOUNT)) return true;
 
         for (IgnoredResourcesConfig entry : config.entries) {
 
@@ -485,5 +486,6 @@ public class SyncAccessDecision implements AccessDecision {
         public static final String LIST_ENTRIES = "list-entries";
         public static final String ROLE_SUPERVISOR = "SUPERVISOR";
         public static final String ENDPOINT_PRACTITIONER_DETAILS = "practitioner-details";
+        public static final String ROLE_SERVICE_ACCOUNT = "SERVICE_ACCOUNT";
     }
 }
