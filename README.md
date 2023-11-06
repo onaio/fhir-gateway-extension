@@ -62,17 +62,18 @@ module_.
 
 ## Configuration Parameters
 
-Most of the configuration parameters are inherited from the [FHIR Info Gateway](https://github.com/google/fhir-gateway) and provided as environment variables. Below is a list of the required configurations.
+Most of the configuration parameters are inherited from the
+[FHIR Info Gateway](https://github.com/google/fhir-gateway) and provided as
+environment variables. Below is a list of the required configurations.
 
 - `ACCESS_CHECKER`: Specify the OpenSRP Access Checker e.g.
 
   ```bash
    export ACCESS_CHECKER=permission
-   ```
+  ```
 
-   For more on Access Checkers
-   [read documentation here](https://github.com/google/fhir-gateway/wiki/Understanding-access-checker-plugins).
-
+  For more on Access Checkers
+  [read documentation here](https://github.com/google/fhir-gateway/wiki/Understanding-access-checker-plugins).
 
 - `PROXY_TO`: The base url of the FHIR store e.g.
 
@@ -147,6 +148,17 @@ After a successful build, the built-in _Tomcat container_ will automatically
 deploy your _Spring Boot application_. You can access your application in a web
 browser by navigating to http://localhost:8080 (default) or the specified port
 in your application's configuration.
+
+### Tests
+
+To run the unit tests use the command below which both runs tests and generates
+a code coverage report.
+
+```shell
+$ mvn clean test jacoco:report
+```
+
+The test report is located at `/plugins/target/site/jacoco/index.html`
 
 ## Documentation
 
