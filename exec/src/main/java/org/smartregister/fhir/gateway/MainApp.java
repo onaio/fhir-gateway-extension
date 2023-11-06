@@ -6,7 +6,7 @@ import org.springframework.boot.web.servlet.ServletComponentScan;
 
 /**
  * This class shows the minimum that is required to create a FHIR Gateway with all AccessChecker
- * plugins defined in "com.google.fhir.gateway.plugin" amd "org.smartregister.fhir.gateway.plugins.
+ * plugins defined in "com.google.fhir.gateway.plugin" and "org.smartregister.fhir.gateway.plugins.
  */
 @SpringBootApplication(
         scanBasePackages = {"org.smartregister.fhir.gateway", "com.google.fhir.gateway.plugin"})
