@@ -361,19 +361,27 @@ public class PermissionAccessChecker implements AccessChecker {
                 PatientFinder patientFinder)
                 throws AuthenticationException {
 
+            Map<String, List<String>> syncStrategyIds;
             List<String> userRoles = getUserRolesFromJWT(jwt);
             String applicationId = getApplicationIdFromJWT(jwt);
-            Map<String, List<String>> syncStrategyIds;
 
-            if (skipCache()) {
-                syncStrategyIds = getSyncStrategyIds(jwt.getSubject(), applicationId, fhirContext);
+            if (userRoles != null
+                    && userRoles.contains(
+                            SyncAccessDecision.SyncAccessDecisionConstants.ROLE_SERVICE_ACCOUNT)) {
+                syncStrategyIds = new HashMap<>();
             } else {
-                syncStrategyIds =
-                        CacheHelper.INSTANCE.cache.get(
-                                jwt.getSubject(),
-                                k ->
-                                        getSyncStrategyIds(
-                                                jwt.getSubject(), applicationId, fhirContext));
+
+                if (skipCache()) {
+                    syncStrategyIds =
+                            getSyncStrategyIds(jwt.getSubject(), applicationId, fhirContext);
+                } else {
+                    syncStrategyIds =
+                            CacheHelper.INSTANCE.cache.get(
+                                    jwt.getSubject(),
+                                    k ->
+                                            getSyncStrategyIds(
+                                                    jwt.getSubject(), applicationId, fhirContext));
+                }
             }
             return new PermissionAccessChecker(
                     fhirContext,
@@ -381,7 +389,7 @@ public class PermissionAccessChecker implements AccessChecker {
                     userRoles,
                     ResourceFinderImp.getInstance(fhirContext),
                     applicationId,
-                    syncStrategyIds.keySet().iterator().next(),
+                    syncStrategyIds != null ? syncStrategyIds.keySet().iterator().next() : "",
                     syncStrategyIds);
         }
 
