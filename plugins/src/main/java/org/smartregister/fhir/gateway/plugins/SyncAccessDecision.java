@@ -93,6 +93,9 @@ public class SyncAccessDecision implements AccessDecision {
 
     @Override
     public RequestMutation getRequestMutation(RequestDetailsReader requestDetailsReader) {
+        if (this.roles != null
+                && this.roles.contains(SyncAccessDecisionConstants.ROLE_SERVICE_ACCOUNT))
+            return null;
 
         RequestMutation requestMutation = null;
         if (isSyncUrl(requestDetailsReader)) {
@@ -404,7 +407,6 @@ public class SyncAccessDecision implements AccessDecision {
      */
     private boolean shouldSkipDataFiltering(RequestDetailsReader requestDetailsReader) {
         if (config == null) return false;
-        if (this.roles.contains(SyncAccessDecisionConstants.ROLE_SERVICE_ACCOUNT)) return true;
 
         for (IgnoredResourcesConfig entry : config.entries) {
 
