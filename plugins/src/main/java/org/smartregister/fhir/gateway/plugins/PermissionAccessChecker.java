@@ -205,25 +205,7 @@ public class PermissionAccessChecker implements AccessChecker {
 
         private IGenericClient createFhirClientForR4(FhirContext fhirContext) {
             String fhirServer = System.getenv(PROXY_TO_ENV);
-            IGenericClient client = fhirContext.newRestfulGenericClient(fhirServer);
-            return client;
-        }
-
-        private Composition readCompositionResource(String applicationId, FhirContext fhirContext) {
-            IGenericClient client = createFhirClientForR4(fhirContext);
-            Bundle compositionBundle =
-                    client.search()
-                            .forResource(Composition.class)
-                            .where(Composition.IDENTIFIER.exactly().identifier(applicationId))
-                            .returnBundle(Bundle.class)
-                            .execute();
-            List<Bundle.BundleEntryComponent> compositionEntries =
-                    compositionBundle != null
-                            ? compositionBundle.getEntry()
-                            : Collections.singletonList(new Bundle.BundleEntryComponent());
-            Bundle.BundleEntryComponent compositionEntry =
-                    !compositionEntries.isEmpty() ? compositionEntries.get(0) : null;
-            return compositionEntry != null ? (Composition) compositionEntry.getResource() : null;
+            return fhirContext.newRestfulGenericClient(fhirServer);
         }
 
         private String getBinaryResourceReference(Composition composition) {
@@ -361,9 +343,9 @@ public class PermissionAccessChecker implements AccessChecker {
                 PatientFinder patientFinder)
                 throws AuthenticationException {
 
-            Map<String, List<String>> syncStrategyIds;
             List<String> userRoles = getUserRolesFromJWT(jwt);
             String applicationId = getApplicationIdFromJWT(jwt);
+            Map<String, List<String>> syncStrategyIds;
 
             if (userRoles != null
                     && userRoles.contains(
