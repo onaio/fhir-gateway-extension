@@ -10,8 +10,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.http.HttpStatus;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.smartregister.model.location.LocationHierarchy;
 
 import com.google.fhir.gateway.FhirClientFactory;
@@ -25,8 +23,6 @@ import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 
 @WebServlet("/LocationHierarchy")
 public class LocationHierarchyEndpoint extends HttpServlet {
-
-    private static final Logger logger = LoggerFactory.getLogger(LocationHierarchyEndpoint.class);
     private final TokenVerifier tokenVerifier;
 
     private final HttpFhirClient fhirClient;
