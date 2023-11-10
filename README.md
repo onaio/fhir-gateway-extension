@@ -160,6 +160,25 @@ $ mvn clean test jacoco:report
 
 The test report is located at `/plugins/target/site/jacoco/index.html`
 
+## Accessing FHIR and Custom Endpoints with the New Gateway
+With the recent refactor in the gateway-plugin repository, accessing FHIR and custom endpoints through the new gateway has undergone changes. This section outlines the updated approach for accessing different types of endpoints.
+
+### FHIR Endpoints
+When utilizing the (new) gateway, it is now mandatory to include the `/fhir/` 
+part in the URL when accessing FHIR endpoints. This adjustment aligns our structure with Google's gateway.
+
+Example:
+
+`https://gateway.example.com/fhir/Patient`
+
+### Custom Endpoints
+For custom endpoints such as `/Practitioner-Detail` and `/LocationHierarchy`, there is no need to include the `/fhir/` part. Directly use the endpoint in the URL:
+
+This approach ensures consistency and clarity when accessing various endpoint types through the gateway.
+
+#### Important Note:
+Developers, please update your client applications accordingly to accommodate these changes in the endpoint structure.
+
 ## Documentation
 
 - HAPI FHIR JPA Starter project
