@@ -92,26 +92,6 @@ public class LocationHierarchyEndpointHelper {
         return allLocations;
     }
 
-    private @Nullable List<Location> getLocationsByIds(List<String> locationIds) {
-        if (locationIds == null || locationIds.isEmpty()) {
-            return new ArrayList<>();
-        }
-
-        Bundle locationsBundle =
-                getFhirClientForR4()
-                        .search()
-                        .forResource(Location.class)
-                        .where(
-                                new ReferenceClientParam(BaseResource.SP_RES_ID)
-                                        .hasAnyOfIds(locationIds))
-                        .returnBundle(Bundle.class)
-                        .execute();
-
-        return locationsBundle.getEntry().stream()
-                .map(bundleEntryComponent -> ((Location) bundleEntryComponent.getResource()))
-                .collect(Collectors.toList());
-    }
-
     private @Nullable Location getLocationsByIdentifier(String identifier) {
         Bundle locationsBundle =
                 getFhirClientForR4()
