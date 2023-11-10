@@ -5,11 +5,12 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import org.hl7.fhir.r4.model.CareTeam;
-import org.hl7.fhir.r4.model.Organization;
-import org.hl7.fhir.r4.model.Practitioner;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Identifier;
+import org.hl7.fhir.r4.model.Practitioner;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.internal.stubbing.defaultanswers.ReturnsDeepStubs;
@@ -17,9 +18,6 @@ import org.smartregister.model.practitioner.PractitionerDetails;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.ICriterion;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class PractitonerDetailsEndpointHelperTest {
 
@@ -62,9 +60,20 @@ public class PractitonerDetailsEndpointHelperTest {
                         .execute();
         when(whenPractitionerSearch).thenReturn(getPractitionerBundle());
         PractitionerDetails practitionerDetails =
-                practitionerDetailsEndpointHelper.getPractitionerDetailsByKeycloakId("keycloak-uuid-1234-1234");
-        assertEquals("keycloak-uuid-1234-1234", practitionerDetails.getFhirPractitionerDetails().getPractitioners().get(0).getIdentifier().get(0).getValue());
-        assertEquals("Practitioner/1234", practitionerDetails.getFhirPractitionerDetails().getPractitioners().get(0).getId());
+                practitionerDetailsEndpointHelper.getPractitionerDetailsByKeycloakId(
+                        "keycloak-uuid-1234-1234");
+        assertEquals(
+                "keycloak-uuid-1234-1234",
+                practitionerDetails
+                        .getFhirPractitionerDetails()
+                        .getPractitioners()
+                        .get(0)
+                        .getIdentifier()
+                        .get(0)
+                        .getValue());
+        assertEquals(
+                "Practitioner/1234",
+                practitionerDetails.getFhirPractitionerDetails().getPractitioners().get(0).getId());
     }
 
     private Bundle getPractitionerBundle() {
@@ -83,5 +92,4 @@ public class PractitonerDetailsEndpointHelperTest {
         bundlePractitioner.addEntry(bundleEntryComponent);
         return bundlePractitioner;
     }
-
 }
