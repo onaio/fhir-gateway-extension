@@ -2,10 +2,6 @@ name: Docker
 
 on:
   push:
-    # Publish `master` as Docker `master` tag.
-    # See also https://github.com/crazy-max/ghaction-docker-meta#basic
-    branches:
-      - main
 
     # Publish `v1.2.3` tags as releases.
     tags:
