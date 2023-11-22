@@ -1,45 +1,35 @@
 package org.smartregister.fhir.gateway.plugins;
 
-import static org.smartregister.fhir.gateway.plugins.Constants.IDENTIFIER;
-
 import java.io.IOException;
+import java.util.Collections;
 
 import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.http.HttpStatus;
 import org.smartregister.model.location.LocationHierarchy;
 
-import com.google.fhir.gateway.FhirClientFactory;
-import com.google.fhir.gateway.HttpFhirClient;
 import com.google.fhir.gateway.TokenVerifier;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
-import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 
 @WebServlet("/LocationHierarchy")
-public class LocationHierarchyEndpoint extends HttpServlet {
+public class LocationHierarchyEndpoint extends BaseEndpoint {
     private final TokenVerifier tokenVerifier;
 
-    private final HttpFhirClient fhirClient;
-    String PROXY_TO_ENV = "PROXY_TO";
-
-    private FhirContext fhirR4Context = FhirContext.forR4();
-    private IGenericClient r4FHIRClient =
-            fhirR4Context.newRestfulGenericClient(System.getenv(PROXY_TO_ENV));
-
-    private IParser fhirR4JsonParser = fhirR4Context.newJsonParser().setPrettyPrint(true);
-
-    private LocationHierarchyEndpointHelper locationHierarchyEndpointHelper;
+    private final FhirContext fhirR4Context = FhirContext.forR4();
+    private final IParser fhirR4JsonParser = fhirR4Context.newJsonParser().setPrettyPrint(true);
+    private final LocationHierarchyEndpointHelper locationHierarchyEndpointHelper;
 
     public LocationHierarchyEndpoint() throws IOException {
         this.tokenVerifier = TokenVerifier.createFromEnvVars();
-        this.fhirClient = FhirClientFactory.createFhirClientFromEnvVars();
-        this.locationHierarchyEndpointHelper = new LocationHierarchyEndpointHelper(r4FHIRClient);
+        this.locationHierarchyEndpointHelper =
+                new LocationHierarchyEndpointHelper(
+                        fhirR4Context.newRestfulGenericClient(
+                                System.getenv(Constants.PROXY_TO_ENV)));
     }
 
     @Override
@@ -47,11 +37,23 @@ public class LocationHierarchyEndpoint extends HttpServlet {
             throws IOException {
         try {
             RestUtils.checkAuthentication(request, tokenVerifier);
-            String identifier = request.getParameter(IDENTIFIER);
+            String identifier = request.getParameter(Constants.IDENTIFIER);
 
             LocationHierarchy locationHierarchy =
                     locationHierarchyEndpointHelper.getLocationHierarchy(identifier);
-            String resultContent = fhirR4JsonParser.encodeResourceToString(locationHierarchy);
+            String resultContent;
+
+            if (org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND.equals(
+                    locationHierarchy.getId())) {
+                resultContent =
+                        fhirR4JsonParser.encodeResourceToString(
+                                createEmptyBundle(
+                                        request.getRequestURL() + "?" + request.getQueryString()));
+            } else {
+                resultContent =
+                        fhirR4JsonParser.encodeResourceToString(
+                                createBundle(Collections.singletonList(locationHierarchy)));
+            }
             response.setContentType("application/json");
             response.getOutputStream().print(resultContent);
             response.setStatus(HttpStatus.SC_OK);

@@ -112,9 +112,10 @@ public class PermissionAccessChecker implements AccessChecker {
     }
 
     private boolean checkUserHasRole(String resourceName, String requestType) {
-        return checkIfRoleExists(getAdminRoleName(resourceName), this.userRoles)
-                || checkIfRoleExists(
-                        getRelevantRoleName(resourceName, requestType), this.userRoles);
+        return StringUtils.isNotBlank(resourceName)
+                && (checkIfRoleExists(getAdminRoleName(resourceName), this.userRoles)
+                        || checkIfRoleExists(
+                                getRelevantRoleName(resourceName, requestType), this.userRoles));
     }
 
     private AccessDecision processGet(boolean userHasRole) {
@@ -279,7 +280,7 @@ public class PermissionAccessChecker implements AccessChecker {
             requestBundle.addEntry(
                     SyncAccessDecision.createBundleEntryComponent(
                             Bundle.HTTPVerb.GET,
-                            "practitioner-details?keycloak-uuid=" + subject,
+                            "PractitionerDetail?keycloak-uuid=" + subject,
                             null));
 
             Bundle responsebundle = client.transaction().withBundle(requestBundle).execute();

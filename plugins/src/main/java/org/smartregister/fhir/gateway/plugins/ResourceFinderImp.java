@@ -49,7 +49,7 @@ public final class ResourceFinderImp implements ResourceFinder {
             ExceptionUtil.throwRuntimeExceptionAndLog(
                     logger,
                     "The provided resource is not a Bundle!",
-                    InvalidRequestException.class.newInstance());
+                    new InvalidRequestException("The provided resource is not a Bundle!"));
         }
         Bundle bundle = (Bundle) resource;
 
@@ -58,7 +58,7 @@ public final class ResourceFinderImp implements ResourceFinder {
             ExceptionUtil.throwRuntimeExceptionAndLog(
                     logger,
                     "Bundle type needs to be transaction!",
-                    InvalidRequestException.class.newInstance());
+                    new InvalidRequestException("Bundle type needs to be transaction!"));
         }
 
         List<BundleResources> requestTypeEnumList = new ArrayList<>();
@@ -72,7 +72,7 @@ public final class ResourceFinderImp implements ResourceFinder {
                 ExceptionUtil.throwRuntimeExceptionAndLog(
                         logger,
                         "Bundle entry requires a resource field!",
-                        InvalidRequestException.class.newInstance());
+                        new InvalidRequestException("Bundle entry requires a resource field!"));
             }
 
             requestTypeEnumList.add(

@@ -484,6 +484,6 @@ public class SyncAccessDecision implements AccessDecision {
         public static final String FHIR_GATEWAY_MODE = "fhir-gateway-mode";
         public static final String LIST_ENTRIES = "list-entries";
         public static final String ROLE_SUPERVISOR = "SUPERVISOR";
-        public static final String ENDPOINT_PRACTITIONER_DETAILS = "practitioner-details";
+        public static final String ENDPOINT_PRACTITIONER_DETAILS = "PractitionerDetail";
     }
 }

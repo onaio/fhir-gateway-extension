@@ -7,7 +7,17 @@
       },
       "allowExtraParams": true,
       "allParamsRequired": false,
-      "requestType": "GET"
+      "requestType": "GET",
+      "allowUnauthenticatedRequests": true
+    },
+    {
+      "path": "",
+      "queryParams": {
+      },
+      "allowExtraParams": true,
+      "allParamsRequired": false,
+      "requestType": "POST",
+      "allowUnauthenticatedRequests": true
     },
     {
       "path": "Composition/ANY_VALUE",
