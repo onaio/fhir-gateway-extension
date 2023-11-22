@@ -1,6 +1,11 @@
 package org.smartregister.fhir.gateway.plugins;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -36,9 +41,9 @@ public class PractitionerDetailsEndpointHelper {
     public static final String PRACTITIONER_GROUP_CODE = "405623001";
     public static final String HTTP_SNOMED_INFO_SCT = "http://snomed.info/sct";
     public static final Bundle EMPTY_BUNDLE = new Bundle();
-    private IGenericClient r4FHIRClient;
+    private final IGenericClient r4FHIRClient;
 
-    private LocationHierarchyEndpointHelper locationHierarchyEndpointHelper;
+    private final LocationHierarchyEndpointHelper locationHierarchyEndpointHelper;
 
     public PractitionerDetailsEndpointHelper(IGenericClient fhirClient) {
         this.r4FHIRClient = fhirClient;
@@ -165,12 +170,10 @@ public class PractitionerDetailsEndpointHelper {
                                                 .getParentChildren()
                                                 .stream())
                         .collect(Collectors.toList());
-        List<String> attributedLocationsList =
-                parentChildrenList.stream()
-                        .flatMap(parentChildren -> parentChildren.getChildIdentifiers().stream())
-                        .map(it -> getReferenceIDPart(it.toString()))
-                        .collect(Collectors.toList());
-        return attributedLocationsList;
+        return parentChildrenList.stream()
+                .flatMap(parentChildren -> parentChildren.getChildIdentifiers().stream())
+                .map(it -> getReferenceIDPart(it.toString()))
+                .collect(Collectors.toList());
     }
 
     private List<String> getOrganizationIdsByLocationIds(List<String> attributedLocationsList) {
@@ -527,7 +530,8 @@ public class PractitionerDetailsEndpointHelper {
         for (String locationsIdentifier : locationsIdentifiers) {
             locationHierarchy =
                     locationHierarchyEndpointHelper.getLocationHierarchy(locationsIdentifier);
-            locationHierarchyList.add(locationHierarchy);
+            if (!org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND.equals(
+                    locationHierarchy.getId())) locationHierarchyList.add(locationHierarchy);
         }
         return locationHierarchyList;
     }
