@@ -3,7 +3,6 @@ package org.smartregister.fhir.gateway.plugins;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,13 +12,14 @@ import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Location;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.mockito.internal.stubbing.defaultanswers.ReturnsDeepStubs;
 import org.smartregister.model.location.LocationHierarchy;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
-import ca.uhn.fhir.rest.gclient.ICriterion;
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 
-public class LocationHeirarchyEndpointHelperTest {
+public class LocationHierarchyEndpointHelperTest {
 
     private LocationHierarchyEndpointHelper locationHierarchyEndpointHelper;
     IGenericClient client;
@@ -32,20 +32,27 @@ public class LocationHeirarchyEndpointHelperTest {
 
     @Test
     public void testGetLocationHierarchyNotFound() {
-        Bundle bundleLocation = new Bundle();
-        Object whenSearchLocation =
-                client.search()
-                        .forResource(Location.class)
-                        .where(any(ICriterion.class))
-                        .returnBundle(Bundle.class)
-                        .execute();
-
-        when(whenSearchLocation).thenReturn(bundleLocation);
+        Mockito.doThrow(ResourceNotFoundException.class)
+                .when(client)
+                .fetchResourceFromUrl(any(), any());
         LocationHierarchy locationHierarchy =
-                locationHierarchyEndpointHelper.getLocationHierarchy("12345");
+                locationHierarchyEndpointHelper.getLocationHierarchy("non-existent");
         assertEquals(
                 org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND,
                 locationHierarchy.getId());
+    }
+
+    @Test
+    public void testGetLocationHierarchyFound() {
+        Location location = new Location();
+        location.setId("12345");
+
+        Mockito.doReturn(location)
+                .when(client)
+                .fetchResourceFromUrl(Location.class, "Location/12345");
+        LocationHierarchy locationHierarchy =
+                locationHierarchyEndpointHelper.getLocationHierarchy("12345");
+        assertEquals("Location Resource : 12345", locationHierarchy.getId());
     }
 
     private Bundle getLocationBundle() {
