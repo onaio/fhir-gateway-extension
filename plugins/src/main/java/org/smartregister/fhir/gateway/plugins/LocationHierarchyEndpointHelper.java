@@ -10,7 +10,6 @@ import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 
 import org.apache.commons.lang3.StringUtils;
-import org.hl7.fhir.r4.model.BaseResource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.StringType;
@@ -90,26 +89,6 @@ public class LocationHierarchyEndpointHelper {
         }
 
         return allLocations;
-    }
-
-    private @Nullable List<Location> getLocationsByIds(List<String> locationIds) {
-        if (locationIds == null || locationIds.isEmpty()) {
-            return new ArrayList<>();
-        }
-
-        Bundle locationsBundle =
-                getFhirClientForR4()
-                        .search()
-                        .forResource(Location.class)
-                        .where(
-                                new ReferenceClientParam(BaseResource.SP_RES_ID)
-                                        .hasAnyOfIds(locationIds))
-                        .returnBundle(Bundle.class)
-                        .execute();
-
-        return locationsBundle.getEntry().stream()
-                .map(bundleEntryComponent -> ((Location) bundleEntryComponent.getResource()))
-                .collect(Collectors.toList());
     }
 
     private @Nullable Location getLocationsByIdentifier(String identifier) {

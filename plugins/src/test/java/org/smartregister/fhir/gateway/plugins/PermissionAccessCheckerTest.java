@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.hl7.fhir.r4.model.Enumerations;
@@ -73,7 +74,7 @@ public class PermissionAccessCheckerTest {
         setUpFhirBundle("test_patient.json");
 
         Map<String, Object> map = new HashMap<>();
-        map.put(PermissionAccessChecker.Factory.ROLES, Arrays.asList("MANAGE_PATIENT"));
+        map.put(PermissionAccessChecker.Factory.ROLES, List.of("MANAGE_PATIENT"));
         when(claimMock.asMap()).thenReturn(map);
         when(claimMock.asString()).thenReturn("ecbis-saa");
 
@@ -92,7 +93,7 @@ public class PermissionAccessCheckerTest {
         setUpFhirBundle("test_patient.json");
 
         Map<String, Object> map = new HashMap<>();
-        map.put(PermissionAccessChecker.Factory.ROLES, Arrays.asList("GET_PATIENT"));
+        map.put(PermissionAccessChecker.Factory.ROLES, List.of("GET_PATIENT"));
         when(claimMock.asMap()).thenReturn(map);
         when(requestMock.getResourceName()).thenReturn(Enumerations.ResourceType.PATIENT.name());
         when(requestMock.getRequestType()).thenReturn(RequestTypeEnum.GET);
@@ -109,7 +110,7 @@ public class PermissionAccessCheckerTest {
         setUpFhirBundle("test_patient.json");
 
         Map<String, Object> map = new HashMap<>();
-        map.put(PermissionAccessChecker.Factory.ROLES, Arrays.asList(""));
+        map.put(PermissionAccessChecker.Factory.ROLES, List.of(""));
         map.put(PermissionAccessChecker.Factory.FHIR_CORE_APPLICATION_ID_CLAIM, "ecbis-saa");
         when(claimMock.asMap()).thenReturn(map);
         when(requestMock.getResourceName()).thenReturn(Enumerations.ResourceType.PATIENT.name());
@@ -127,7 +128,7 @@ public class PermissionAccessCheckerTest {
         setUpFhirBundle("test_patient.json");
 
         Map<String, Object> map = new HashMap<>();
-        map.put(PermissionAccessChecker.Factory.ROLES, Arrays.asList("DELETE_PATIENT"));
+        map.put(PermissionAccessChecker.Factory.ROLES, List.of("DELETE_PATIENT"));
         map.put(PermissionAccessChecker.Factory.FHIR_CORE_APPLICATION_ID_CLAIM, "ecbis-saa");
         when(claimMock.asMap()).thenReturn(map);
         when(requestMock.getResourceName()).thenReturn(Enumerations.ResourceType.PATIENT.name());
@@ -145,7 +146,7 @@ public class PermissionAccessCheckerTest {
         setUpFhirBundle("test_patient.json");
 
         Map<String, Object> map = new HashMap<>();
-        map.put(PermissionAccessChecker.Factory.ROLES, Arrays.asList("MANAGE_PATIENT"));
+        map.put(PermissionAccessChecker.Factory.ROLES, List.of("MANAGE_PATIENT"));
         map.put(PermissionAccessChecker.Factory.FHIR_CORE_APPLICATION_ID_CLAIM, "ecbis-saa");
         when(claimMock.asMap()).thenReturn(map);
         when(requestMock.getResourceName()).thenReturn(Enumerations.ResourceType.PATIENT.name());
@@ -163,7 +164,7 @@ public class PermissionAccessCheckerTest {
         setUpFhirBundle("test_patient.json");
 
         Map<String, Object> map = new HashMap<>();
-        map.put(PermissionAccessChecker.Factory.ROLES, Arrays.asList(""));
+        map.put(PermissionAccessChecker.Factory.ROLES, List.of(""));
         map.put(PermissionAccessChecker.Factory.FHIR_CORE_APPLICATION_ID_CLAIM, "ecbis-saa");
         when(claimMock.asMap()).thenReturn(map);
         when(requestMock.getResourceName()).thenReturn(Enumerations.ResourceType.PATIENT.name());
@@ -181,7 +182,7 @@ public class PermissionAccessCheckerTest {
         setUpFhirBundle("test_patient.json");
 
         Map<String, Object> map = new HashMap<>();
-        map.put(PermissionAccessChecker.Factory.ROLES, Arrays.asList("MANAGE_PATIENT"));
+        map.put(PermissionAccessChecker.Factory.ROLES, List.of("MANAGE_PATIENT"));
         map.put(PermissionAccessChecker.Factory.FHIR_CORE_APPLICATION_ID_CLAIM, "ecbis-saa");
         when(claimMock.asMap()).thenReturn(map);
         when(requestMock.getResourceName()).thenReturn(Enumerations.ResourceType.PATIENT.name());
@@ -198,7 +199,7 @@ public class PermissionAccessCheckerTest {
         setUpFhirBundle("test_patient.json");
 
         Map<String, Object> map = new HashMap<>();
-        map.put(PermissionAccessChecker.Factory.ROLES, Arrays.asList("PUT_PATIENT"));
+        map.put(PermissionAccessChecker.Factory.ROLES, List.of("PUT_PATIENT"));
         map.put(PermissionAccessChecker.Factory.FHIR_CORE_APPLICATION_ID_CLAIM, "ecbis-saa");
         when(claimMock.asMap()).thenReturn(map);
         when(requestMock.getResourceName()).thenReturn(Enumerations.ResourceType.PATIENT.name());
@@ -215,7 +216,7 @@ public class PermissionAccessCheckerTest {
         setUpFhirBundle("test_patient.json");
 
         Map<String, Object> map = new HashMap<>();
-        map.put(PermissionAccessChecker.Factory.ROLES, Arrays.asList(""));
+        map.put(PermissionAccessChecker.Factory.ROLES, List.of(""));
         map.put(PermissionAccessChecker.Factory.FHIR_CORE_APPLICATION_ID_CLAIM, "ecbis-saa");
         when(claimMock.asMap()).thenReturn(map);
         when(requestMock.getResourceName()).thenReturn(Enumerations.ResourceType.PATIENT.name());
@@ -232,7 +233,7 @@ public class PermissionAccessCheckerTest {
         setUpFhirBundle("test_patient.json");
 
         Map<String, Object> map = new HashMap<>();
-        map.put(PermissionAccessChecker.Factory.ROLES, Arrays.asList("POST_PATIENT"));
+        map.put(PermissionAccessChecker.Factory.ROLES, List.of("POST_PATIENT"));
         map.put(PermissionAccessChecker.Factory.FHIR_CORE_APPLICATION_ID_CLAIM, "ecbis-saa");
         when(claimMock.asMap()).thenReturn(map);
         when(requestMock.getResourceName()).thenReturn(Enumerations.ResourceType.PATIENT.name());
@@ -249,7 +250,7 @@ public class PermissionAccessCheckerTest {
         setUpFhirBundle("test_patient.json");
 
         Map<String, Object> map = new HashMap<>();
-        map.put(PermissionAccessChecker.Factory.ROLES, Arrays.asList(""));
+        map.put(PermissionAccessChecker.Factory.ROLES, List.of(""));
         map.put(PermissionAccessChecker.Factory.FHIR_CORE_APPLICATION_ID_CLAIM, "ecbis-saa");
         when(claimMock.asMap()).thenReturn(map);
         when(requestMock.getResourceName()).thenReturn(Enumerations.ResourceType.PATIENT.name());
@@ -265,7 +266,7 @@ public class PermissionAccessCheckerTest {
         setUpFhirBundle("bundle_transaction_put_patient.json");
 
         Map<String, Object> map = new HashMap<>();
-        map.put(PermissionAccessChecker.Factory.ROLES, Arrays.asList("MANAGE_PATIENT"));
+        map.put(PermissionAccessChecker.Factory.ROLES, List.of("MANAGE_PATIENT"));
         map.put(PermissionAccessChecker.Factory.FHIR_CORE_APPLICATION_ID_CLAIM, "ecbis-saa");
         when(claimMock.asMap()).thenReturn(map);
 
@@ -283,7 +284,7 @@ public class PermissionAccessCheckerTest {
         setUpFhirBundle("bundle_transaction_put_patient.json");
 
         Map<String, Object> map = new HashMap<>();
-        map.put(PermissionAccessChecker.Factory.ROLES, Arrays.asList("PUT_PATIENT"));
+        map.put(PermissionAccessChecker.Factory.ROLES, List.of("PUT_PATIENT"));
         map.put(PermissionAccessChecker.Factory.FHIR_CORE_APPLICATION_ID_CLAIM, "ecbis-saa");
         when(claimMock.asMap()).thenReturn(map);
 
@@ -301,7 +302,7 @@ public class PermissionAccessCheckerTest {
         setUpFhirBundle("bundle_transaction_delete.json");
 
         Map<String, Object> map = new HashMap<>();
-        map.put(PermissionAccessChecker.Factory.ROLES, Arrays.asList("DELETE_PATIENT"));
+        map.put(PermissionAccessChecker.Factory.ROLES, List.of("DELETE_PATIENT"));
         map.put(PermissionAccessChecker.Factory.FHIR_CORE_APPLICATION_ID_CLAIM, "ecbis-saa");
         when(claimMock.asMap()).thenReturn(map);
 
@@ -380,7 +381,7 @@ public class PermissionAccessCheckerTest {
         setUpFhirBundle("bundle_empty.json");
 
         Map<String, Object> map = new HashMap<>();
-        map.put(PermissionAccessChecker.Factory.ROLES, Arrays.asList());
+        map.put(PermissionAccessChecker.Factory.ROLES, List.of());
         map.put(PermissionAccessChecker.Factory.FHIR_CORE_APPLICATION_ID_CLAIM, "ecbis-saa");
         when(claimMock.asMap()).thenReturn(map);
 
@@ -394,7 +395,7 @@ public class PermissionAccessCheckerTest {
         setUpFhirBundle("test_bundle_transaction.json");
 
         Map<String, Object> map = new HashMap<>();
-        map.put(PermissionAccessChecker.Factory.ROLES, Arrays.asList("MANAGE_PATIENT"));
+        map.put(PermissionAccessChecker.Factory.ROLES, List.of("MANAGE_PATIENT"));
         map.put(PermissionAccessChecker.Factory.FHIR_CORE_APPLICATION_ID_CLAIM, "ecbis-saa");
         when(claimMock.asMap()).thenReturn(map);
 
@@ -436,7 +437,7 @@ public class PermissionAccessCheckerTest {
         setUpFhirBundle("test_bundle_transaction.json");
 
         Map<String, Object> map = new HashMap<>();
-        map.put(PermissionAccessChecker.Factory.ROLES, Arrays.asList("PUT_PATIENT"));
+        map.put(PermissionAccessChecker.Factory.ROLES, List.of("PUT_PATIENT"));
         map.put(PermissionAccessChecker.Factory.FHIR_CORE_APPLICATION_ID_CLAIM, "ecbis-saa");
         when(claimMock.asMap()).thenReturn(map);
 

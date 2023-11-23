@@ -1,10 +1,6 @@
 package org.smartregister.fhir.gateway.plugins;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -489,31 +485,40 @@ public class PractitionerDetailsEndpointHelper {
     }
 
     private List<CareTeam> mapBundleToCareTeams(Bundle careTeams) {
-        return careTeams.getEntry().stream()
-                .map(bundleEntryComponent -> (CareTeam) bundleEntryComponent.getResource())
-                .collect(Collectors.toList());
+        return careTeams != null
+                ? careTeams.getEntry().stream()
+                        .map(bundleEntryComponent -> (CareTeam) bundleEntryComponent.getResource())
+                        .collect(Collectors.toList())
+                : Collections.emptyList();
     }
 
     private List<PractitionerRole> mapBundleToPractitionerRolesWithOrganization(
             Bundle practitionerRoles) {
-        return practitionerRoles.getEntry().stream()
-                .map(it -> (PractitionerRole) it.getResource())
-                .collect(Collectors.toList());
+        return practitionerRoles != null
+                ? practitionerRoles.getEntry().stream()
+                        .map(it -> (PractitionerRole) it.getResource())
+                        .collect(Collectors.toList())
+                : Collections.emptyList();
     }
 
     private List<Group> mapBundleToGroups(Bundle groupsBundle) {
-        return groupsBundle.getEntry().stream()
-                .map(bundleEntryComponent -> (Group) bundleEntryComponent.getResource())
-                .collect(Collectors.toList());
+        return groupsBundle != null
+                ? groupsBundle.getEntry().stream()
+                        .map(bundleEntryComponent -> (Group) bundleEntryComponent.getResource())
+                        .collect(Collectors.toList())
+                : Collections.emptyList();
     }
 
     private List<OrganizationAffiliation> mapBundleToOrganizationAffiliation(
             Bundle organizationAffiliationBundle) {
-        return organizationAffiliationBundle.getEntry().stream()
-                .map(
-                        bundleEntryComponent ->
-                                (OrganizationAffiliation) bundleEntryComponent.getResource())
-                .collect(Collectors.toList());
+        return organizationAffiliationBundle != null
+                ? organizationAffiliationBundle.getEntry().stream()
+                        .map(
+                                bundleEntryComponent ->
+                                        (OrganizationAffiliation)
+                                                bundleEntryComponent.getResource())
+                        .collect(Collectors.toList())
+                : Collections.emptyList();
     }
 
     private List<LocationHierarchy> getLocationsHierarchy(List<String> locationsIdentifiers) {

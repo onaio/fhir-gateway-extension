@@ -209,23 +209,6 @@ public class PermissionAccessChecker implements AccessChecker {
             return client;
         }
 
-        private Composition readCompositionResource(String applicationId, FhirContext fhirContext) {
-            IGenericClient client = createFhirClientForR4(fhirContext);
-            Bundle compositionBundle =
-                    client.search()
-                            .forResource(Composition.class)
-                            .where(Composition.IDENTIFIER.exactly().identifier(applicationId))
-                            .returnBundle(Bundle.class)
-                            .execute();
-            List<Bundle.BundleEntryComponent> compositionEntries =
-                    compositionBundle != null
-                            ? compositionBundle.getEntry()
-                            : Collections.singletonList(new Bundle.BundleEntryComponent());
-            Bundle.BundleEntryComponent compositionEntry =
-                    !compositionEntries.isEmpty() ? compositionEntries.get(0) : null;
-            return compositionEntry != null ? (Composition) compositionEntry.getResource() : null;
-        }
-
         private String getBinaryResourceReference(Composition composition) {
 
             String id = "";
