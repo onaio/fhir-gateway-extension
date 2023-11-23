@@ -8,5 +8,6 @@ Resolves [link to issue]
       bug fixes
 - [ ] I have run `mvn spotless:check` to check my code follows the project's
       style guide
-- [ ] I have run `mvn clean test jacoco:report` to confirm the coverage report was generated at `plugins/target/site/jacoco/index.html`
+- [ ] I have run `mvn clean test jacoco:report` to confirm the coverage report
+      was generated at `plugins/target/site/jacoco/index.html`
 - [ ] I ran `mvn clean package` right before creating this pull request.
