@@ -247,6 +247,20 @@ public class PermissionAccessChecker implements AccessChecker {
             return binary;
         }
 
+        private Composition readCompositionResource(String applicationId, FhirContext fhirContext) {
+            IGenericClient client = createFhirClientForR4(fhirContext);
+
+            Bundle compositionBundle =
+                    client.search()
+                            .forResource(Composition.class)
+                            .where(Composition.IDENTIFIER.exactly().identifier(applicationId))
+                            .returnBundle(Bundle.class)
+                            .execute();
+
+            Bundle.BundleEntryComponent compositionEntry = compositionBundle.getEntryFirstRep();
+            return compositionEntry != null ? (Composition) compositionEntry.getResource() : null;
+        }
+
         private String findSyncStrategy(Binary binary) {
 
             byte[] bytes =
@@ -271,53 +285,20 @@ public class PermissionAccessChecker implements AccessChecker {
 
             IGenericClient client = createFhirClientForR4(fhirContext);
 
-            Bundle requestBundle = new Bundle();
-            requestBundle.setType(Bundle.BundleType.BATCH);
+            PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper =
+                    new PractitionerDetailsEndpointHelper(client);
+            PractitionerDetails practitionerDetails =
+                    practitionerDetailsEndpointHelper.getPractitionerDetailsByKeycloakId(subject);
 
-            requestBundle.addEntry(
-                    SyncAccessDecision.createBundleEntryComponent(
-                            Bundle.HTTPVerb.GET, "Composition?identifier=" + applicationId, null));
-            requestBundle.addEntry(
-                    SyncAccessDecision.createBundleEntryComponent(
-                            Bundle.HTTPVerb.GET,
-                            "PractitionerDetail?keycloak-uuid=" + subject,
-                            null));
-
-            Bundle responsebundle = client.transaction().withBundle(requestBundle).execute();
-
-            Pair<Composition, PractitionerDetails> result =
-                    getCompositionPractitionerDetailsPair(applicationId, responsebundle);
-
-            return result;
-        }
-
-        @NotNull
-        private static Pair<Composition, PractitionerDetails> getCompositionPractitionerDetailsPair(
-                String applicationId, Bundle responsebundle) {
-            Composition composition = null;
-            PractitionerDetails practitionerDetails = null;
-
-            Bundle innerBundle;
-            for (int i = 0; i < responsebundle.getEntry().size(); i++) {
-
-                innerBundle = (Bundle) responsebundle.getEntry().get(i).getResource();
-                if (innerBundle == null) continue;
-
-                for (int j = 0; j < innerBundle.getEntry().size(); j++) {
-
-                    if (innerBundle.getEntry().get(j).getResource() instanceof Composition) {
-                        composition = (Composition) innerBundle.getEntry().get(j).getResource();
-                    } else if (innerBundle.getEntry().get(j).getResource()
-                            instanceof PractitionerDetails) {
-                        practitionerDetails =
-                                (PractitionerDetails) innerBundle.getEntry().get(j).getResource();
-                    }
-                }
-            }
+            Composition composition = readCompositionResource(applicationId, fhirContext);
 
             if (composition == null)
                 throw new IllegalStateException(
                         "No Composition resource found for application id '" + applicationId + "'");
+
+            if (practitionerDetails == null)
+                throw new IllegalStateException(
+                        "No PractitionerDetail resource found for user with id '" + subject + "'");
 
             return Pair.of(composition, practitionerDetails);
         }
@@ -393,7 +374,7 @@ public class PermissionAccessChecker implements AccessChecker {
             List<Organization> organizations;
             List<String> careTeamIds;
             List<String> organizationIds;
-            List<String> locationIds = new ArrayList<>();
+            List<String> locationIds;
             if (StringUtils.isNotBlank(syncStrategy)) {
                 if (Constants.CARE_TEAM.equalsIgnoreCase(syncStrategy)) {
                     careTeams =
@@ -403,7 +384,7 @@ public class PermissionAccessChecker implements AccessChecker {
                                     ? practitionerDetails
                                             .getFhirPractitionerDetails()
                                             .getCareTeams()
-                                    : Collections.singletonList(new CareTeam());
+                                    : new ArrayList<>();
 
                     careTeamIds =
                             careTeams.stream()
@@ -421,7 +402,7 @@ public class PermissionAccessChecker implements AccessChecker {
                                     ? practitionerDetails
                                             .getFhirPractitionerDetails()
                                             .getOrganizations()
-                                    : Collections.singletonList(new Organization());
+                                    : new ArrayList<>();
 
                     organizationIds =
                             organizations.stream()
@@ -440,7 +421,7 @@ public class PermissionAccessChecker implements AccessChecker {
                                             practitionerDetails
                                                     .getFhirPractitionerDetails()
                                                     .getLocationHierarchyList())
-                                    : locationIds;
+                                    : new ArrayList<>();
 
                     resultMap = Map.of(syncStrategy, locationIds);
                 }
