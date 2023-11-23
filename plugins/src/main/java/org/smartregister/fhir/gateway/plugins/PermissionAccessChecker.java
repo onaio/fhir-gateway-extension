@@ -2,7 +2,6 @@ package org.smartregister.fhir.gateway.plugins;
 
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +50,7 @@ public class PermissionAccessChecker implements AccessChecker {
     private static final Logger logger = LoggerFactory.getLogger(PermissionAccessChecker.class);
     private final ResourceFinder resourceFinder;
     private final List<String> userRoles;
-    private SyncAccessDecision syncAccessDecision;
+    private final SyncAccessDecision syncAccessDecision;
 
     private PermissionAccessChecker(
             FhirContext fhirContext,
@@ -191,8 +190,6 @@ public class PermissionAccessChecker implements AccessChecker {
 
         @VisibleForTesting static final String FHIR_CORE_APPLICATION_ID_CLAIM = "fhir_core_app_id";
 
-        @VisibleForTesting static final String PROXY_TO_ENV = "PROXY_TO";
-
         private List<String> getUserRolesFromJWT(DecodedJWT jwt) {
             Claim claim = jwt.getClaim(REALM_ACCESS_CLAIM);
             Map<String, Object> roles = claim.asMap();
@@ -205,7 +202,7 @@ public class PermissionAccessChecker implements AccessChecker {
         }
 
         private IGenericClient createFhirClientForR4(FhirContext fhirContext) {
-            String fhirServer = System.getenv(PROXY_TO_ENV);
+            String fhirServer = System.getenv(Constants.PROXY_TO_ENV);
             IGenericClient client = fhirContext.newRestfulGenericClient(fhirServer);
             return client;
         }
@@ -237,7 +234,7 @@ public class PermissionAccessChecker implements AccessChecker {
             return id;
         }
 
-        private Binary findApplicationConfigBinaryResource(
+        private Binary readApplicationConfigBinaryResource(
                 String binaryResourceId, FhirContext fhirContext) {
             IGenericClient client = createFhirClientForR4(fhirContext);
             Binary binary = null;
@@ -313,7 +310,7 @@ public class PermissionAccessChecker implements AccessChecker {
 
             String binaryResourceReference = getBinaryResourceReference(composition);
             Binary binary =
-                    findApplicationConfigBinaryResource(binaryResourceReference, fhirContext);
+                    readApplicationConfigBinaryResource(binaryResourceReference, fhirContext);
 
             return Pair.of(findSyncStrategy(binary), practitionerDetails);
         }
@@ -325,7 +322,6 @@ public class PermissionAccessChecker implements AccessChecker {
                 FhirContext fhirContext,
                 PatientFinder patientFinder)
                 throws AuthenticationException {
-
             List<String> userRoles = getUserRolesFromJWT(jwt);
             String applicationId = getApplicationIdFromJWT(jwt);
             Map<String, List<String>> syncStrategyIds;

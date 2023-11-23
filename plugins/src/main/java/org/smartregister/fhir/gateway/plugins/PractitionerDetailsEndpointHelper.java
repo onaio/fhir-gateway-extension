@@ -57,7 +57,7 @@ public class PractitionerDetailsEndpointHelper {
     public PractitionerDetails getPractitionerDetailsByKeycloakId(String keycloakUUID) {
         PractitionerDetails practitionerDetails = new PractitionerDetails();
 
-        logger.info("Searching for practitioner with identifier: " + keycloakUUID);
+        logger.info("Searching for practitioner with user id: " + keycloakUUID);
         Practitioner practitioner = getPractitionerByIdentifier(keycloakUUID);
 
         if (practitioner != null) {
@@ -75,7 +75,7 @@ public class PractitionerDetailsEndpointHelper {
     public Bundle getSupervisorPractitionerDetailsByKeycloakId(String keycloakUuid) {
         Bundle bundle = new Bundle();
 
-        logger.info("Searching for practitioner with identifier: " + keycloakUuid);
+        logger.info("Searching for practitioner with user id: " + keycloakUuid);
         Practitioner practitioner = getPractitionerByIdentifier(keycloakUuid);
 
         if (practitioner != null) {
@@ -99,7 +99,7 @@ public class PractitionerDetailsEndpointHelper {
                 practitionerDetails.getFhirPractitionerDetails().getCareTeams();
         // Get other guys.
 
-        List<String> careTeamManagingOrganizationIds =
+        Set<String> careTeamManagingOrganizationIds =
                 getManagingOrganizationsOfCareTeamIds(careTeamList);
         List<OrganizationAffiliation> organizationAffiliations =
                 getOrganizationAffiliationsByOrganizationIds(careTeamManagingOrganizationIds);
@@ -218,30 +218,34 @@ public class PractitionerDetailsEndpointHelper {
         FhirPractitionerDetails fhirPractitionerDetails = new FhirPractitionerDetails();
         String practitionerId = getPractitionerIdentifier(practitioner);
 
-        logger.info("Searching for care teams for practitioner with id: " + practitioner);
+        logger.info("Searching for CareTeams with practitioner id: " + practitionerId);
         Bundle careTeams = getCareTeams(practitionerId);
         List<CareTeam> careTeamsList = mapBundleToCareTeams(careTeams);
         fhirPractitionerDetails.setCareTeams(careTeamsList);
         fhirPractitionerDetails.setPractitioners(Arrays.asList(practitioner));
 
-        logger.info("Searching for Organizations tied with CareTeams: ");
-        List<String> careTeamManagingOrganizationIds =
+        logger.info(
+                "Searching for Organizations tied to CareTeams list of size: "
+                        + careTeamsList.size());
+        Set<String> careTeamManagingOrganizationIds =
                 getManagingOrganizationsOfCareTeamIds(careTeamsList);
 
         Bundle careTeamManagingOrganizations =
                 getOrganizationsById(careTeamManagingOrganizationIds);
-        logger.info("Managing Organization are fetched");
+        logger.info(
+                "Managing Organizations fetched : "
+                        + (careTeamManagingOrganizations != null
+                                ? careTeamManagingOrganizations.getTotal()
+                                : 0));
 
         List<Organization> managingOrganizationTeams =
                 mapBundleToOrganizations(careTeamManagingOrganizations);
 
-        logger.info("Searching for organizations of practitioner with id: " + practitioner);
-
         List<PractitionerRole> practitionerRoleList =
                 getPractitionerRolesByPractitionerId(practitionerId);
-        logger.info("Practitioner Roles are fetched");
+        logger.info("Practitioner Roles fetched : " + practitionerRoleList.size());
 
-        List<String> practitionerOrganizationIds =
+        Set<String> practitionerOrganizationIds =
                 getOrganizationIdsByPractitionerRoles(practitionerRoleList);
 
         Bundle practitionerOrganizations = getOrganizationsById(practitionerOrganizationIds);
@@ -257,21 +261,24 @@ public class PractitionerDetailsEndpointHelper {
         fhirPractitionerDetails.setPractitionerRoles(practitionerRoleList);
 
         Bundle groupsBundle = getGroupsAssignedToPractitioner(practitionerId);
-        logger.info("Groups are fetched");
+        logger.info(
+                "Practitioner Groups fetched "
+                        + (groupsBundle != null ? groupsBundle.getTotal() : 0));
 
         List<Group> groupsList = mapBundleToGroups(groupsBundle);
         fhirPractitionerDetails.setGroups(groupsList);
         fhirPractitionerDetails.setId(practitionerId);
 
-        logger.info("Searching for locations by organizations");
+        Set<String> organizationIds =
+                Stream.concat(
+                                careTeamManagingOrganizationIds.stream(),
+                                practitionerOrganizationIds.stream())
+                        .collect(Collectors.toSet());
+
+        logger.info("Searching for locations by organizations : " + organizationIds.size());
 
         Bundle organizationAffiliationsBundle =
-                getOrganizationAffiliationsByOrganizationIdsBundle(
-                        Stream.concat(
-                                        careTeamManagingOrganizationIds.stream(),
-                                        practitionerOrganizationIds.stream())
-                                .distinct()
-                                .collect(Collectors.toList()));
+                getOrganizationAffiliationsByOrganizationIdsBundle(organizationIds);
 
         List<OrganizationAffiliation> organizationAffiliations =
                 mapBundleToOrganizationAffiliation(organizationAffiliationsBundle);
@@ -286,7 +293,7 @@ public class PractitionerDetailsEndpointHelper {
 
         fhirPractitionerDetails.setLocationHierarchyList(locationHierarchyList);
 
-        logger.info("Searching for locations by ids");
+        logger.info("Searching for locations by ids : " + locationIds);
         List<Location> locationsList = getLocationsByIds(locationIds);
         fhirPractitionerDetails.setLocations(locationsList);
 
@@ -325,12 +332,12 @@ public class PractitionerDetailsEndpointHelper {
         return mapBundleToPractitionerRolesWithOrganization(practitionerRoles);
     }
 
-    private List<String> getOrganizationIdsByPractitionerRoles(
+    private Set<String> getOrganizationIdsByPractitionerRoles(
             List<PractitionerRole> practitionerRoles) {
         return practitionerRoles.stream()
                 .filter(practitionerRole -> practitionerRole.hasOrganization())
                 .map(it -> getReferenceIDPart(it.getOrganization().getReference()))
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
     }
 
     private Practitioner getPractitionerByIdentifier(String identifier) {
@@ -377,8 +384,6 @@ public class PractitionerDetailsEndpointHelper {
     }
 
     private Bundle getCareTeams(String practitionerId) {
-        logger.info("Searching for Care Teams with practitioner id :" + practitionerId);
-
         return getFhirClientForR4()
                 .search()
                 .forResource(CareTeam.class)
@@ -392,7 +397,6 @@ public class PractitionerDetailsEndpointHelper {
     }
 
     private Bundle getPractitionerRoles(String practitionerId) {
-        logger.info("Searching for Practitioner roles  with practitioner id :" + practitionerId);
         return getFhirClientForR4()
                 .search()
                 .forResource(PractitionerRole.class)
@@ -406,7 +410,7 @@ public class PractitionerDetailsEndpointHelper {
                 reference.indexOf(org.smartregister.utils.Constants.FORWARD_SLASH) + 1);
     }
 
-    private Bundle getOrganizationsById(List<String> organizationIds) {
+    private Bundle getOrganizationsById(Set<String> organizationIds) {
         return organizationIds.isEmpty()
                 ? EMPTY_BUNDLE
                 : getFhirClientForR4()
@@ -440,7 +444,7 @@ public class PractitionerDetailsEndpointHelper {
     }
 
     private List<OrganizationAffiliation> getOrganizationAffiliationsByOrganizationIds(
-            List<String> organizationIds) {
+            Set<String> organizationIds) {
         if (organizationIds == null || organizationIds.isEmpty()) {
             return new ArrayList<>();
         }
@@ -449,8 +453,7 @@ public class PractitionerDetailsEndpointHelper {
         return mapBundleToOrganizationAffiliation(organizationAffiliationsBundle);
     }
 
-    private Bundle getOrganizationAffiliationsByOrganizationIdsBundle(
-            List<String> organizationIds) {
+    private Bundle getOrganizationAffiliationsByOrganizationIdsBundle(Set<String> organizationIds) {
         return organizationIds.isEmpty()
                 ? EMPTY_BUNDLE
                 : getFhirClientForR4()
@@ -477,14 +480,12 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toList());
     }
 
-    private List<String> getManagingOrganizationsOfCareTeamIds(List<CareTeam> careTeamsList) {
-        logger.info(
-                "Searching for Organizations with care teams list of size:" + careTeamsList.size());
+    private Set<String> getManagingOrganizationsOfCareTeamIds(List<CareTeam> careTeamsList) {
         return careTeamsList.stream()
-                .filter(careTeam -> careTeam.hasManagingOrganization())
+                .filter(CareTeam::hasManagingOrganization)
                 .flatMap(it -> it.getManagingOrganization().stream())
                 .map(it -> getReferenceIDPart(it.getReference()))
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
     }
 
     private List<CareTeam> mapBundleToCareTeams(Bundle careTeams) {
