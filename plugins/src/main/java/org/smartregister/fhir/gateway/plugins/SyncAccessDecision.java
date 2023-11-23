@@ -50,13 +50,13 @@ public class SyncAccessDecision implements AccessDecision {
     private final Map<String, List<String>> syncStrategyIds;
     private final List<String> roles;
     private IgnoredResourcesConfig config;
-    private String keycloakUUID;
-    private Gson gson = new Gson();
+    private final String keycloakUUID;
+    private final Gson gson = new Gson();
     private FhirContext fhirR4Context;
-    private IParser fhirR4JsonParser;
+    private final IParser fhirR4JsonParser;
     private IGenericClient fhirR4Client;
 
-    private PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
+    private final PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
 
     public SyncAccessDecision(
             FhirContext fhirContext,
@@ -76,8 +76,7 @@ public class SyncAccessDecision implements AccessDecision {
         this.roles = roles;
         try {
             setFhirR4Client(
-                    fhirR4Context.newRestfulGenericClient(
-                            System.getenv(PermissionAccessChecker.Factory.PROXY_TO_ENV)));
+                    fhirR4Context.newRestfulGenericClient(System.getenv(Constants.PROXY_TO_ENV)));
         } catch (NullPointerException e) {
             logger.error(e.getMessage());
         }
@@ -95,7 +94,10 @@ public class SyncAccessDecision implements AccessDecision {
     public RequestMutation getRequestMutation(RequestDetailsReader requestDetailsReader) {
 
         RequestMutation requestMutation = null;
-        if (isSyncUrl(requestDetailsReader)) {
+        if (isSyncUrl(requestDetailsReader)
+                && !shouldSkipDataFiltering(
+                        requestDetailsReader)) { // Check if it is the Sync URL and Skip app-wide
+            // accessible resource requests
             if (syncStrategyIds.isEmpty()
                     || StringUtils.isBlank(syncStrategy)
                     || (syncStrategyIds.containsKey(syncStrategy)
@@ -115,20 +117,17 @@ public class SyncAccessDecision implements AccessDecision {
                         forbiddenOperationException);
             }
 
-            // Skip app-wide global resource requests
-            if (!shouldSkipDataFiltering(requestDetailsReader)) {
-                List<String> syncFilterParameterValues =
-                        addSyncFilters(getSyncTags(this.syncStrategy, this.syncStrategyIds));
-                requestMutation =
-                        RequestMutation.builder()
-                                .queryParams(
-                                        Map.of(
-                                                Constants.TAG_SEARCH_PARAM,
-                                                Arrays.asList(
-                                                        StringUtils.join(
-                                                                syncFilterParameterValues, ","))))
-                                .build();
-            }
+            List<String> syncFilterParameterValues =
+                    addSyncFilters(getSyncTags(this.syncStrategy, this.syncStrategyIds));
+            requestMutation =
+                    RequestMutation.builder()
+                            .queryParams(
+                                    Map.of(
+                                            Constants.TAG_SEARCH_PARAM,
+                                            Arrays.asList(
+                                                    StringUtils.join(
+                                                            syncFilterParameterValues, ","))))
+                            .build();
         }
 
         return requestMutation;
