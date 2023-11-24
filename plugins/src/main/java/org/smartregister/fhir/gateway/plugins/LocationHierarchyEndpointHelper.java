@@ -5,11 +5,9 @@ import static org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 
-import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.StringType;
@@ -20,14 +18,14 @@ import org.smartregister.model.location.LocationHierarchyTree;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
-import ca.uhn.fhir.rest.gclient.TokenClientParam;
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 
 public class LocationHierarchyEndpointHelper {
 
     private static final Logger logger =
             LoggerFactory.getLogger(LocationHierarchyEndpointHelper.class);
 
-    private IGenericClient r4FHIRClient;
+    private final IGenericClient r4FHIRClient;
 
     public LocationHierarchyEndpointHelper(IGenericClient fhirClient) {
         this.r4FHIRClient = fhirClient;
@@ -37,16 +35,26 @@ public class LocationHierarchyEndpointHelper {
         return r4FHIRClient;
     }
 
-    public LocationHierarchy getLocationHierarchy(String identifier) {
-        Location location = getLocationsByIdentifier(identifier);
-        String locationId = Constants.EMPTY_STRING;
-        if (location != null && location.getIdElement() != null) {
-            locationId = location.getIdElement().getIdPart();
+    public LocationHierarchy getLocationHierarchy(String locationId) {
+        LocationHierarchy locationHierarchy;
+
+        if (CacheHelper.INSTANCE.skipCache()) {
+            locationHierarchy = getLocationHierarchyCore(locationId);
+        } else {
+            locationHierarchy =
+                    (LocationHierarchy)
+                            CacheHelper.INSTANCE.resourceCache.get(
+                                    locationId, this::getLocationHierarchyCore);
         }
+        return locationHierarchy;
+    }
+
+    public LocationHierarchy getLocationHierarchyCore(String locationId) {
+        Location location = getLocationById(locationId);
 
         LocationHierarchyTree locationHierarchyTree = new LocationHierarchyTree();
         LocationHierarchy locationHierarchy = new LocationHierarchy();
-        if (StringUtils.isNotBlank(locationId) && location != null) {
+        if (location != null) {
             logger.info("Building Location Hierarchy of Location Id : " + locationId);
             locationHierarchyTree.buildTreeFromList(getLocationHierarchy(locationId, location));
             StringType locationIdString = new StringType().setId(locationId).getIdElement();
@@ -55,6 +63,7 @@ public class LocationHierarchyEndpointHelper {
 
             locationHierarchy.setLocationHierarchyTree(locationHierarchyTree);
         } else {
+            logger.error("LocationHierarchy with identifier: " + locationId + " not found");
             locationHierarchy.setId(LOCATION_RESOURCE_NOT_FOUND);
         }
         return locationHierarchy;
@@ -76,7 +85,7 @@ public class LocationHierarchyEndpointHelper {
 
         List<Location> allLocations = new ArrayList<>();
         if (parentLocation != null) {
-            allLocations.add((Location) parentLocation);
+            allLocations.add(parentLocation);
         }
 
         if (childLocationBundle != null) {
@@ -91,26 +100,15 @@ public class LocationHierarchyEndpointHelper {
         return allLocations;
     }
 
-    private @Nullable Location getLocationsByIdentifier(String identifier) {
-        Bundle locationsBundle =
-                getFhirClientForR4()
-                        .search()
-                        .forResource(Location.class)
-                        .where(
-                                new TokenClientParam(Location.SP_IDENTIFIER)
-                                        .exactly()
-                                        .identifier(identifier))
-                        .returnBundle(Bundle.class)
-                        .execute();
-
-        List<Location> locationsList = new ArrayList<>();
-        if (locationsBundle != null)
-            locationsList =
-                    locationsBundle.getEntry().stream()
-                            .map(
-                                    bundleEntryComponent ->
-                                            ((Location) bundleEntryComponent.getResource()))
-                            .collect(Collectors.toList());
-        return locationsList.size() > 0 ? locationsList.get(0) : new Location();
+    private @Nullable Location getLocationById(String locationId) {
+        Location location = null;
+        try {
+            location =
+                    getFhirClientForR4()
+                            .fetchResourceFromUrl(Location.class, "Location/" + locationId);
+        } catch (ResourceNotFoundException e) {
+            logger.error(e.getMessage());
+        }
+        return location;
     }
 }

@@ -2,7 +2,6 @@ package org.smartregister.fhir.gateway.plugins;
 
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +50,7 @@ public class PermissionAccessChecker implements AccessChecker {
     private static final Logger logger = LoggerFactory.getLogger(PermissionAccessChecker.class);
     private final ResourceFinder resourceFinder;
     private final List<String> userRoles;
-    private SyncAccessDecision syncAccessDecision;
+    private final SyncAccessDecision syncAccessDecision;
 
     private PermissionAccessChecker(
             FhirContext fhirContext,
@@ -112,9 +111,10 @@ public class PermissionAccessChecker implements AccessChecker {
     }
 
     private boolean checkUserHasRole(String resourceName, String requestType) {
-        return checkIfRoleExists(getAdminRoleName(resourceName), this.userRoles)
-                || checkIfRoleExists(
-                        getRelevantRoleName(resourceName, requestType), this.userRoles);
+        return StringUtils.isNotBlank(resourceName)
+                && (checkIfRoleExists(getAdminRoleName(resourceName), this.userRoles)
+                        || checkIfRoleExists(
+                                getRelevantRoleName(resourceName, requestType), this.userRoles));
     }
 
     private AccessDecision processGet(boolean userHasRole) {
@@ -190,8 +190,6 @@ public class PermissionAccessChecker implements AccessChecker {
 
         @VisibleForTesting static final String FHIR_CORE_APPLICATION_ID_CLAIM = "fhir_core_app_id";
 
-        @VisibleForTesting static final String PROXY_TO_ENV = "PROXY_TO";
-
         private List<String> getUserRolesFromJWT(DecodedJWT jwt) {
             Claim claim = jwt.getClaim(REALM_ACCESS_CLAIM);
             Map<String, Object> roles = claim.asMap();
@@ -204,7 +202,7 @@ public class PermissionAccessChecker implements AccessChecker {
         }
 
         private IGenericClient createFhirClientForR4(FhirContext fhirContext) {
-            String fhirServer = System.getenv(PROXY_TO_ENV);
+            String fhirServer = System.getenv(Constants.PROXY_TO_ENV);
             IGenericClient client = fhirContext.newRestfulGenericClient(fhirServer);
             return client;
         }
@@ -236,7 +234,7 @@ public class PermissionAccessChecker implements AccessChecker {
             return id;
         }
 
-        private Binary findApplicationConfigBinaryResource(
+        private Binary readApplicationConfigBinaryResource(
                 String binaryResourceId, FhirContext fhirContext) {
             IGenericClient client = createFhirClientForR4(fhirContext);
             Binary binary = null;
@@ -244,6 +242,20 @@ public class PermissionAccessChecker implements AccessChecker {
                 binary = client.read().resource(Binary.class).withId(binaryResourceId).execute();
             }
             return binary;
+        }
+
+        private Composition readCompositionResource(String applicationId, FhirContext fhirContext) {
+            IGenericClient client = createFhirClientForR4(fhirContext);
+
+            Bundle compositionBundle =
+                    client.search()
+                            .forResource(Composition.class)
+                            .where(Composition.IDENTIFIER.exactly().identifier(applicationId))
+                            .returnBundle(Bundle.class)
+                            .execute();
+
+            Bundle.BundleEntryComponent compositionEntry = compositionBundle.getEntryFirstRep();
+            return compositionEntry != null ? (Composition) compositionEntry.getResource() : null;
         }
 
         private String findSyncStrategy(Binary binary) {
@@ -270,53 +282,20 @@ public class PermissionAccessChecker implements AccessChecker {
 
             IGenericClient client = createFhirClientForR4(fhirContext);
 
-            Bundle requestBundle = new Bundle();
-            requestBundle.setType(Bundle.BundleType.BATCH);
+            PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper =
+                    new PractitionerDetailsEndpointHelper(client);
+            PractitionerDetails practitionerDetails =
+                    practitionerDetailsEndpointHelper.getPractitionerDetailsByKeycloakId(subject);
 
-            requestBundle.addEntry(
-                    SyncAccessDecision.createBundleEntryComponent(
-                            Bundle.HTTPVerb.GET, "Composition?identifier=" + applicationId, null));
-            requestBundle.addEntry(
-                    SyncAccessDecision.createBundleEntryComponent(
-                            Bundle.HTTPVerb.GET,
-                            "practitioner-details?keycloak-uuid=" + subject,
-                            null));
-
-            Bundle responsebundle = client.transaction().withBundle(requestBundle).execute();
-
-            Pair<Composition, PractitionerDetails> result =
-                    getCompositionPractitionerDetailsPair(applicationId, responsebundle);
-
-            return result;
-        }
-
-        @NotNull
-        private static Pair<Composition, PractitionerDetails> getCompositionPractitionerDetailsPair(
-                String applicationId, Bundle responsebundle) {
-            Composition composition = null;
-            PractitionerDetails practitionerDetails = null;
-
-            Bundle innerBundle;
-            for (int i = 0; i < responsebundle.getEntry().size(); i++) {
-
-                innerBundle = (Bundle) responsebundle.getEntry().get(i).getResource();
-                if (innerBundle == null) continue;
-
-                for (int j = 0; j < innerBundle.getEntry().size(); j++) {
-
-                    if (innerBundle.getEntry().get(j).getResource() instanceof Composition) {
-                        composition = (Composition) innerBundle.getEntry().get(j).getResource();
-                    } else if (innerBundle.getEntry().get(j).getResource()
-                            instanceof PractitionerDetails) {
-                        practitionerDetails =
-                                (PractitionerDetails) innerBundle.getEntry().get(j).getResource();
-                    }
-                }
-            }
+            Composition composition = readCompositionResource(applicationId, fhirContext);
 
             if (composition == null)
                 throw new IllegalStateException(
                         "No Composition resource found for application id '" + applicationId + "'");
+
+            if (practitionerDetails == null)
+                throw new IllegalStateException(
+                        "No PractitionerDetail resource found for user with id '" + subject + "'");
 
             return Pair.of(composition, practitionerDetails);
         }
@@ -331,7 +310,7 @@ public class PermissionAccessChecker implements AccessChecker {
 
             String binaryResourceReference = getBinaryResourceReference(composition);
             Binary binary =
-                    findApplicationConfigBinaryResource(binaryResourceReference, fhirContext);
+                    readApplicationConfigBinaryResource(binaryResourceReference, fhirContext);
 
             return Pair.of(findSyncStrategy(binary), practitionerDetails);
         }
@@ -343,20 +322,17 @@ public class PermissionAccessChecker implements AccessChecker {
                 FhirContext fhirContext,
                 PatientFinder patientFinder)
                 throws AuthenticationException {
-
             List<String> userRoles = getUserRolesFromJWT(jwt);
             String applicationId = getApplicationIdFromJWT(jwt);
             Map<String, List<String>> syncStrategyIds;
 
-            if (skipCache()) {
+            if (CacheHelper.INSTANCE.skipCache()) {
                 syncStrategyIds = getSyncStrategyIds(jwt.getSubject(), applicationId, fhirContext);
             } else {
                 syncStrategyIds =
                         CacheHelper.INSTANCE.cache.get(
                                 jwt.getSubject(),
-                                k ->
-                                        getSyncStrategyIds(
-                                                jwt.getSubject(), applicationId, fhirContext));
+                                userId -> getSyncStrategyIds(userId, applicationId, fhirContext));
             }
             return new PermissionAccessChecker(
                     fhirContext,
@@ -366,11 +342,6 @@ public class PermissionAccessChecker implements AccessChecker {
                     applicationId,
                     syncStrategyIds.keySet().iterator().next(),
                     syncStrategyIds);
-        }
-
-        private boolean skipCache() {
-            String duration = System.getenv(CacheHelper.OPENSRP_CACHE_EXPIRY_SECONDS);
-            return StringUtils.isNotBlank(duration) && "0".equals(duration.trim());
         }
 
         private Map<String, List<String>> getSyncStrategyIds(
@@ -392,7 +363,7 @@ public class PermissionAccessChecker implements AccessChecker {
             List<Organization> organizations;
             List<String> careTeamIds;
             List<String> organizationIds;
-            List<String> locationIds = new ArrayList<>();
+            List<String> locationIds;
             if (StringUtils.isNotBlank(syncStrategy)) {
                 if (Constants.CARE_TEAM.equalsIgnoreCase(syncStrategy)) {
                     careTeams =
@@ -402,7 +373,7 @@ public class PermissionAccessChecker implements AccessChecker {
                                     ? practitionerDetails
                                             .getFhirPractitionerDetails()
                                             .getCareTeams()
-                                    : Collections.singletonList(new CareTeam());
+                                    : new ArrayList<>();
 
                     careTeamIds =
                             careTeams.stream()
@@ -420,7 +391,7 @@ public class PermissionAccessChecker implements AccessChecker {
                                     ? practitionerDetails
                                             .getFhirPractitionerDetails()
                                             .getOrganizations()
-                                    : Collections.singletonList(new Organization());
+                                    : new ArrayList<>();
 
                     organizationIds =
                             organizations.stream()
@@ -439,7 +410,7 @@ public class PermissionAccessChecker implements AccessChecker {
                                             practitionerDetails
                                                     .getFhirPractitionerDetails()
                                                     .getLocationHierarchyList())
-                                    : locationIds;
+                                    : new ArrayList<>();
 
                     resultMap = Map.of(syncStrategy, locationIds);
                 }

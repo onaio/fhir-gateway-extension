@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.smartregister</groupId>
     <artifactId>opensrp-gateway-plugin</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
   </parent>
 
   <artifactId>exec</artifactId>
@@ -69,15 +69,8 @@
 
     <dependency>
       <groupId>org.smartregister</groupId>
-      <artifactId>fhir-common-utils</artifactId>
-      <version>0.0.9-SNAPSHOT</version>
-      <scope>compile</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.smartregister</groupId>
       <artifactId>plugins</artifactId>
-      <version>1.0.1</version>
+      <version>1.0.2</version>
     </dependency>
 
     <dependency>

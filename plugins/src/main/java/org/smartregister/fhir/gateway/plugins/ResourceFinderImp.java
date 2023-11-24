@@ -45,20 +45,21 @@ public final class ResourceFinderImp implements ResourceFinder {
     @Override
     public List<BundleResources> findResourcesInBundle(RequestDetailsReader request) {
         IBaseResource resource = createResourceFromRequest(request);
+        InvalidRequestException invalidRequestException;
         if (!(resource instanceof Bundle)) {
+            invalidRequestException =
+                    new InvalidRequestException("The provided resource is not a Bundle!");
             ExceptionUtil.throwRuntimeExceptionAndLog(
-                    logger,
-                    "The provided resource is not a Bundle!",
-                    InvalidRequestException.class.newInstance());
+                    logger, invalidRequestException.getMessage(), invalidRequestException);
         }
         Bundle bundle = (Bundle) resource;
 
         if (bundle.getType() != Bundle.BundleType.TRANSACTION) {
+            invalidRequestException =
+                    new InvalidRequestException("Bundle type needs to be transaction!");
             // Currently, support only for transaction bundles
             ExceptionUtil.throwRuntimeExceptionAndLog(
-                    logger,
-                    "Bundle type needs to be transaction!",
-                    InvalidRequestException.class.newInstance());
+                    logger, invalidRequestException.getMessage(), invalidRequestException);
         }
 
         List<BundleResources> requestTypeEnumList = new ArrayList<>();
@@ -69,10 +70,10 @@ public final class ResourceFinderImp implements ResourceFinder {
         for (Bundle.BundleEntryComponent entryComponent : bundle.getEntry()) {
             Bundle.HTTPVerb httpMethod = entryComponent.getRequest().getMethod();
             if (httpMethod != Bundle.HTTPVerb.GET && !entryComponent.hasResource()) {
+                invalidRequestException =
+                        new InvalidRequestException("Bundle entry requires a resource field!");
                 ExceptionUtil.throwRuntimeExceptionAndLog(
-                        logger,
-                        "Bundle entry requires a resource field!",
-                        InvalidRequestException.class.newInstance());
+                        logger, invalidRequestException.getMessage(), invalidRequestException);
             }
 
             requestTypeEnumList.add(
