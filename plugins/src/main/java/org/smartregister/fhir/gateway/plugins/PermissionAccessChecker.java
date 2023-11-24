@@ -326,15 +326,13 @@ public class PermissionAccessChecker implements AccessChecker {
             String applicationId = getApplicationIdFromJWT(jwt);
             Map<String, List<String>> syncStrategyIds;
 
-            if (skipCache()) {
+            if (CacheHelper.INSTANCE.skipCache()) {
                 syncStrategyIds = getSyncStrategyIds(jwt.getSubject(), applicationId, fhirContext);
             } else {
                 syncStrategyIds =
                         CacheHelper.INSTANCE.cache.get(
                                 jwt.getSubject(),
-                                k ->
-                                        getSyncStrategyIds(
-                                                jwt.getSubject(), applicationId, fhirContext));
+                                userId -> getSyncStrategyIds(userId, applicationId, fhirContext));
             }
             return new PermissionAccessChecker(
                     fhirContext,
@@ -344,11 +342,6 @@ public class PermissionAccessChecker implements AccessChecker {
                     applicationId,
                     syncStrategyIds.keySet().iterator().next(),
                     syncStrategyIds);
-        }
-
-        private boolean skipCache() {
-            String duration = System.getenv(CacheHelper.OPENSRP_CACHE_EXPIRY_SECONDS);
-            return StringUtils.isNotBlank(duration) && "0".equals(duration.trim());
         }
 
         private Map<String, List<String>> getSyncStrategyIds(

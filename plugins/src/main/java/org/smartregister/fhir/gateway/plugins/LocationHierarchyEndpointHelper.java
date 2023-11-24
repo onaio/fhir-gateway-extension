@@ -36,6 +36,20 @@ public class LocationHierarchyEndpointHelper {
     }
 
     public LocationHierarchy getLocationHierarchy(String locationId) {
+        LocationHierarchy locationHierarchy;
+
+        if (CacheHelper.INSTANCE.skipCache()) {
+            locationHierarchy = getLocationHierarchyCore(locationId);
+        } else {
+            locationHierarchy =
+                    (LocationHierarchy)
+                            CacheHelper.INSTANCE.resourceCache.get(
+                                    locationId, this::getLocationHierarchyCore);
+        }
+        return locationHierarchy;
+    }
+
+    public LocationHierarchy getLocationHierarchyCore(String locationId) {
         Location location = getLocationById(locationId);
 
         LocationHierarchyTree locationHierarchyTree = new LocationHierarchyTree();
