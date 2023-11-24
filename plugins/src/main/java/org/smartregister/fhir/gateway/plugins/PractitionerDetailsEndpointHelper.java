@@ -213,10 +213,31 @@ public class PractitionerDetailsEndpointHelper {
     }
 
     public PractitionerDetails getPractitionerDetailsByPractitioner(Practitioner practitioner) {
+        String practitionerId = getPractitionerIdentifier(practitioner);
+
+        PractitionerDetails practitionerDetails;
+
+        if (CacheHelper.INSTANCE.skipCache()) {
+            practitionerDetails =
+                    getPractitionerDetailsByPractitionerCore(practitionerId, practitioner);
+        } else {
+            practitionerDetails =
+                    (PractitionerDetails)
+                            CacheHelper.INSTANCE.resourceCache.get(
+                                    practitionerId,
+                                    key ->
+                                            getPractitionerDetailsByPractitionerCore(
+                                                    practitionerId, practitioner));
+        }
+
+        return practitionerDetails;
+    }
+
+    public PractitionerDetails getPractitionerDetailsByPractitionerCore(
+            String practitionerId, Practitioner practitioner) {
 
         PractitionerDetails practitionerDetails = new PractitionerDetails();
         FhirPractitionerDetails fhirPractitionerDetails = new FhirPractitionerDetails();
-        String practitionerId = getPractitionerIdentifier(practitioner);
 
         logger.info("Searching for CareTeams with practitioner id: " + practitionerId);
         Bundle careTeams = getCareTeams(practitionerId);
