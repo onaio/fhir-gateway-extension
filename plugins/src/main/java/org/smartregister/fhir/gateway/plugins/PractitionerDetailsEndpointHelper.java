@@ -428,7 +428,7 @@ public class PractitionerDetailsEndpointHelper {
 
     private static String getReferenceIDPart(String reference) {
         return reference.substring(
-                reference.indexOf(org.smartregister.utils.Constants.FORWARD_SLASH) + 1);
+                reference.lastIndexOf(org.smartregister.utils.Constants.FORWARD_SLASH) + 1);
     }
 
     private Bundle getOrganizationsById(Set<String> organizationIds) {
