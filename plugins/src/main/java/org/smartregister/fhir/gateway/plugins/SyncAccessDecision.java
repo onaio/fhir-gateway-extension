@@ -286,8 +286,13 @@ public class SyncAccessDecision implements AccessDecision {
 
             requestBundle = processListEntriesGatewayModeByBundle(responseResource);
         }
+        FhirContext ctx = FhirContext.forR4();
+        int fivemins = 300* 1000;
+        ctx.getRestfulClientFactory().setConnectTimeout(fivemins);
+        ctx.getRestfulClientFactory().setConnectionRequestTimeout(fivemins);
+        ctx.getRestfulClientFactory().setSocketTimeout(fivemins);
 
-        return fhirR4Client.transaction().withBundle(requestBundle).execute();
+        return ctx.newRestfulGenericClient(fhirR4Client.getServerBase()).transaction().withBundle(requestBundle).execute();
     }
 
     /* Generates a map of Code.url to multiple Code.Value which contains all the possible filters that
