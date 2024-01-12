@@ -292,8 +292,9 @@ public class SyncAccessDecision implements AccessDecision {
         ctx.getRestfulClientFactory().setConnectTimeout(fivemins);
         ctx.getRestfulClientFactory().setConnectionRequestTimeout(fivemins);
         ctx.getRestfulClientFactory().setSocketTimeout(fivemins);
+        IGenericClient _fhirR4Client = ctx.newRestfulGenericClient(fhirR4Client.getServerBase());
         logger.info("Time taken: "+ (System.currentTimeMillis() - start) + "ms");
-        return ctx.newRestfulGenericClient(fhirR4Client.getServerBase()).transaction().withBundle(requestBundle).execute();
+        return _fhirR4Client.transaction().withBundle(requestBundle).execute();
     }
 
     /* Generates a map of Code.url to multiple Code.Value which contains all the possible filters that
