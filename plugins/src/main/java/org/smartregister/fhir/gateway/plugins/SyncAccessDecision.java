@@ -286,12 +286,13 @@ public class SyncAccessDecision implements AccessDecision {
 
             requestBundle = processListEntriesGatewayModeByBundle(responseResource);
         }
+        long start = System.currentTimeMillis();
         FhirContext ctx = FhirContext.forR4();
         int fivemins = 300* 1000;
         ctx.getRestfulClientFactory().setConnectTimeout(fivemins);
         ctx.getRestfulClientFactory().setConnectionRequestTimeout(fivemins);
         ctx.getRestfulClientFactory().setSocketTimeout(fivemins);
-
+        logger.info("Time taken: "+ (System.currentTimeMillis() - start) + "ms");
         return ctx.newRestfulGenericClient(fhirR4Client.getServerBase()).transaction().withBundle(requestBundle).execute();
     }
 
