@@ -1,5 +1,7 @@
 package org.smartregister.fhir.gateway.plugins;
 
+import static org.smartregister.fhir.gateway.plugins.EnvUtil.getEnvironmentVar;
+
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -290,6 +292,21 @@ public class SyncAccessDecision implements AccessDecision {
         return fhirR4Client.transaction().withBundle(requestBundle).execute();
     }
 
+    private String getSyncTagUrl(String syncStrategy) {
+        if (syncStrategy.equalsIgnoreCase(Constants.LOCATION)) {
+            return getEnvironmentVar(
+                    Constants.LOCATION_TAG_URL_ENV, Constants.DEFAULT_LOCATION_TAG_URL);
+        } else if (syncStrategy.equalsIgnoreCase(Constants.ORGANIZATION)) {
+            return getEnvironmentVar(
+                    Constants.ORGANISATION_TAG_URL_ENV, Constants.DEFAULT_ORGANISATION_TAG_URL);
+        } else if (syncStrategy.equalsIgnoreCase(Constants.CARE_TEAM)) {
+            return getEnvironmentVar(
+                    Constants.CARE_TEAM_TAG_URL_ENV, Constants.DEFAULT_CARE_TEAM_TAG_URL);
+        } else {
+            return null;
+        }
+    }
+
     /* Generates a map of Code.url to multiple Code.Value which contains all the possible filters that
      * will be used in syncing
      *
@@ -305,12 +322,9 @@ public class SyncAccessDecision implements AccessDecision {
         sb.append(Constants.TAG_SEARCH_PARAM);
         sb.append(Constants.Literals.EQUALS);
 
-        if (Constants.LOCATION.equals(syncStrategy)) {
-            addTags(Constants.LOCATION_TAG_URL, syncStrategyIds.get(syncStrategy), map, sb);
-        } else if (Constants.ORGANIZATION.equals(syncStrategy)) {
-            addTags(Constants.ORGANISATION_TAG_URL, syncStrategyIds.get(syncStrategy), map, sb);
-        } else if (Constants.CARE_TEAM.equals(syncStrategy)) {
-            addTags(Constants.CARE_TEAM_TAG_URL, syncStrategyIds.get(syncStrategy), map, sb);
+        String tagUrl = getSyncTagUrl(syncStrategy);
+        if (tagUrl != null) {
+            addTags(tagUrl, syncStrategyIds.get(syncStrategy), map, sb);
         }
 
         return map;
