@@ -77,15 +77,18 @@ public class SyncAccessDecisionTest {
         Assert.assertTrue(
                 mutatedRequest
                         .getQueryParams()
-                        .get("_tag")
+                        .get(Constants.TAG_SEARCH_PARAM)
                         .get(0)
                         .contains(
                                 StringUtils.join(
-                                        locationIds, "," + Constants.LOCATION_TAG_URL + "|")));
+                                        locationIds,
+                                        Constants.PARAM_VALUES_SEPARATOR
+                                                + Constants.DEFAULT_LOCATION_TAG_URL
+                                                + Constants.CODE_URL_VALUE_SEPARATOR)));
 
-        for (String param : mutatedRequest.getQueryParams().get("_tag")) {
-            Assert.assertFalse(param.contains(Constants.CARE_TEAM_TAG_URL));
-            Assert.assertFalse(param.contains(Constants.ORGANISATION_TAG_URL));
+        for (String param : mutatedRequest.getQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
+            Assert.assertFalse(param.contains(Constants.DEFAULT_CARE_TEAM_TAG_URL));
+            Assert.assertFalse(param.contains(Constants.DEFAULT_ORGANISATION_TAG_URL));
         }
     }
 
@@ -115,15 +118,18 @@ public class SyncAccessDecisionTest {
         Assert.assertTrue(
                 mutatedRequest
                         .getQueryParams()
-                        .get("_tag")
+                        .get(Constants.TAG_SEARCH_PARAM)
                         .get(0)
                         .contains(
                                 StringUtils.join(
-                                        careTeamIds, "," + Constants.CARE_TEAM_TAG_URL + "|")));
+                                        careTeamIds,
+                                        Constants.PARAM_VALUES_SEPARATOR
+                                                + Constants.DEFAULT_CARE_TEAM_TAG_URL
+                                                + Constants.CODE_URL_VALUE_SEPARATOR)));
 
-        for (String param : mutatedRequest.getQueryParams().get("_tag")) {
-            Assert.assertFalse(param.contains(Constants.LOCATION_TAG_URL));
-            Assert.assertFalse(param.contains(Constants.ORGANISATION_TAG_URL));
+        for (String param : mutatedRequest.getQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
+            Assert.assertFalse(param.contains(Constants.DEFAULT_LOCATION_TAG_URL));
+            Assert.assertFalse(param.contains(Constants.DEFAULT_ORGANISATION_TAG_URL));
         }
     }
 
@@ -151,13 +157,16 @@ public class SyncAccessDecisionTest {
             Assert.assertTrue(
                     mutatedRequest
                             .getQueryParams()
-                            .get("_tag")
-                            .contains(Constants.ORGANISATION_TAG_URL + "|" + locationId));
+                            .get(Constants.TAG_SEARCH_PARAM)
+                            .contains(
+                                    Constants.DEFAULT_ORGANISATION_TAG_URL
+                                            + Constants.CODE_URL_VALUE_SEPARATOR
+                                            + locationId));
         }
 
-        for (String param : mutatedRequest.getQueryParams().get("_tag")) {
-            Assert.assertFalse(param.contains(Constants.LOCATION_TAG_URL));
-            Assert.assertFalse(param.contains(Constants.CARE_TEAM_TAG_URL));
+        for (String param : mutatedRequest.getQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
+            Assert.assertFalse(param.contains(Constants.DEFAULT_LOCATION_TAG_URL));
+            Assert.assertFalse(param.contains(Constants.DEFAULT_CARE_TEAM_TAG_URL));
         }
     }
 
@@ -186,12 +195,14 @@ public class SyncAccessDecisionTest {
         Assert.assertTrue(
                 mutatedRequest
                         .getQueryParams()
-                        .get("_tag")
+                        .get(Constants.TAG_SEARCH_PARAM)
                         .get(0)
                         .contains(
                                 StringUtils.join(
                                         organisationIds,
-                                        "," + Constants.ORGANISATION_TAG_URL + "|")));
+                                        Constants.PARAM_VALUES_SEPARATOR
+                                                + Constants.DEFAULT_ORGANISATION_TAG_URL
+                                                + Constants.CODE_URL_VALUE_SEPARATOR)));
     }
 
     @Test
@@ -233,14 +244,19 @@ public class SyncAccessDecisionTest {
         List<String> queryStringParamValues = Arrays.asList("1000", "2000", "3000");
         requestDetails.setCompleteUrl(
                 "https://smartregister.org/fhir/StructureMap?_id="
-                        + StringUtils.join(queryStringParamValues, ","));
+                        + StringUtils.join(
+                                queryStringParamValues, Constants.PARAM_VALUES_SEPARATOR));
         Assert.assertEquals(
                 "https://smartregister.org/fhir/StructureMap?_id=1000,2000,3000",
                 requestDetails.getCompleteUrl());
         requestDetails.setRequestPath("StructureMap");
 
         Map<String, String[]> params = Maps.newHashMap();
-        params.put("_id", new String[] {StringUtils.join(queryStringParamValues, ",")});
+        params.put(
+                "_id",
+                new String[] {
+                    StringUtils.join(queryStringParamValues, Constants.PARAM_VALUES_SEPARATOR)
+                });
         requestDetails.setParameters(params);
 
         RequestMutation mutatedRequest =
@@ -264,14 +280,19 @@ public class SyncAccessDecisionTest {
         List<String> queryStringParamValues = Arrays.asList("1000", "2000");
         requestDetails.setCompleteUrl(
                 "https://smartregister.org/fhir/StructureMap?_id="
-                        + StringUtils.join(queryStringParamValues, ","));
+                        + StringUtils.join(
+                                queryStringParamValues, Constants.PARAM_VALUES_SEPARATOR));
         Assert.assertEquals(
                 "https://smartregister.org/fhir/StructureMap?_id=1000,2000",
                 requestDetails.getCompleteUrl());
         requestDetails.setRequestPath("StructureMap");
 
         Map<String, String[]> params = Maps.newHashMap();
-        params.put("_id", new String[] {StringUtils.join(queryStringParamValues, ",")});
+        params.put(
+                "_id",
+                new String[] {
+                    StringUtils.join(queryStringParamValues, Constants.PARAM_VALUES_SEPARATOR)
+                });
         requestDetails.setParameters(params);
 
         RequestMutation mutatedRequest =
@@ -287,7 +308,9 @@ public class SyncAccessDecisionTest {
                         .contains(
                                 StringUtils.join(
                                         organisationIds,
-                                        "," + Constants.ORGANISATION_TAG_URL + "|")));
+                                        Constants.PARAM_VALUES_SEPARATOR
+                                                + Constants.DEFAULT_ORGANISATION_TAG_URL
+                                                + Constants.CODE_URL_VALUE_SEPARATOR)));
     }
 
     @Test(expected = RuntimeException.class)
