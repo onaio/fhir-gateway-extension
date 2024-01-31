@@ -494,6 +494,80 @@ public class SyncAccessDecisionTest {
                 resultContent);
     }
 
+    @Test
+    public void testPostProcessWithListModePaginateEntriesBundle() throws IOException {
+        locationIds.add("Location-1");
+        testInstance = Mockito.spy(createSyncAccessDecisionTestInstance(Constants.LOCATION));
+
+        FhirContext fhirR4Context = mock(FhirContext.class);
+        IGenericClient iGenericClient = mock(IGenericClient.class);
+        ITransaction iTransaction = mock(ITransaction.class);
+        ITransactionTyped<Bundle> iClientExecutable = mock(ITransactionTyped.class);
+        testInstance.setFhirR4Client(iGenericClient);
+        testInstance.setFhirR4Context(fhirR4Context);
+
+        Mockito.when(iGenericClient.transaction()).thenReturn(iTransaction);
+        Mockito.when(iTransaction.withBundle(any(Bundle.class))).thenReturn(iClientExecutable);
+
+        Bundle resultBundle = new Bundle();
+        resultBundle.setType(Bundle.BundleType.BATCHRESPONSE);
+        resultBundle.setId("bundle-result-id");
+
+        Mockito.when(iClientExecutable.execute()).thenReturn(resultBundle);
+
+        ArgumentCaptor<Bundle> bundleArgumentCaptor = ArgumentCaptor.forClass(Bundle.class);
+
+        testInstance.setFhirR4Context(fhirR4Context);
+
+        RequestDetailsReader requestDetailsSpy = Mockito.mock(RequestDetailsReader.class);
+
+        Mockito.when(
+                        requestDetailsSpy.getHeader(
+                                SyncAccessDecision.SyncAccessDecisionConstants.FHIR_GATEWAY_MODE))
+                .thenReturn(SyncAccessDecision.SyncAccessDecisionConstants.LIST_ENTRIES);
+
+        Map<String, String[]> params = new HashMap<>();
+        params.put("_count", new String[] {"1"});
+        params.put("_page", new String[] {"1"});
+
+        Mockito.when(requestDetailsSpy.getParameters()).thenReturn(params);
+
+        URL listUrl = Resources.getResource("test_list_resource.json");
+        String testListJson = Resources.toString(listUrl, StandardCharsets.UTF_8);
+
+        HttpResponse fhirResponseMock =
+                Mockito.mock(HttpResponse.class, Answers.RETURNS_DEEP_STUBS);
+
+        TestUtil.setUpFhirResponseMock(fhirResponseMock, testListJson);
+
+        String resultContent = testInstance.postProcess(requestDetailsSpy, fhirResponseMock);
+
+        Mockito.verify(iTransaction).withBundle(bundleArgumentCaptor.capture());
+        Bundle requestBundle = bundleArgumentCaptor.getValue();
+
+        // Verify modified request to the server
+        Assert.assertNotNull(requestBundle);
+        Assert.assertEquals(Bundle.BundleType.BATCH, requestBundle.getType());
+        List<Bundle.BundleEntryComponent> requestBundleEntries = requestBundle.getEntry();
+
+        // Only one returned one _page = 1 and _count = 1
+        Assert.assertEquals(1, requestBundleEntries.size());
+
+        Assert.assertEquals(
+                Bundle.HTTPVerb.GET, requestBundleEntries.get(0).getRequest().getMethod());
+        Assert.assertEquals(
+                "Group/proxy-list-entry-id-1", requestBundleEntries.get(0).getRequest().getUrl());
+
+        Assert.assertEquals(
+                Bundle.HTTPVerb.GET, requestBundleEntries.get(0).getRequest().getMethod());
+
+        // Verify returned result content from the server request
+        Assert.assertNotNull(resultContent);
+        Assert.assertEquals(
+                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\"}",
+                resultContent);
+    }
+
     @After
     public void cleanUp() {
         locationIds.clear();

@@ -28,7 +28,9 @@ public abstract class BaseEndpoint extends HttpServlet {
         Bundle responseBundle = new Bundle();
         responseBundle.setId(UUID.randomUUID().toString());
         Bundle.BundleLinkComponent linkComponent = new Bundle.BundleLinkComponent();
+        linkComponent.setRelation(Bundle.LINK_PREV);
         linkComponent.setRelation(Bundle.LINK_SELF);
+        linkComponent.setRelation(Bundle.LINK_NEXT);
         linkComponent.setUrl(requestURL);
         responseBundle.setLink(Collections.singletonList(linkComponent));
         responseBundle.setType(Bundle.BundleType.SEARCHSET);
