@@ -168,7 +168,7 @@ public class SyncAccessDecision implements AccessDecision {
 
             switch (gatewayMode) {
                 case SyncAccessDecisionConstants.LIST_ENTRIES:
-                    resultContentBundle = postProcessModeListEntries(responseResource);
+                    resultContentBundle = postProcessModeListEntries(responseResource, request);
                     break;
 
                 default:
@@ -216,11 +216,29 @@ public class SyncAccessDecision implements AccessDecision {
 
     @NotNull
     private static Bundle processListEntriesGatewayModeByListResource(
-            ListResource responseListResource) {
+            ListResource responseListResource, RequestDetailsReader request) {
         Bundle requestBundle = new Bundle();
         requestBundle.setType(Bundle.BundleType.BATCH);
 
-        for (ListResource.ListEntryComponent listEntryComponent : responseListResource.getEntry()) {
+        String[] pageSize = request.getParameters().get("_count");
+        String[] pageNumber = request.getParameters().get("_page");
+
+        int count =
+                pageSize != null && pageSize.length > 0
+                        ? Integer.parseInt(pageSize[0])
+                        : 20; // Default page size to 20 if not provided
+        int page =
+                pageNumber != null && pageNumber.length > 0
+                        ? Integer.parseInt(pageNumber[0])
+                        : 1; // Default page number to 1 if not provided
+
+        int start = Math.max(0, (page - 1)) * count;
+        int end = start + count;
+
+        List<ListResource.ListEntryComponent> entries = responseListResource.getEntry();
+
+        for (int i = start; i < Math.min(end, entries.size()); i++) {
+            ListResource.ListEntryComponent listEntryComponent = entries.get(i);
             requestBundle.addEntry(
                     createBundleEntryComponent(
                             Bundle.HTTPVerb.GET,
@@ -271,10 +289,11 @@ public class SyncAccessDecision implements AccessDecision {
      * Generates a Bundle result from making a batch search request with the contained entries in
      * the List as parameters
      *
-     * @param responseResource FHIR Resource result returned byt the HTTPResponse
+     * @param responseResource FHIR Resource result returned by the HTTPResponse
      * @return String content of the result Bundle
      */
-    private Bundle postProcessModeListEntries(IBaseResource responseResource) {
+    private Bundle postProcessModeListEntries(
+            IBaseResource responseResource, RequestDetailsReader request) {
 
         Bundle requestBundle = null;
 
@@ -282,7 +301,8 @@ public class SyncAccessDecision implements AccessDecision {
                 && ((ListResource) responseResource).hasEntry()) {
 
             requestBundle =
-                    processListEntriesGatewayModeByListResource((ListResource) responseResource);
+                    processListEntriesGatewayModeByListResource(
+                            (ListResource) responseResource, request);
 
         } else if (responseResource instanceof Bundle) {
 
