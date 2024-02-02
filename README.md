@@ -185,6 +185,25 @@ URL:
 This approach ensures consistency and clarity when accessing various endpoint
 types through the gateway.
 
+### Pagination
+
+Pagination is supported in fetching data from a FHIR server using the List
+endpoint. This can be useful when dealing with Resources with high volume of
+entries like Locations.
+
+To enable pagination, you need to include two parameters in the request URL:
+
+- `_page`: This parameter specifies the page number and has a default value
+  of 1.
+- `_count`: This parameter sets the number of items per page and has a default
+  value of 20.
+
+Example:
+
+```
+[GET] /List?_id=<some-id>&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
+```
+
 #### Important Note:
 
 Developers, please update your client applications accordingly to accommodate

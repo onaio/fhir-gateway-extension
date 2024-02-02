@@ -495,7 +495,7 @@ public class SyncAccessDecisionTest {
     }
 
     @Test
-    public void testPostProcessWithListModePaginateEntriesBundle() throws IOException {
+    public void testPostProcessWithListModeHeaderPaginateEntriesBundle() throws IOException {
         locationIds.add("Location-1");
         testInstance = Mockito.spy(createSyncAccessDecisionTestInstance(Constants.LOCATION));
 
@@ -560,6 +560,88 @@ public class SyncAccessDecisionTest {
 
         Assert.assertEquals(
                 Bundle.HTTPVerb.GET, requestBundleEntries.get(0).getRequest().getMethod());
+
+        // Verify returned result content from the server request
+        Assert.assertNotNull(resultContent);
+        Assert.assertEquals(
+                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\"}",
+                resultContent);
+    }
+
+    @Test
+    public void testPostProcessWithListModeHeaderSearchByTagPaginateEntriesBundle()
+            throws IOException {
+        locationIds.add("Location-1");
+        testInstance = Mockito.spy(createSyncAccessDecisionTestInstance(Constants.LOCATION));
+
+        FhirContext fhirR4Context = mock(FhirContext.class);
+        IGenericClient iGenericClient = mock(IGenericClient.class);
+        ITransaction iTransaction = mock(ITransaction.class);
+        ITransactionTyped<Bundle> iClientExecutable = mock(ITransactionTyped.class);
+
+        Mockito.when(iGenericClient.transaction()).thenReturn(iTransaction);
+        Mockito.when(iTransaction.withBundle(any(Bundle.class))).thenReturn(iClientExecutable);
+
+        Bundle resultBundle = new Bundle();
+        resultBundle.setType(Bundle.BundleType.BATCHRESPONSE);
+        resultBundle.setId("bundle-result-id");
+
+        Mockito.when(iClientExecutable.execute()).thenReturn(resultBundle);
+
+        ArgumentCaptor<Bundle> bundleArgumentCaptor = ArgumentCaptor.forClass(Bundle.class);
+
+        testInstance.setFhirR4Context(fhirR4Context);
+
+        RequestDetailsReader requestDetailsSpy = Mockito.mock(RequestDetailsReader.class);
+
+        Mockito.when(
+                        requestDetailsSpy.getHeader(
+                                SyncAccessDecision.SyncAccessDecisionConstants.FHIR_GATEWAY_MODE))
+                .thenReturn(SyncAccessDecision.SyncAccessDecisionConstants.LIST_ENTRIES);
+
+        Map<String, String[]> params = new HashMap<>();
+        params.put("_count", new String[] {"1"});
+        params.put("_page", new String[] {"1"});
+
+        Mockito.when(requestDetailsSpy.getParameters()).thenReturn(params);
+
+        URL listUrl = Resources.getResource("test_list_resource.json");
+        String testListJson = Resources.toString(listUrl, StandardCharsets.UTF_8);
+
+        ListResource listResource =
+                (ListResource) FhirContext.forR4().newJsonParser().parseResource(testListJson);
+
+        Bundle bundle = new Bundle();
+        Bundle.BundleEntryComponent bundleEntryComponent = new Bundle.BundleEntryComponent();
+        bundleEntryComponent.setResource(listResource);
+        bundle.setType(Bundle.BundleType.BATCHRESPONSE);
+        bundle.setEntry(Arrays.asList(bundleEntryComponent));
+
+        HttpResponse fhirResponseMock =
+                Mockito.mock(HttpResponse.class, Answers.RETURNS_DEEP_STUBS);
+
+        TestUtil.setUpFhirResponseMock(
+                fhirResponseMock,
+                FhirContext.forR4().newJsonParser().encodeResourceToString(bundle));
+
+        testInstance.setFhirR4Client(iGenericClient);
+        testInstance.setFhirR4Context(FhirContext.forR4());
+        String resultContent = testInstance.postProcess(requestDetailsSpy, fhirResponseMock);
+
+        Mockito.verify(iTransaction).withBundle(bundleArgumentCaptor.capture());
+        Bundle requestBundle = bundleArgumentCaptor.getValue();
+
+        Assert.assertNotNull(requestBundle);
+        Assert.assertEquals(Bundle.BundleType.BATCH, requestBundle.getType());
+        List<Bundle.BundleEntryComponent> requestBundleEntries = requestBundle.getEntry();
+
+        // Only one bundle is returned based on the _page and _count params provided above
+        Assert.assertEquals(1, requestBundleEntries.size());
+
+        Assert.assertEquals(
+                Bundle.HTTPVerb.GET, requestBundleEntries.get(0).getRequest().getMethod());
+        Assert.assertEquals(
+                "Group/proxy-list-entry-id-1", requestBundleEntries.get(0).getRequest().getUrl());
 
         // Verify returned result content from the server request
         Assert.assertNotNull(resultContent);
