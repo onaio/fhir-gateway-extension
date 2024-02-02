@@ -220,17 +220,17 @@ public class SyncAccessDecision implements AccessDecision {
         Bundle requestBundle = new Bundle();
         requestBundle.setType(Bundle.BundleType.BATCH);
 
-        String[] pageSize = request.getParameters().get("_count");
-        String[] pageNumber = request.getParameters().get("_page");
+        String[] pageSize = request.getParameters().get(Constants.PAGINATION_PAGE_SIZE);
+        String[] pageNumber = request.getParameters().get(Constants.PAGINATION_PAGE_NUMBER);
 
         int count =
                 pageSize != null && pageSize.length > 0
                         ? Integer.parseInt(pageSize[0])
-                        : 20; // Default page size to 20 if not provided
+                        : Constants.PAGINATION_DEFAULT_PAGE_SIZE;
         int page =
                 pageNumber != null && pageNumber.length > 0
                         ? Integer.parseInt(pageNumber[0])
-                        : 1; // Default page number to 1 if not provided
+                        : Constants.PAGINATION_DEFAULT_PAGE_NUMBER;
 
         int start = Math.max(0, (page - 1)) * count;
         int end = start + count;
@@ -248,9 +248,24 @@ public class SyncAccessDecision implements AccessDecision {
         return requestBundle;
     }
 
-    private Bundle processListEntriesGatewayModeByBundle(IBaseResource responseResource) {
+    private Bundle processListEntriesGatewayModeByBundle(
+            IBaseResource responseResource, RequestDetailsReader request) {
         Bundle requestBundle = new Bundle();
         requestBundle.setType(Bundle.BundleType.BATCH);
+
+        String[] pageSize = request.getParameters().get(Constants.PAGINATION_PAGE_SIZE);
+        String[] pageNumber = request.getParameters().get(Constants.PAGINATION_PAGE_NUMBER);
+
+        int count =
+                pageSize != null && pageSize.length > 0
+                        ? Integer.parseInt(pageSize[0])
+                        : Constants.PAGINATION_DEFAULT_PAGE_SIZE;
+        int page =
+                pageNumber != null && pageNumber.length > 0
+                        ? Integer.parseInt(pageNumber[0])
+                        : Constants.PAGINATION_DEFAULT_PAGE_NUMBER;
+
+        int start = Math.max(0, (page - 1)) * count;
 
         List<Bundle.BundleEntryComponent> bundleEntryComponentList =
                 ((Bundle) responseResource)
@@ -260,6 +275,8 @@ public class SyncAccessDecision implements AccessDecision {
                                         bundleEntryComponent ->
                                                 ((ListResource) bundleEntryComponent.getResource())
                                                         .getEntry().stream())
+                                .skip(start)
+                                .limit(count)
                                 .map(
                                         listEntryComponent ->
                                                 createBundleEntryComponent(
@@ -306,7 +323,7 @@ public class SyncAccessDecision implements AccessDecision {
 
         } else if (responseResource instanceof Bundle) {
 
-            requestBundle = processListEntriesGatewayModeByBundle(responseResource);
+            requestBundle = processListEntriesGatewayModeByBundle(responseResource, request);
         }
 
         return fhirR4Client.transaction().withBundle(requestBundle).execute();
