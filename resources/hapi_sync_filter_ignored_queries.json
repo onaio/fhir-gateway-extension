@@ -55,6 +55,41 @@
       "queryParams": {
         "keycloak-uuid": "ANY_VALUE"
       }
+    },
+    {
+      "path": "ActivityDefinition",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "CodeSystem",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "ConceptMap",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "Device",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "StructureDefinition",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
     }
   ]
 }
