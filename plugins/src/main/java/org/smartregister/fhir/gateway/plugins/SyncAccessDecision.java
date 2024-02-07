@@ -18,6 +18,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.impl.client.BasicResponseHandler;
 import org.apache.http.util.TextUtils;
+import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.ListResource;
@@ -29,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.fhir.gateway.ExceptionUtil;
+import com.google.fhir.gateway.ProxyConstants;
 import com.google.fhir.gateway.interfaces.AccessDecision;
 import com.google.fhir.gateway.interfaces.RequestDetailsReader;
 import com.google.fhir.gateway.interfaces.RequestMutation;
@@ -168,7 +170,7 @@ public class SyncAccessDecision implements AccessDecision {
 
             switch (gatewayMode) {
                 case SyncAccessDecisionConstants.LIST_ENTRIES:
-                    resultContentBundle = postProcessModeListEntries(responseResource);
+                    resultContentBundle = postProcessModeListEntries(responseResource, request);
                     break;
 
                 default:
@@ -216,11 +218,16 @@ public class SyncAccessDecision implements AccessDecision {
 
     @NotNull
     private static Bundle processListEntriesGatewayModeByListResource(
-            ListResource responseListResource) {
+            ListResource responseListResource, int start, int count) {
         Bundle requestBundle = new Bundle();
         requestBundle.setType(Bundle.BundleType.BATCH);
 
-        for (ListResource.ListEntryComponent listEntryComponent : responseListResource.getEntry()) {
+        int end = start + count;
+
+        List<ListResource.ListEntryComponent> entries = responseListResource.getEntry();
+
+        for (int i = start; i < Math.min(end, entries.size()); i++) {
+            ListResource.ListEntryComponent listEntryComponent = entries.get(i);
             requestBundle.addEntry(
                     createBundleEntryComponent(
                             Bundle.HTTPVerb.GET,
@@ -230,7 +237,8 @@ public class SyncAccessDecision implements AccessDecision {
         return requestBundle;
     }
 
-    private Bundle processListEntriesGatewayModeByBundle(IBaseResource responseResource) {
+    private Bundle processListEntriesGatewayModeByBundle(
+            IBaseResource responseResource, int start, int count) {
         Bundle requestBundle = new Bundle();
         requestBundle.setType(Bundle.BundleType.BATCH);
 
@@ -242,6 +250,8 @@ public class SyncAccessDecision implements AccessDecision {
                                         bundleEntryComponent ->
                                                 ((ListResource) bundleEntryComponent.getResource())
                                                         .getEntry().stream())
+                                .skip(start)
+                                .limit(count)
                                 .map(
                                         listEntryComponent ->
                                                 createBundleEntryComponent(
@@ -271,25 +281,85 @@ public class SyncAccessDecision implements AccessDecision {
      * Generates a Bundle result from making a batch search request with the contained entries in
      * the List as parameters
      *
-     * @param responseResource FHIR Resource result returned byt the HTTPResponse
+     * @param responseResource FHIR Resource result returned by the HTTPResponse
      * @return String content of the result Bundle
      */
-    private Bundle postProcessModeListEntries(IBaseResource responseResource) {
+    private Bundle postProcessModeListEntries(
+            IBaseResource responseResource, RequestDetailsReader request) {
 
+        Map<String, String[]> parameters = new HashMap<>(request.getParameters());
+        String[] pageSize = parameters.get(Constants.PAGINATION_PAGE_SIZE);
+        String[] pageNumber = parameters.get(Constants.PAGINATION_PAGE_NUMBER);
+
+        int totalEntries = 0;
+        int count =
+                pageSize != null && pageSize.length > 0
+                        ? Integer.parseInt(pageSize[0])
+                        : Constants.PAGINATION_DEFAULT_PAGE_SIZE;
+        int page =
+                pageNumber != null && pageNumber.length > 0
+                        ? Integer.parseInt(pageNumber[0])
+                        : Constants.PAGINATION_DEFAULT_PAGE_NUMBER;
+
+        int start = Math.max(0, (page - 1)) * count;
         Bundle requestBundle = null;
 
         if (responseResource instanceof ListResource
                 && ((ListResource) responseResource).hasEntry()) {
-
+            totalEntries = ((ListResource) responseResource).getEntry().size();
             requestBundle =
-                    processListEntriesGatewayModeByListResource((ListResource) responseResource);
+                    processListEntriesGatewayModeByListResource(
+                            (ListResource) responseResource, start, count);
 
         } else if (responseResource instanceof Bundle) {
+            List<Bundle.BundleEntryComponent> entries = ((Bundle) responseResource).getEntry();
+            for (Bundle.BundleEntryComponent entry : entries) {
+                if (entry.getResource() instanceof ListResource) {
+                    totalEntries = ((ListResource) entry.getResource()).getEntry().size();
+                    break;
+                }
+            }
 
-            requestBundle = processListEntriesGatewayModeByBundle(responseResource);
+            requestBundle = processListEntriesGatewayModeByBundle(responseResource, start, count);
         }
 
-        return fhirR4Client.transaction().withBundle(requestBundle).execute();
+        Bundle resultBundle = fhirR4Client.transaction().withBundle(requestBundle).execute();
+
+        // add total
+        resultBundle.setTotal(requestBundle.getEntry().size());
+
+        // add pagination links
+        int nextPage = page < totalEntries / count ? page + 1 : 0; // 0 indicates no next page
+        int prevPage = page > 1 ? page - 1 : 0; // 0 indicates no previous page
+
+        Bundle.BundleLinkComponent selfLink = new Bundle.BundleLinkComponent();
+        List<Bundle.BundleLinkComponent> link = new ArrayList<>();
+        String selfUrl = constructUpdatedUrl(request, parameters);
+        selfLink.setRelation(IBaseBundle.LINK_SELF);
+        selfLink.setUrl(selfUrl);
+        link.add(selfLink);
+        resultBundle.setLink(link);
+
+        if (nextPage > 0) {
+            parameters.put(
+                    Constants.PAGINATION_PAGE_NUMBER, new String[] {String.valueOf(nextPage)});
+            String nextUrl = constructUpdatedUrl(request, parameters);
+            Bundle.BundleLinkComponent nextLink = new Bundle.BundleLinkComponent();
+            nextLink.setRelation(IBaseBundle.LINK_NEXT);
+            nextLink.setUrl(nextUrl);
+            resultBundle.addLink(nextLink);
+        }
+        if (prevPage > 0) {
+            parameters.put(
+                    Constants.PAGINATION_PAGE_NUMBER, new String[] {String.valueOf(prevPage)});
+            String prevUrl = constructUpdatedUrl(request, parameters);
+            Bundle.BundleLinkComponent previousLink = new Bundle.BundleLinkComponent();
+            previousLink.setRelation(IBaseBundle.LINK_PREV);
+            previousLink.setUrl(prevUrl);
+            resultBundle.addLink(previousLink);
+        }
+
+        return resultBundle;
     }
 
     private String getSyncTagUrl(String syncStrategy) {
@@ -369,10 +439,33 @@ public class SyncAccessDecision implements AccessDecision {
         return false;
     }
 
+    private static String constructUpdatedUrl(
+            RequestDetailsReader requestDetails, Map<String, String[]> parameters) {
+        StringBuilder updatedUrlBuilder = new StringBuilder(requestDetails.getFhirServerBase());
+
+        updatedUrlBuilder.append("/").append(requestDetails.getRequestPath());
+
+        updatedUrlBuilder.append("?");
+        for (Map.Entry<String, String[]> entry : parameters.entrySet()) {
+            String paramName = entry.getKey();
+            String[] paramValues = entry.getValue();
+
+            for (String paramValue : paramValues) {
+                updatedUrlBuilder.append(paramName).append("=").append(paramValue).append("&");
+            }
+        }
+
+        // Remove the trailing '&' if present
+        if (updatedUrlBuilder.charAt(updatedUrlBuilder.length() - 1) == '&') {
+            updatedUrlBuilder.deleteCharAt(updatedUrlBuilder.length() - 1);
+        }
+
+        return updatedUrlBuilder.toString();
+    }
+
     private boolean isResourceTypeRequest(String requestPath) {
         if (!TextUtils.isEmpty(requestPath)) {
-            String[] sections =
-                    requestPath.split(com.google.fhir.gateway.ProxyConstants.HTTP_URL_SEPARATOR);
+            String[] sections = requestPath.split(ProxyConstants.HTTP_URL_SEPARATOR);
 
             return sections.length == 1 || (sections.length == 2 && TextUtils.isEmpty(sections[1]));
         }
