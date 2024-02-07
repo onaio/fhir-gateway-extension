@@ -534,6 +534,7 @@ public class SyncAccessDecisionTest {
 
         Mockito.when(requestDetailsSpy.getParameters()).thenReturn(params);
         Mockito.when(requestDetailsSpy.getFhirServerBase()).thenReturn(fhirServerBase);
+        Mockito.when(requestDetailsSpy.getRequestPath()).thenReturn("List");
 
         URL listUrl = Resources.getResource("test_list_resource.json");
         String testListJson = Resources.toString(listUrl, StandardCharsets.UTF_8);
@@ -567,7 +568,7 @@ public class SyncAccessDecisionTest {
         // Verify returned result content from the server request has pagination links
         Assert.assertNotNull(resultContent);
         Assert.assertEquals(
-                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\",\"link\":[{\"relation\":\"next\",\"url\":\"http://test:8080/fhir/null?_page=2&_count=1\"}]}",
+                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\",\"total\":1,\"link\":[{\"relation\":\"self\",\"url\":\"http://test:8080/fhir/List?_page=1&_count=1\"},{\"relation\":\"next\",\"url\":\"http://test:8080/fhir/List?_page=2&_count=1\"}]}",
                 resultContent);
     }
 
@@ -609,6 +610,7 @@ public class SyncAccessDecisionTest {
 
         Mockito.when(requestDetailsSpy.getParameters()).thenReturn(params);
         Mockito.when(requestDetailsSpy.getFhirServerBase()).thenReturn(fhirServerBase);
+        Mockito.when(requestDetailsSpy.getRequestPath()).thenReturn("List");
 
         URL listUrl = Resources.getResource("test_list_resource.json");
         String testListJson = Resources.toString(listUrl, StandardCharsets.UTF_8);
@@ -651,7 +653,7 @@ public class SyncAccessDecisionTest {
         // Verify returned result content from the server request, has pagination links
         Assert.assertNotNull(resultContent);
         Assert.assertEquals(
-                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\",\"link\":[{\"relation\":\"previous\",\"url\":\"http://test:8080/fhir/null?_page=1&_count=1\"}]}",
+                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\",\"total\":1,\"link\":[{\"relation\":\"self\",\"url\":\"http://test:8080/fhir/List?_page=2&_count=1\"},{\"relation\":\"previous\",\"url\":\"http://test:8080/fhir/List?_page=1&_count=1\"}]}",
                 resultContent);
     }
 
