@@ -319,9 +319,23 @@ public class SyncAccessDecision implements AccessDecision {
 
             requestBundle = processListEntriesGatewayModeByBundle(responseResource, start, count);
         }
+
+        Bundle resultBundle = fhirR4Client.transaction().withBundle(requestBundle).execute();
+        resultBundle.setTotal(requestBundle.getEntry().size());
+
+        // add pagination links
         int nextPage = page < totalEntries / count ? page + 1 : 0; // 0 indicates no next page
         int prevPage = page > 1 ? page - 1 : 0; // 0 indicates no previous page
-        Bundle resultBundle = fhirR4Client.transaction().withBundle(requestBundle).execute();
+
+        Bundle.BundleLinkComponent selfLink = new Bundle.BundleLinkComponent();
+        List<Bundle.BundleLinkComponent> link = new ArrayList<>();
+        ;
+        String selfUrl = constructUpdatedUrl(request, parameters);
+        selfLink.setRelation(IBaseBundle.LINK_SELF);
+        selfLink.setUrl(selfUrl);
+        link.add(selfLink);
+        resultBundle.setLink(link);
+
         if (nextPage > 0) {
             parameters.put(
                     Constants.PAGINATION_PAGE_NUMBER, new String[] {String.valueOf(nextPage)});
