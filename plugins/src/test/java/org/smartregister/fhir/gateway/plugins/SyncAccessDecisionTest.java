@@ -368,7 +368,9 @@ public class SyncAccessDecisionTest {
                 Mockito.mock(HttpResponse.class, Answers.RETURNS_DEEP_STUBS);
 
         TestUtil.setUpFhirResponseMock(fhirResponseMock, testListJson);
-
+        String fhirServerBase = "http://test:8080/fhir";
+        Mockito.when(requestDetailsSpy.getFhirServerBase()).thenReturn(fhirServerBase);
+        Mockito.when(requestDetailsSpy.getRequestPath()).thenReturn("List");
         String resultContent = testInstance.postProcess(requestDetailsSpy, fhirResponseMock);
 
         Mockito.verify(iTransaction).withBundle(bundleArgumentCaptor.capture());
@@ -393,7 +395,7 @@ public class SyncAccessDecisionTest {
         // Verify returned result content from the server request
         Assert.assertNotNull(resultContent);
         Assert.assertEquals(
-                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\"}",
+                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\",\"total\":2,\"link\":[{\"relation\":\"self\",\"url\":\"http://test:8080/fhir/List?\"}]}",
                 resultContent);
     }
 
@@ -466,6 +468,9 @@ public class SyncAccessDecisionTest {
 
         testInstance.setFhirR4Client(iGenericClient);
         testInstance.setFhirR4Context(FhirContext.forR4());
+        String fhirServerBase = "http://test:8080/fhir";
+        Mockito.when(requestDetailsSpy.getFhirServerBase()).thenReturn(fhirServerBase);
+        Mockito.when(requestDetailsSpy.getRequestPath()).thenReturn("List");
         String resultContent = testInstance.postProcess(requestDetailsSpy, fhirResponseMock);
 
         Mockito.verify(iTransaction).withBundle(bundleArgumentCaptor.capture());
@@ -490,7 +495,7 @@ public class SyncAccessDecisionTest {
         // Verify returned result content from the server request
         Assert.assertNotNull(resultContent);
         Assert.assertEquals(
-                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\"}",
+                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\",\"total\":2,\"link\":[{\"relation\":\"self\",\"url\":\"http://test:8080/fhir/List?\"}]}",
                 resultContent);
     }
 
