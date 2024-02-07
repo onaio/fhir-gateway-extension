@@ -193,12 +193,19 @@ types through the gateway.
 
 The FHIR Gateway Mode allows for custom processing of responses from the FHIR
 server. The mode is triggered by a HTTP Header sent by the client named
-`FHIR-Gateway-Mode` with a value of `list-entries`.
+`FHIR-Gateway-Mode` with a value e.g. `list-entries`(Currently only supported).
 
-##### Pagination
+##### FHIR-Gateway-Mode: list-entries
 
-Pagination is supported in fetching data from a FHIR server using the List
-endpoint. This can be useful when dealing with Resources with high volume of
+This mode is used when using the `/List` endpoint. Normally, fetching using this
+endpoint returns a list of references which can then be used to query for the
+actual resources. With this header value configured the response is instead a
+Bundle that contains all the actual (referenced) resources.
+
+###### Pagination
+
+Pagination is supported in fetching the data from a FHIR server. This can be
+useful when dealing with List resources that have a large number of referenced
 entries like Locations.
 
 To enable pagination, you need to include two parameters in the request URL:

@@ -20,7 +20,10 @@ import org.apache.http.impl.client.BasicResponseHandler;
 import org.apache.http.util.TextUtils;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.instance.model.api.IBaseResource;
-import org.hl7.fhir.r4.model.*;
+import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.ListResource;
+import org.hl7.fhir.r4.model.OperationOutcome;
+import org.hl7.fhir.r4.model.Resource;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -321,6 +324,8 @@ public class SyncAccessDecision implements AccessDecision {
         }
 
         Bundle resultBundle = fhirR4Client.transaction().withBundle(requestBundle).execute();
+
+        // add total
         resultBundle.setTotal(requestBundle.getEntry().size());
 
         // add pagination links
@@ -329,7 +334,6 @@ public class SyncAccessDecision implements AccessDecision {
 
         Bundle.BundleLinkComponent selfLink = new Bundle.BundleLinkComponent();
         List<Bundle.BundleLinkComponent> link = new ArrayList<>();
-        ;
         String selfUrl = constructUpdatedUrl(request, parameters);
         selfLink.setRelation(IBaseBundle.LINK_SELF);
         selfLink.setUrl(selfUrl);
