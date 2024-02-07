@@ -26,6 +26,14 @@ public class Constants {
     public static final String KEYCLOAK_UUID = "keycloak-uuid";
     public static final String IDENTIFIER = "identifier";
 
+    public static final String PAGINATION_PAGE_SIZE = "_count";
+
+    public static final String PAGINATION_PAGE_NUMBER = "_page";
+
+    public static final int PAGINATION_DEFAULT_PAGE_SIZE = 20;
+
+    public static final int PAGINATION_DEFAULT_PAGE_NUMBER = 1;
+
     public interface Literals {
         String EQUALS = "=";
     }
