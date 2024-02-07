@@ -323,7 +323,8 @@ public class SyncAccessDecision implements AccessDecision {
         int prevPage = page > 1 ? page - 1 : 0; // 0 indicates no previous page
         Bundle resultBundle = fhirR4Client.transaction().withBundle(requestBundle).execute();
         if (nextPage > 0) {
-            parameters.put("_page", new String[] {String.valueOf(nextPage)});
+            parameters.put(
+                    Constants.PAGINATION_PAGE_NUMBER, new String[] {String.valueOf(nextPage)});
             String nextUrl = constructUpdatedUrl(request, parameters);
             Bundle.BundleLinkComponent nextLink = new Bundle.BundleLinkComponent();
             nextLink.setRelation(IBaseBundle.LINK_NEXT);
@@ -331,7 +332,8 @@ public class SyncAccessDecision implements AccessDecision {
             resultBundle.addLink(nextLink);
         }
         if (prevPage > 0) {
-            parameters.put("_page", new String[] {String.valueOf(prevPage)});
+            parameters.put(
+                    Constants.PAGINATION_PAGE_NUMBER, new String[] {String.valueOf(prevPage)});
             String prevUrl = constructUpdatedUrl(request, parameters);
             Bundle.BundleLinkComponent previousLink = new Bundle.BundleLinkComponent();
             previousLink.setRelation(IBaseBundle.LINK_PREV);

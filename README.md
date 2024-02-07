@@ -185,7 +185,17 @@ URL:
 This approach ensures consistency and clarity when accessing various endpoint
 types through the gateway.
 
-### Pagination
+### Custom Headers
+
+#### FHIR-Gateway-Mode
+
+##### Overview
+
+The FHIR Gateway Mode allows for custom processing of responses from the FHIR
+server. The mode is triggered by a HTTP Header sent by the client named
+`FHIR-Gateway-Mode` with a value of `list-entries`.
+
+##### Pagination
 
 Pagination is supported in fetching data from a FHIR server using the List
 endpoint. This can be useful when dealing with Resources with high volume of
