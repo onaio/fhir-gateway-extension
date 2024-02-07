@@ -530,7 +530,10 @@ public class SyncAccessDecisionTest {
         params.put("_count", new String[] {"1"});
         params.put("_page", new String[] {"1"});
 
+        String fhirServerBase = "http://test:8080/fhir";
+
         Mockito.when(requestDetailsSpy.getParameters()).thenReturn(params);
+        Mockito.when(requestDetailsSpy.getFhirServerBase()).thenReturn(fhirServerBase);
 
         URL listUrl = Resources.getResource("test_list_resource.json");
         String testListJson = Resources.toString(listUrl, StandardCharsets.UTF_8);
@@ -561,10 +564,10 @@ public class SyncAccessDecisionTest {
         Assert.assertEquals(
                 Bundle.HTTPVerb.GET, requestBundleEntries.get(0).getRequest().getMethod());
 
-        // Verify returned result content from the server request
+        // Verify returned result content from the server request has pagination links
         Assert.assertNotNull(resultContent);
         Assert.assertEquals(
-                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\"}",
+                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\",\"link\":[{\"relation\":\"next\",\"url\":\"http://test:8080/fhir/null?_page=2&_count=1\"}]}",
                 resultContent);
     }
 
@@ -601,9 +604,11 @@ public class SyncAccessDecisionTest {
 
         Map<String, String[]> params = new HashMap<>();
         params.put("_count", new String[] {"1"});
-        params.put("_page", new String[] {"1"});
+        params.put("_page", new String[] {"2"});
+        String fhirServerBase = "http://test:8080/fhir";
 
         Mockito.when(requestDetailsSpy.getParameters()).thenReturn(params);
+        Mockito.when(requestDetailsSpy.getFhirServerBase()).thenReturn(fhirServerBase);
 
         URL listUrl = Resources.getResource("test_list_resource.json");
         String testListJson = Resources.toString(listUrl, StandardCharsets.UTF_8);
@@ -641,12 +646,12 @@ public class SyncAccessDecisionTest {
         Assert.assertEquals(
                 Bundle.HTTPVerb.GET, requestBundleEntries.get(0).getRequest().getMethod());
         Assert.assertEquals(
-                "Group/proxy-list-entry-id-1", requestBundleEntries.get(0).getRequest().getUrl());
+                "Group/proxy-list-entry-id-2", requestBundleEntries.get(0).getRequest().getUrl());
 
-        // Verify returned result content from the server request
+        // Verify returned result content from the server request, has pagination links
         Assert.assertNotNull(resultContent);
         Assert.assertEquals(
-                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\"}",
+                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\",\"link\":[{\"relation\":\"previous\",\"url\":\"http://test:8080/fhir/null?_page=1&_count=1\"}]}",
                 resultContent);
     }
 
