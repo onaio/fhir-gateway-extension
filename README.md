@@ -1,4 +1,4 @@
-# fhir-gateway-plugin
+# fhir-gateway-extension
 
 This repository extends the FHIR Info Gateway code base release artifact found
 here https://github.com/google/fhir-gateway and adds custom OpenSRP logic.
