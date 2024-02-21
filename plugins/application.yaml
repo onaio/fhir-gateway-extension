@@ -1,0 +1,6 @@
+sentry:
+  options:
+    dsn:
+    release:
+    environment:
+  enabled: true
