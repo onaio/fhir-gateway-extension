@@ -13,23 +13,27 @@ import io.sentry.Sentry;
 import io.sentry.SentryOptions;
 import jakarta.annotation.PostConstruct;
 
-@ConditionalOnProperty(value = "SENTRY_ENABLED", havingValue = "true", matchIfMissing = false)
+@ConditionalOnProperty(
+    prefix="sentry",
+    name = "enabled",
+    havingValue = "true",
+    matchIfMissing = false)
 @Configuration
 public class SentryConfiguration {
 
-    @Value("${SENTRY_DSN:}")
+    @Value("${sentry.options.dsn:}")
     private String dsn;
 
-    @Value("${SENTRY_RELEASE:}")
+    @Value("${sentry.options.release:}")
     private String release;
 
-    @Value("${SENTRY_ENVIRONMENT:}")
+    @Value("${sentry.options.environment:}")
     private String environment;
 
-    @Value("#{${SENTRY_TAGS: {}} ?: {}}")
+    @Value("#{${sentry.options.tags: {}} ?: {}}")
     private Map<String, String> tags;
 
-    @Value("${SENTRY_DEBUG: false}")
+    @Value("${sentry.options.debug: false}")
     private boolean debug;
 
     @PostConstruct
