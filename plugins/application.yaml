@@ -1,6 +1,5 @@
 sentry:
-  options:
-    dsn:
-    release:
-    environment:
+  dsn: ""
+  release:
+  environment: ""
   enabled: true

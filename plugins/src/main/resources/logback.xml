@@ -1,0 +1,14 @@
+<configuration>
+    <appender name="Sentry" class="io.sentry.logback.SentryAppender">
+        <!-- Optionally change minimum Event level. Default for Events is ERROR -->
+        <minimumEventLevel>ERROR</minimumEventLevel>
+        <!-- Optionally change minimum Breadcrumbs level. Default for Breadcrumbs is INFO -->
+        <minimumBreadcrumbLevel>INFO</minimumBreadcrumbLevel>
+    </appender>
+
+    <!-- Enable the Console and Sentry appenders, Console is provided as an example
+    of a non-Sentry logger that is set to a different logging threshold -->
+    <root level="INFO">
+        <appender-ref ref="Sentry" />
+    </root>
+</configuration>
