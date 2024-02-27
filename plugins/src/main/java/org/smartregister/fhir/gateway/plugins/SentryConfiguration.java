@@ -2,7 +2,8 @@ package org.smartregister.fhir.gateway.plugins;
 
 import java.util.Map;
 
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
@@ -14,37 +15,39 @@ import io.sentry.SentryOptions;
 import jakarta.annotation.PostConstruct;
 
 @ConditionalOnProperty(
-    prefix="sentry",
-    name = "enabled",
-    havingValue = "true",
-    matchIfMissing = false)
+        prefix = "sentry",
+        name = "enabled",
+        havingValue = "true",
+        matchIfMissing = false)
 @Configuration
 public class SentryConfiguration {
 
-    @Value("${sentry.options.dsn:}")
-    private String dsn;
+    static final Logger logger = LoggerFactory.getLogger(SentryConfiguration.class);
 
-    @Value("${sentry.options.release:}")
-    private String release;
+    @Value("${sentry.dsn:}")
+    static String dsn;
 
-    @Value("${sentry.options.environment:}")
-    private String environment;
+    @Value("${sentry.release:}")
+    static String release;
 
-    @Value("#{${sentry.options.tags: {}} ?: {}}")
-    private Map<String, String> tags;
+    @Value("${sentry.environment:}")
+    static String environment;
 
-    @Value("${sentry.options.debug: false}")
-    private boolean debug;
+    @Value("#{${sentry.tags: {}} ?: {}}")
+    static Map<String, String> tags;
+
+    @Value("${sentry.debug: false}")
+    static boolean debug;
 
     @PostConstruct
-    public void initialize() {
+    public static void initialize() {
         if (dsn != null && !dsn.trim().isEmpty()) {
             initializeSentry();
         }
     }
 
     @VisibleForTesting
-    public void initializeSentry() {
+    public static void initializeSentry() {
         Sentry.init(
                 sentryOptions -> {
                     sentryOptions.setDsn(dsn);
@@ -56,7 +59,7 @@ public class SentryConfiguration {
     }
 
     @VisibleForTesting
-    public void populateTags(SentryOptions sentryOptions) {
+    public static void populateTags(SentryOptions sentryOptions) {
         try {
             for (Map.Entry<String, String> extraTagsEntry : tags.entrySet()) {
                 String key = extraTagsEntry.getKey();
@@ -64,7 +67,7 @@ public class SentryConfiguration {
                     sentryOptions.setTag(extraTagsEntry.getKey(), extraTagsEntry.getValue());
             }
         } catch (Exception e) {
-            LogFactory.getLog(this.getClass()).error(e);
+            logger.error(e.getMessage());
         }
     }
 }

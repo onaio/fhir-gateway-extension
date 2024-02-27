@@ -1,5 +1,6 @@
 package org.smartregister.fhir.gateway;
 
+import org.smartregister.fhir.gateway.plugins.SentryConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.web.servlet.ServletComponentScan;
@@ -9,11 +10,16 @@ import org.springframework.boot.web.servlet.ServletComponentScan;
  * plugins defined in "com.google.fhir.gateway.plugin" and "org.smartregister.fhir.gateway.plugins.
  */
 @SpringBootApplication(
-        scanBasePackages = {"org.smartregister.fhir.gateway", "com.google.fhir.gateway.plugin"})
+        scanBasePackages = {
+            "org.smartregister.fhir.gateway",
+            "com.google.fhir.gateway.plugin",
+            "org.smartregister.fhir.gateway.plugins"
+        })
 @ServletComponentScan({"org.smartregister.fhir.gateway.plugins", "com.google.fhir.gateway"})
 public class MainApp {
 
     public static void main(String[] args) {
+        SentryConfiguration.initializeSentry();
         SpringApplication.run(MainApp.class, args);
     }
 }

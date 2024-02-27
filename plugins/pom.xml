@@ -16,8 +16,6 @@
     <project.basedir>${project.basedir}</project.basedir>
     <hapifhir.version>6.8.3</hapifhir.version>
     <fhir.proxy-plugin.version>0.2.0</fhir.proxy-plugin.version>
-    <powermock.version>2.0.9</powermock.version>
-    <mockito.version>2.23.0</mockito.version>
   </properties>
 
   <dependencies>
@@ -70,25 +68,7 @@
     <dependency>
       <groupId>io.sentry</groupId>
       <artifactId>sentry-logback</artifactId>
-      <version>6.26.0</version>
-    </dependency>
-    <dependency>
-      <groupId>org.powermock</groupId>
-      <artifactId>powermock-module-junit4</artifactId>
-      <version>${powermock.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.powermock</groupId>
-      <artifactId>powermock-api-mockito2</artifactId>
-      <version>${powermock.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.mockito</groupId>
-      <artifactId>mockito-core</artifactId>
-      <version>${mockito.version}</version>
-      <scope>test</scope>
+      <version>7.3.0</version>
     </dependency>
 
   </dependencies>
