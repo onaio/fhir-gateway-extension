@@ -19,7 +19,7 @@ import org.springframework.boot.web.servlet.ServletComponentScan;
 public class MainApp {
 
     public static void main(String[] args) {
-        SentryConfiguration.initializeSentry();
+        SentryConfiguration.initialize();
         SpringApplication.run(MainApp.class, args);
     }
 }
