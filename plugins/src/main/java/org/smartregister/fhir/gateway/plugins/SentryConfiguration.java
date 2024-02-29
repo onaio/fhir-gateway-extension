@@ -24,20 +24,37 @@ public class SentryConfiguration {
 
     static final Logger logger = LoggerFactory.getLogger(SentryConfiguration.class);
 
+    private static String dsn;
+
+    private static String release;
+    private static String environment;
+    private static Map<String, String> tags;
+    private static boolean debug;
+
     @Value("${sentry.dsn:}")
-    static String dsn;
+    public void setDsn(String dsn) {
+        SentryConfiguration.dsn = dsn;
+    }
 
     @Value("${sentry.release:}")
-    static String release;
+    public void setRelease(String release) {
+        SentryConfiguration.release = release;
+    }
 
     @Value("${sentry.environment:}")
-    static String environment;
+    public void setEnvironment(String environment) {
+        SentryConfiguration.environment = environment;
+    }
 
     @Value("#{${sentry.tags: {}} ?: {}}")
-    static Map<String, String> tags;
+    public void setTags(Map<String, String> tags) {
+        SentryConfiguration.tags = tags;
+    }
 
     @Value("${sentry.debug: false}")
-    static boolean debug;
+    public void setDebug(boolean debug) {
+        SentryConfiguration.debug = debug;
+    }
 
     @PostConstruct
     public static void initialize() {
