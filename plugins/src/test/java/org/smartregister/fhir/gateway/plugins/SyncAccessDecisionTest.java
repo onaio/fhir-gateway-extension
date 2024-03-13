@@ -50,6 +50,8 @@ public class SyncAccessDecisionTest {
 
     private List<String> userRoles = new ArrayList<>();
 
+    private List<String> relatedEntityLocationIds = new ArrayList<>();
+
     private SyncAccessDecision testInstance;
 
     @Test
@@ -84,6 +86,47 @@ public class SyncAccessDecisionTest {
                                         locationIds,
                                         Constants.PARAM_VALUES_SEPARATOR
                                                 + Constants.DEFAULT_LOCATION_TAG_URL
+                                                + Constants.CODE_URL_VALUE_SEPARATOR)));
+
+        for (String param : mutatedRequest.getQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
+            Assert.assertFalse(param.contains(Constants.DEFAULT_CARE_TEAM_TAG_URL));
+            Assert.assertFalse(param.contains(Constants.DEFAULT_ORGANISATION_TAG_URL));
+        }
+    }
+
+    @Test
+    public void
+            preProcessShouldAddRelatedEntityLocationIdsFiltersWhenUserIsAssignedToRelatedEntityLocationIdsOnly()
+                    throws IOException {
+        relatedEntityLocationIds.add("relocationid12");
+        relatedEntityLocationIds.add("relocationid2");
+        testInstance = createSyncAccessDecisionTestInstance(Constants.RELATED_ENTITY_LOCATION);
+
+        RequestDetails requestDetails = new ServletRequestDetails();
+        requestDetails.setRequestType(RequestTypeEnum.GET);
+        requestDetails.setRestOperationType(RestOperationTypeEnum.SEARCH_TYPE);
+        requestDetails.setResourceName("Patient");
+        requestDetails.setFhirServerBase("https://smartregister.org/fhir");
+        requestDetails.setCompleteUrl("https://smartregister.org/fhir/Patient");
+        requestDetails.setRequestPath("Patient");
+
+        RequestMutation mutatedRequest =
+                testInstance.getRequestMutation(new TestRequestDetailsToReader(requestDetails));
+
+        for (String locationId : relatedEntityLocationIds) {
+            Assert.assertFalse(requestDetails.getCompleteUrl().contains(locationId));
+            Assert.assertFalse(requestDetails.getRequestPath().contains(locationId));
+        }
+        Assert.assertTrue(
+                mutatedRequest
+                        .getQueryParams()
+                        .get(Constants.TAG_SEARCH_PARAM)
+                        .get(0)
+                        .contains(
+                                StringUtils.join(
+                                        relatedEntityLocationIds,
+                                        Constants.PARAM_VALUES_SEPARATOR
+                                                + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
                                                 + Constants.CODE_URL_VALUE_SEPARATOR)));
 
         for (String param : mutatedRequest.getQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
@@ -667,6 +710,7 @@ public class SyncAccessDecisionTest {
         locationIds.clear();
         careTeamIds.clear();
         organisationIds.clear();
+        relatedEntityLocationIds.clear();
     }
 
     private SyncAccessDecision createSyncAccessDecisionTestInstance(String syncStrategy) {
@@ -676,6 +720,7 @@ public class SyncAccessDecisionTest {
         syncStrategyIds.put(Constants.LOCATION, locationIds);
         syncStrategyIds.put(Constants.CARE_TEAM, careTeamIds);
         syncStrategyIds.put(Constants.ORGANIZATION, organisationIds);
+        syncStrategyIds.put(Constants.RELATED_ENTITY_LOCATION, relatedEntityLocationIds);
 
         SyncAccessDecision accessDecision =
                 new SyncAccessDecision(
