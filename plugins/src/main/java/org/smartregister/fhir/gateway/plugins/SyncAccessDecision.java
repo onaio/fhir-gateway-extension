@@ -51,7 +51,7 @@ public class SyncAccessDecision implements AccessDecision {
     private final String syncStrategy;
     private final String applicationId;
     private final boolean accessGranted;
-    private final Map<String, List<String>> syncStrategyIds;
+    private Map<String, List<String>> syncStrategyIds;
     private final List<String> roles;
     private IgnoredResourcesConfig config;
     private final String keycloakUUID;
@@ -101,8 +101,25 @@ public class SyncAccessDecision implements AccessDecision {
         if (isSyncUrl(requestDetailsReader)
                 && !shouldSkipDataFiltering(
                         requestDetailsReader)) { // Check if it is the Sync URL and Skip app-wide
+
             // accessible resource requests
-            if (syncStrategyIds.isEmpty()
+            if (Constants.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)) {
+                Map<String, String[]> parameters =
+                        new HashMap<>(requestDetailsReader.getParameters());
+                String[] syncLocations = parameters.get(Constants.SYNC_LOCATIONS);
+                List<String> relatedEntityLocationIds;
+                if (roles.contains(Constants.ROLE_ALL_LOCATIONS) && syncLocations != null) {
+                    // selected locations
+
+                    List<String> locationUuids = Arrays.asList(syncLocations[0].split(","));
+                    relatedEntityLocationIds =
+                            PractitionerDetailsEndpointHelper.getAttributedLocations(
+                                    PractitionerDetailsEndpointHelper.getLocationsHierarchy(
+                                            locationUuids));
+                    this.syncStrategyIds = Map.of(syncStrategy, relatedEntityLocationIds);
+                }
+
+            } else if (syncStrategyIds.isEmpty()
                     || StringUtils.isBlank(syncStrategy)
                     || (syncStrategyIds.containsKey(syncStrategy)
                             && syncStrategyIds.get(syncStrategy).isEmpty())) {
@@ -372,6 +389,9 @@ public class SyncAccessDecision implements AccessDecision {
         } else if (syncStrategy.equalsIgnoreCase(Constants.CARE_TEAM)) {
             return getEnvironmentVar(
                     Constants.CARE_TEAM_TAG_URL_ENV, Constants.DEFAULT_CARE_TEAM_TAG_URL);
+        } else if (syncStrategy.equalsIgnoreCase(Constants.RELATED_ENTITY_LOCATION)) {
+            return getEnvironmentVar(
+                    Constants.RELATED_ENTITY_TAG_URL_ENV, Constants.DEFAULT_RELATED_ENTITY_TAG_URL);
         } else {
             return null;
         }

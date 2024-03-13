@@ -364,6 +364,7 @@ public class PermissionAccessChecker implements AccessChecker {
             List<String> careTeamIds;
             List<String> organizationIds;
             List<String> locationIds;
+            List<String> relatedEntityLocationIds;
             if (StringUtils.isNotBlank(syncStrategy)) {
                 if (Constants.CARE_TEAM.equalsIgnoreCase(syncStrategy)) {
                     careTeams =
@@ -413,6 +414,18 @@ public class PermissionAccessChecker implements AccessChecker {
                                     : new ArrayList<>();
 
                     resultMap = Map.of(syncStrategy, locationIds);
+                } else if (Constants.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)) {
+                    // assigned locations
+                    relatedEntityLocationIds =
+                            practitionerDetails != null
+                                            && practitionerDetails.getFhirPractitionerDetails()
+                                                    != null
+                                    ? PractitionerDetailsEndpointHelper.getAttributedLocations(
+                                            practitionerDetails
+                                                    .getFhirPractitionerDetails()
+                                                    .getLocationHierarchyList())
+                                    : new ArrayList<>();
+                    resultMap = Map.of(syncStrategy, relatedEntityLocationIds);
                 }
             } else
                 throw new IllegalStateException(

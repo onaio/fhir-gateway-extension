@@ -43,7 +43,7 @@ public class PractitionerDetailsEndpointHelper {
     public static final Bundle EMPTY_BUNDLE = new Bundle();
     private final IGenericClient r4FHIRClient;
 
-    private final LocationHierarchyEndpointHelper locationHierarchyEndpointHelper;
+    private static LocationHierarchyEndpointHelper locationHierarchyEndpointHelper;
 
     public PractitionerDetailsEndpointHelper(IGenericClient fhirClient) {
         this.r4FHIRClient = fhirClient;
@@ -546,7 +546,7 @@ public class PractitionerDetailsEndpointHelper {
                 : Collections.emptyList();
     }
 
-    private List<LocationHierarchy> getLocationsHierarchy(List<String> locationsIdentifiers) {
+    static List<LocationHierarchy> getLocationsHierarchy(List<String> locationsIdentifiers) {
         List<LocationHierarchy> locationHierarchyList = new ArrayList<>();
         LocationHierarchy locationHierarchy;
         for (String locationsIdentifier : locationsIdentifiers) {
