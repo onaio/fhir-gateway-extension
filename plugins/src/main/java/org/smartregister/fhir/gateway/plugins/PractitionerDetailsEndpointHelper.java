@@ -41,16 +41,13 @@ public class PractitionerDetailsEndpointHelper {
     public static final String PRACTITIONER_GROUP_CODE = "405623001";
     public static final String HTTP_SNOMED_INFO_SCT = "http://snomed.info/sct";
     public static final Bundle EMPTY_BUNDLE = new Bundle();
-    private final IGenericClient r4FHIRClient;
-
-    private final LocationHierarchyEndpointHelper locationHierarchyEndpointHelper;
+    private static IGenericClient r4FHIRClient;
 
     public PractitionerDetailsEndpointHelper(IGenericClient fhirClient) {
         this.r4FHIRClient = fhirClient;
-        this.locationHierarchyEndpointHelper = new LocationHierarchyEndpointHelper(r4FHIRClient);
     }
 
-    private IGenericClient getFhirClientForR4() {
+    private static IGenericClient getFhirClientForR4() {
         return r4FHIRClient;
     }
 
@@ -546,8 +543,10 @@ public class PractitionerDetailsEndpointHelper {
                 : Collections.emptyList();
     }
 
-    private List<LocationHierarchy> getLocationsHierarchy(List<String> locationsIdentifiers) {
+    public static List<LocationHierarchy> getLocationsHierarchy(List<String> locationsIdentifiers) {
         List<LocationHierarchy> locationHierarchyList = new ArrayList<>();
+        LocationHierarchyEndpointHelper locationHierarchyEndpointHelper =
+                new LocationHierarchyEndpointHelper(r4FHIRClient);
         LocationHierarchy locationHierarchy;
         for (String locationsIdentifier : locationsIdentifiers) {
             locationHierarchy =

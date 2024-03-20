@@ -22,6 +22,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
@@ -49,6 +50,8 @@ public class SyncAccessDecisionTest {
     private List<String> organisationIds = new ArrayList<>();
 
     private List<String> userRoles = new ArrayList<>();
+
+    private List<String> relatedEntityLocationIds = new ArrayList<>();
 
     private SyncAccessDecision testInstance;
 
@@ -89,6 +92,183 @@ public class SyncAccessDecisionTest {
         for (String param : mutatedRequest.getQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
             Assert.assertFalse(param.contains(Constants.DEFAULT_CARE_TEAM_TAG_URL));
             Assert.assertFalse(param.contains(Constants.DEFAULT_ORGANISATION_TAG_URL));
+        }
+    }
+
+    @Test
+    public void
+            requestMutationWhenUserIsAssignedToRelatedEntityLocationIdsShouldAddAssignedRelatedEntityLocationIdsFilters()
+                    throws IOException {
+        relatedEntityLocationIds.add("relocationid12");
+        relatedEntityLocationIds.add("relocationid2");
+        testInstance = createSyncAccessDecisionTestInstance(Constants.RELATED_ENTITY_LOCATION);
+
+        RequestDetails requestDetails = new ServletRequestDetails();
+        requestDetails.setRequestType(RequestTypeEnum.GET);
+        requestDetails.setRestOperationType(RestOperationTypeEnum.SEARCH_TYPE);
+        requestDetails.setResourceName("Patient");
+        requestDetails.setFhirServerBase("https://smartregister.org/fhir");
+        requestDetails.setCompleteUrl("https://smartregister.org/fhir/Patient");
+        requestDetails.setRequestPath("Patient");
+
+        RequestMutation mutatedRequest =
+                testInstance.getRequestMutation(new TestRequestDetailsToReader(requestDetails));
+
+        for (String locationId : relatedEntityLocationIds) {
+            Assert.assertFalse(requestDetails.getCompleteUrl().contains(locationId));
+            Assert.assertFalse(requestDetails.getRequestPath().contains(locationId));
+        }
+        Assert.assertTrue(
+                mutatedRequest
+                        .getQueryParams()
+                        .get(Constants.TAG_SEARCH_PARAM)
+                        .get(0)
+                        .contains(
+                                StringUtils.join(
+                                        relatedEntityLocationIds,
+                                        Constants.PARAM_VALUES_SEPARATOR
+                                                + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
+                                                + Constants.CODE_URL_VALUE_SEPARATOR)));
+
+        for (String param : mutatedRequest.getQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
+            Assert.assertFalse(param.contains(Constants.DEFAULT_CARE_TEAM_TAG_URL));
+            Assert.assertFalse(param.contains(Constants.DEFAULT_ORGANISATION_TAG_URL));
+        }
+    }
+
+    @Test
+    public void
+            requestMutationWhenUserSelectedRelatedEntityLocationIdsShouldAddSelectedRelatedEntityLocationIdsFilters()
+                    throws IOException {
+        try (MockedStatic<PractitionerDetailsEndpointHelper> mockPractitionerDetailsEndpointHelper =
+                Mockito.mockStatic(PractitionerDetailsEndpointHelper.class)) {
+            List<String> selectedRelatedEntityLocationIds = new ArrayList<>();
+            String srelocationid1 = "srelocationid1";
+            String srelocationid2 = "srelocationid2";
+
+            selectedRelatedEntityLocationIds.add(srelocationid1);
+            selectedRelatedEntityLocationIds.add(srelocationid2);
+
+            String searchTagValues =
+                    Constants.DEFAULT_RELATED_ENTITY_TAG_URL
+                            + Constants.CODE_URL_VALUE_SEPARATOR
+                            + srelocationid1
+                            + Constants.PARAM_VALUES_SEPARATOR
+                            + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
+                            + Constants.CODE_URL_VALUE_SEPARATOR
+                            + srelocationid2;
+            relatedEntityLocationIds.add("relocationid1");
+            relatedEntityLocationIds.add("relocationid2");
+            testInstance = createSyncAccessDecisionTestInstance(Constants.RELATED_ENTITY_LOCATION);
+
+            mockPractitionerDetailsEndpointHelper
+                    .when(
+                            () ->
+                                    PractitionerDetailsEndpointHelper.getAttributedLocations(
+                                            Mockito.anyList()))
+                    .thenReturn(selectedRelatedEntityLocationIds);
+            mockPractitionerDetailsEndpointHelper
+                    .when(
+                            () ->
+                                    PractitionerDetailsEndpointHelper.createSearchTagValues(
+                                            Mockito.any()))
+                    .thenReturn(searchTagValues);
+
+            Map<String, String[]> parameters = new HashMap<>();
+            String[] locations = {"srelocationid1", "srelocationid2"};
+            parameters.put(Constants.SYNC_LOCATIONS, locations);
+
+            RequestDetails requestDetails = new ServletRequestDetails();
+            requestDetails.setRequestType(RequestTypeEnum.GET);
+            requestDetails.setRestOperationType(RestOperationTypeEnum.SEARCH_TYPE);
+            requestDetails.setResourceName("Patient");
+            requestDetails.setFhirServerBase("https://smartregister.org/fhir");
+            requestDetails.setCompleteUrl("https://smartregister.org/fhir/Patient");
+            requestDetails.setRequestPath("Patient");
+            requestDetails.setParameters(parameters);
+            userRoles.add(Constants.ROLE_ALL_LOCATIONS);
+
+            RequestMutation mutatedRequest =
+                    testInstance.getRequestMutation(new TestRequestDetailsToReader(requestDetails));
+
+            Assert.assertTrue(
+                    mutatedRequest
+                            .getQueryParams()
+                            .get(Constants.TAG_SEARCH_PARAM)
+                            .get(0)
+                            .contains(
+                                    StringUtils.join(
+                                            selectedRelatedEntityLocationIds,
+                                            Constants.PARAM_VALUES_SEPARATOR
+                                                    + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
+                                                    + Constants.CODE_URL_VALUE_SEPARATOR)));
+            Assert.assertFalse(
+                    mutatedRequest
+                            .getQueryParams()
+                            .get(Constants.TAG_SEARCH_PARAM)
+                            .get(0)
+                            .contains(
+                                    StringUtils.join(
+                                            relatedEntityLocationIds,
+                                            Constants.PARAM_VALUES_SEPARATOR
+                                                    + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
+                                                    + Constants.CODE_URL_VALUE_SEPARATOR)));
+        }
+    }
+
+    @Test
+    public void requestMutationWhenLocationUuidAreEmptyShouldNotError() throws IOException {
+        try (MockedStatic<PractitionerDetailsEndpointHelper> mockPractitionerDetailsEndpointHelper =
+                Mockito.mockStatic(PractitionerDetailsEndpointHelper.class)) {
+            List<String> selectedRelatedEntityLocationIds = new ArrayList<>();
+            String srelocationid1 = "";
+            String srelocationid2 = " ";
+
+            selectedRelatedEntityLocationIds.add(srelocationid1);
+            selectedRelatedEntityLocationIds.add(srelocationid2);
+
+            String searchTagValues =
+                    Constants.DEFAULT_RELATED_ENTITY_TAG_URL
+                            + Constants.CODE_URL_VALUE_SEPARATOR
+                            + srelocationid1
+                            + Constants.PARAM_VALUES_SEPARATOR
+                            + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
+                            + Constants.CODE_URL_VALUE_SEPARATOR
+                            + srelocationid2;
+            relatedEntityLocationIds.add("relocationid1");
+            relatedEntityLocationIds.add("relocationid2");
+            testInstance = createSyncAccessDecisionTestInstance(Constants.RELATED_ENTITY_LOCATION);
+
+            mockPractitionerDetailsEndpointHelper
+                    .when(
+                            () ->
+                                    PractitionerDetailsEndpointHelper.getAttributedLocations(
+                                            Mockito.anyList()))
+                    .thenReturn(selectedRelatedEntityLocationIds);
+            mockPractitionerDetailsEndpointHelper
+                    .when(
+                            () ->
+                                    PractitionerDetailsEndpointHelper.createSearchTagValues(
+                                            Mockito.any()))
+                    .thenReturn(searchTagValues);
+
+            Map<String, String[]> parameters = new HashMap<>();
+
+            // empty string
+            String[] locations = new String[] {};
+            parameters.put(Constants.SYNC_LOCATIONS, locations);
+
+            RequestDetails requestDetails = new ServletRequestDetails();
+            requestDetails.setRequestType(RequestTypeEnum.GET);
+            requestDetails.setRestOperationType(RestOperationTypeEnum.SEARCH_TYPE);
+            requestDetails.setResourceName("Patient");
+            requestDetails.setFhirServerBase("https://smartregister.org/fhir");
+            requestDetails.setCompleteUrl("https://smartregister.org/fhir/Patient");
+            requestDetails.setRequestPath("Patient");
+            requestDetails.setParameters(parameters);
+            userRoles.add(Constants.ROLE_ALL_LOCATIONS);
+
+            testInstance.getRequestMutation(new TestRequestDetailsToReader(requestDetails));
         }
     }
 
@@ -667,6 +847,7 @@ public class SyncAccessDecisionTest {
         locationIds.clear();
         careTeamIds.clear();
         organisationIds.clear();
+        relatedEntityLocationIds.clear();
     }
 
     private SyncAccessDecision createSyncAccessDecisionTestInstance(String syncStrategy) {
@@ -676,6 +857,7 @@ public class SyncAccessDecisionTest {
         syncStrategyIds.put(Constants.LOCATION, locationIds);
         syncStrategyIds.put(Constants.CARE_TEAM, careTeamIds);
         syncStrategyIds.put(Constants.ORGANIZATION, organisationIds);
+        syncStrategyIds.put(Constants.RELATED_ENTITY_LOCATION, relatedEntityLocationIds);
 
         SyncAccessDecision accessDecision =
                 new SyncAccessDecision(
