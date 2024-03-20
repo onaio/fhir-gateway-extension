@@ -4,11 +4,7 @@ import static org.smartregister.fhir.gateway.plugins.EnvUtil.getEnvironmentVar;
 
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
@@ -110,16 +106,15 @@ public class SyncAccessDecision implements AccessDecision {
                 List<String> relatedEntityLocationIds;
                 if (roles.contains(Constants.ROLE_ALL_LOCATIONS) && syncLocations != null) {
                     // selected locations
-
-                    List<String> locationUuids = Arrays.asList(syncLocations[0].split(","));
+                    List<String> locationUuids = getLocationUuids(syncLocations);
                     relatedEntityLocationIds =
                             PractitionerDetailsEndpointHelper.getAttributedLocations(
                                     PractitionerDetailsEndpointHelper.getLocationsHierarchy(
                                             locationUuids));
                     this.syncStrategyIds = Map.of(syncStrategy, relatedEntityLocationIds);
                 }
-
-            } else if (syncStrategyIds.isEmpty()
+            }
+            if (syncStrategyIds.isEmpty()
                     || StringUtils.isBlank(syncStrategy)
                     || (syncStrategyIds.containsKey(syncStrategy)
                             && syncStrategyIds.get(syncStrategy).isEmpty())) {
@@ -152,6 +147,20 @@ public class SyncAccessDecision implements AccessDecision {
         }
 
         return requestMutation;
+    }
+
+    private static List<String> getLocationUuids(String[] syncLocations) {
+        List<String> locationUuids = Collections.emptyList();
+
+        if (syncLocations.length > 0) {
+            String syncLocationParam = syncLocations[0];
+            if (!syncLocationParam.isEmpty()) {
+                locationUuids =
+                        List.copyOf(
+                                Set.of(syncLocationParam.split(Constants.PARAM_VALUES_SEPARATOR)));
+            }
+        }
+        return locationUuids;
     }
 
     /**

@@ -32,7 +32,7 @@ public class Constants {
     public static final String RELATED_ENTITY_TAG_URL_ENV = "RELATED_ENTITY_TAG_URL";
     public static final String DEFAULT_RELATED_ENTITY_TAG_URL =
             "https://smartregister.org/related-entity-location-tag-id";
-    public static final String ROLE_ALL_LOCATIONS = "ROLE_ALL_LOCATIONS";
+    public static final String ROLE_ALL_LOCATIONS = "ALL_LOCATIONS";
 
     public interface Literals {
         String EQUALS = "=";

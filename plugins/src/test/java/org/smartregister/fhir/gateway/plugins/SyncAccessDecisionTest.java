@@ -97,7 +97,7 @@ public class SyncAccessDecisionTest {
 
     @Test
     public void
-            preProcessShouldAddAssignedRelatedEntityLocationIdsFiltersWhenUserIsAssignedToRelatedEntityLocationIdsOnly()
+            requestMutationWhenUserIsAssignedToRelatedEntityLocationIdsShouldAddAssignedRelatedEntityLocationIdsFilters()
                     throws IOException {
         relatedEntityLocationIds.add("relocationid12");
         relatedEntityLocationIds.add("relocationid2");
@@ -138,7 +138,7 @@ public class SyncAccessDecisionTest {
 
     @Test
     public void
-            preProcessShouldAddSelectedRelatedEntityLocationIdsFiltersWhenUserIsAssignedToRelatedEntityLocationIdsOnly()
+            requestMutationWhenUserSelectedRelatedEntityLocationIdsShouldAddSelectedRelatedEntityLocationIdsFilters()
                     throws IOException {
         try (MockedStatic<PractitionerDetailsEndpointHelper> mockPractitionerDetailsEndpointHelper =
                 Mockito.mockStatic(PractitionerDetailsEndpointHelper.class)) {
@@ -213,6 +213,62 @@ public class SyncAccessDecisionTest {
                                             Constants.PARAM_VALUES_SEPARATOR
                                                     + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
                                                     + Constants.CODE_URL_VALUE_SEPARATOR)));
+        }
+    }
+
+    @Test
+    public void requestMutationWhenLocationUuidAreEmptyShouldNotError() throws IOException {
+        try (MockedStatic<PractitionerDetailsEndpointHelper> mockPractitionerDetailsEndpointHelper =
+                Mockito.mockStatic(PractitionerDetailsEndpointHelper.class)) {
+            List<String> selectedRelatedEntityLocationIds = new ArrayList<>();
+            String srelocationid1 = "";
+            String srelocationid2 = " ";
+
+            selectedRelatedEntityLocationIds.add(srelocationid1);
+            selectedRelatedEntityLocationIds.add(srelocationid2);
+
+            String searchTagValues =
+                    Constants.DEFAULT_RELATED_ENTITY_TAG_URL
+                            + Constants.CODE_URL_VALUE_SEPARATOR
+                            + srelocationid1
+                            + Constants.PARAM_VALUES_SEPARATOR
+                            + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
+                            + Constants.CODE_URL_VALUE_SEPARATOR
+                            + srelocationid2;
+            relatedEntityLocationIds.add("relocationid1");
+            relatedEntityLocationIds.add("relocationid2");
+            testInstance = createSyncAccessDecisionTestInstance(Constants.RELATED_ENTITY_LOCATION);
+
+            mockPractitionerDetailsEndpointHelper
+                    .when(
+                            () ->
+                                    PractitionerDetailsEndpointHelper.getAttributedLocations(
+                                            Mockito.anyList()))
+                    .thenReturn(selectedRelatedEntityLocationIds);
+            mockPractitionerDetailsEndpointHelper
+                    .when(
+                            () ->
+                                    PractitionerDetailsEndpointHelper.createSearchTagValues(
+                                            Mockito.any()))
+                    .thenReturn(searchTagValues);
+
+            Map<String, String[]> parameters = new HashMap<>();
+
+            // empty string
+            String[] locations = new String[] {};
+            parameters.put(Constants.SYNC_LOCATIONS, locations);
+
+            RequestDetails requestDetails = new ServletRequestDetails();
+            requestDetails.setRequestType(RequestTypeEnum.GET);
+            requestDetails.setRestOperationType(RestOperationTypeEnum.SEARCH_TYPE);
+            requestDetails.setResourceName("Patient");
+            requestDetails.setFhirServerBase("https://smartregister.org/fhir");
+            requestDetails.setCompleteUrl("https://smartregister.org/fhir/Patient");
+            requestDetails.setRequestPath("Patient");
+            requestDetails.setParameters(parameters);
+            userRoles.add(Constants.ROLE_ALL_LOCATIONS);
+
+            testInstance.getRequestMutation(new TestRequestDetailsToReader(requestDetails));
         }
     }
 
