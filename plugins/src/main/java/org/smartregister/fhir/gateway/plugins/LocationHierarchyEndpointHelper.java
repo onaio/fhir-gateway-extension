@@ -73,6 +73,41 @@ public class LocationHierarchyEndpointHelper {
         return descendants(locationId, parentLocation);
     }
 
+    public List<Location> getLocationHierarchyAsList(String locationId) {
+        Location location = getLocationById(locationId);
+        if (location != null) {
+            return getLocationDescendants(locationId, location);
+        } else {
+            logger.error("LocationHierarchy with identifier: " + locationId + " not found");
+            return new ArrayList<>();
+        }
+    }
+
+    private List<Location> getLocationDescendants(String locationId, Location parentLocation) {
+        List<Location> allLocations = new ArrayList<>();
+        allLocations.add(parentLocation);
+
+        Bundle childLocationBundle =
+                getFhirClientForR4()
+                        .search()
+                        .forResource(Location.class)
+                        .where(new ReferenceClientParam(Location.SP_PARTOF).hasAnyOfIds(locationId))
+                        .returnBundle(Bundle.class)
+                        .execute();
+
+        if (childLocationBundle != null) {
+            for (Bundle.BundleEntryComponent childLocation : childLocationBundle.getEntry()) {
+                Location childLocationEntity = (Location) childLocation.getResource();
+                allLocations.addAll(
+                        getLocationDescendants(
+                                childLocationEntity.getIdElement().getIdPart(),
+                                childLocationEntity));
+            }
+        }
+
+        return allLocations;
+    }
+
     public List<Location> descendants(String locationId, Location parentLocation) {
 
         Bundle childLocationBundle =
