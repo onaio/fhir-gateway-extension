@@ -134,6 +134,45 @@ export OPENSRP_CACHE_EXPIRY_SECONDS=30
 To disable caching, set the value to `0`. Note, the value provided is in
 **seconds**. This configuration is _optional_.
 
+**Sync Filter Tags**
+
+Configurable sync filter tags parameters are now supported using the following
+environment variables
+
+- `CARE_TEAM_TAG_URL` (_Optional_): Filter tag url for CareTeam sync strategy
+
+  ```bash
+   export CARE_TEAM_TAG_URL=https://smartregister.org/care-team-tag-id
+  ```
+
+  If not set, defaults to https://smartregister.org/care-team-tag-id
+
+- `LOCATION_TAG_URL` (_Optional_): Filter tag url for Location sync strategy
+
+  ```bash
+   export LOCATION_TAG_URL=https://smartregister.org/location-tag-id
+  ```
+
+  If not set, defaults to https://smartregister.org/location-tag-id
+
+- `ORGANISATION_TAG_URL` (_Optional_): Filter tag url for Organisation sync
+  strategy
+
+  ```bash
+   export ORGANISATION_TAG_URL=https://smartregister.org/organisation-tag-id
+  ```
+
+  If not set, defaults to https://smartregister.org/organisation-tag-id
+
+- `RELATED_ENTITY_TAG_URL` (_Optional_):
+
+  ```bash
+   export RELATED_ENTITY_TAG_URL=https://smartregister.org/related-entity-location-tag-id
+  ```
+
+  If not set, defaults to
+  https://smartregister.org/related-entity-location-tag-id
+
 ### Run project
 
 As document on the Info Gateway modules
