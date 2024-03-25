@@ -119,6 +119,38 @@ environment variables. Below is a list of the required configurations.
 - `BACKEND_TYPE`: The type of backend, either `HAPI` or `GCP`. `HAPI` should be
   used for most FHIR servers, while `GCP` should be used for GCP FHIR stores.
 
+**Logging**
+
+The OpenSRP FHIR Gateway uses Sentry to capture exception logs. The Sentry
+integration is _optional_ but if you enable it the following environment
+variables are required.
+
+- `SENTRY_DSN` - The Sentry DSN to send event logs to.
+  [Read more about Sentry DSN here](https://docs.sentry.io/product/sentry-basics/concepts/dsn-explainer/).
+  (_Leave empty to disable sentry integration_)
+- `SENTRY_RELEASE` - The release version of the Gateway you are running _e.g.
+  v1.0.8_
+- `SENTRY_ENVIRONMENT` - The server environment you are running _e.g.
+  ecbis.production_
+- `SENTRY_LOG_LEVEL` - The minimum log level from which you wish to capture
+  _e.g. error_
+
+Note, Sentry can also be configured using an `application.properties` file in
+the classpath e.g.
+
+```.properties
+# ../plugins/resources/application.properties
+
+sentry.dsn=<dsn url>
+sentry.logging.minimum-event-level=error
+sentry.logging.minimum-breadcrumb-level=debug
+sentry.environment=<app deployment>.<envrironment> #e.g. echis.production
+sentry.release=1.0.8
+```
+
+**Note:** If you want to disable Sentry integration just leave out the
+`SENTRY_DSN` configuration.
+
 **Caching**
 
 The plugins implementation supports caching for the sync strategy details which

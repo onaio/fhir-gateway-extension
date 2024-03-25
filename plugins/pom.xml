@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.smartregister</groupId>
     <artifactId>opensrp-gateway-plugin</artifactId>
-    <version>1.0.7</version>
+    <version>1.0.8</version>
   </parent>
 
   <artifactId>plugins</artifactId>
@@ -48,7 +48,16 @@
       <version>1.0.0-SNAPSHOT</version>
       <scope>compile</scope>
     </dependency>
-
+    <dependency>
+      <groupId>io.sentry</groupId>
+      <artifactId>sentry-logback</artifactId>
+      <version>7.6.0</version>
+    </dependency>
+    <dependency>
+      <groupId>io.sentry</groupId>
+      <artifactId>sentry-spring-boot-starter</artifactId>
+      <version>7.6.0</version>
+    </dependency>
   </dependencies>
 
 </project>
