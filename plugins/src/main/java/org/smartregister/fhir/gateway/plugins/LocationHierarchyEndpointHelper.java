@@ -56,7 +56,7 @@ public class LocationHierarchyEndpointHelper {
         LocationHierarchy locationHierarchy = new LocationHierarchy();
         if (location != null) {
             logger.info("Building Location Hierarchy of Location Id : " + locationId);
-            locationHierarchyTree.buildTreeFromList(getLocationHierarchy(locationId, location));
+            locationHierarchyTree.buildTreeFromList(getDescendants(locationId));
             StringType locationIdString = new StringType().setId(locationId).getIdElement();
             locationHierarchy.setLocationId(locationIdString);
             locationHierarchy.setId(LOCATION_RESOURCE + locationId);
@@ -69,46 +69,8 @@ public class LocationHierarchyEndpointHelper {
         return locationHierarchy;
     }
 
-    private List<Location> getLocationHierarchy(String locationId, Location parentLocation) {
-        return descendants(locationId, parentLocation);
-    }
-
-    public List<Location> getLocationHierarchyAsList(String locationId) {
-        Location location = getLocationById(locationId);
-        if (location != null) {
-            return getLocationDescendants(locationId, location);
-        } else {
-            logger.error("LocationHierarchy with identifier: " + locationId + " not found");
-            return new ArrayList<>();
-        }
-    }
-
-    private List<Location> getLocationDescendants(String locationId, Location parentLocation) {
-        List<Location> allLocations = new ArrayList<>();
-        allLocations.add(parentLocation);
-
-        Bundle childLocationBundle =
-                getFhirClientForR4()
-                        .search()
-                        .forResource(Location.class)
-                        .where(new ReferenceClientParam(Location.SP_PARTOF).hasAnyOfIds(locationId))
-                        .returnBundle(Bundle.class)
-                        .execute();
-
-        if (childLocationBundle != null) {
-            for (Bundle.BundleEntryComponent childLocation : childLocationBundle.getEntry()) {
-                Location childLocationEntity = (Location) childLocation.getResource();
-                allLocations.addAll(
-                        getLocationDescendants(
-                                childLocationEntity.getIdElement().getIdPart(),
-                                childLocationEntity));
-            }
-        }
-
-        return allLocations;
-    }
-
-    public List<Location> descendants(String locationId, Location parentLocation) {
+    public List<Location> getDescendants(String locationId) {
+        Location parentLocation = getLocationById(locationId);
 
         Bundle childLocationBundle =
                 getFhirClientForR4()
@@ -128,7 +90,7 @@ public class LocationHierarchyEndpointHelper {
                 Location childLocationEntity = (Location) childLocation.getResource();
                 allLocations.add(childLocationEntity);
                 allLocations.addAll(
-                        descendants(childLocationEntity.getIdElement().getIdPart(), null));
+                        getDescendants(childLocationEntity.getIdElement().getIdPart()));
             }
         }
 
