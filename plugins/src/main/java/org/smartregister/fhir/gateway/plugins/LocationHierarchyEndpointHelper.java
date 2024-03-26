@@ -89,8 +89,7 @@ public class LocationHierarchyEndpointHelper {
             for (Bundle.BundleEntryComponent childLocation : childLocationBundle.getEntry()) {
                 Location childLocationEntity = (Location) childLocation.getResource();
                 allLocations.add(childLocationEntity);
-                allLocations.addAll(
-                        getDescendants(childLocationEntity.getIdElement().getIdPart()));
+                allLocations.addAll(getDescendants(childLocationEntity.getIdElement().getIdPart()));
             }
         }
 

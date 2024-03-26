@@ -1,13 +1,18 @@
 package org.smartregister.fhir.gateway.plugins;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.http.HttpStatus;
+import org.hl7.fhir.r4.model.Location;
+import org.hl7.fhir.r4.model.Resource;
 import org.smartregister.model.location.LocationHierarchy;
 
 import com.google.fhir.gateway.TokenVerifier;
@@ -38,21 +43,42 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
         try {
             RestUtils.checkAuthentication(request, tokenVerifier);
             String identifier = request.getParameter(Constants.IDENTIFIER);
-
-            LocationHierarchy locationHierarchy =
-                    locationHierarchyEndpointHelper.getLocationHierarchy(identifier);
+            String mode = request.getParameter(Constants.MODE);
             String resultContent;
+            if (Objects.equals(mode, Constants.LIST)) {
+                List<Location> locations =
+                        locationHierarchyEndpointHelper.getDescendants(identifier);
+                List<Resource> resourceLocations = new ArrayList<>(locations);
+                if (locations.isEmpty()) {
+                    resultContent =
+                            fhirR4JsonParser.encodeResourceToString(
+                                    createEmptyBundle(
+                                            request.getRequestURL()
+                                                    + "?"
+                                                    + request.getQueryString()));
+                } else {
+                    resultContent =
+                            fhirR4JsonParser.encodeResourceToString(
+                                    createBundle(resourceLocations));
+                }
 
-            if (org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND.equals(
-                    locationHierarchy.getId())) {
-                resultContent =
-                        fhirR4JsonParser.encodeResourceToString(
-                                createEmptyBundle(
-                                        request.getRequestURL() + "?" + request.getQueryString()));
             } else {
-                resultContent =
-                        fhirR4JsonParser.encodeResourceToString(
-                                createBundle(Collections.singletonList(locationHierarchy)));
+                LocationHierarchy locationHierarchy =
+                        locationHierarchyEndpointHelper.getLocationHierarchy(identifier);
+
+                if (org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND.equals(
+                        locationHierarchy.getId())) {
+                    resultContent =
+                            fhirR4JsonParser.encodeResourceToString(
+                                    createEmptyBundle(
+                                            request.getRequestURL()
+                                                    + "?"
+                                                    + request.getQueryString()));
+                } else {
+                    resultContent =
+                            fhirR4JsonParser.encodeResourceToString(
+                                    createBundle(Collections.singletonList(locationHierarchy)));
+                }
             }
             response.setContentType("application/json");
             response.getOutputStream().print(resultContent);
