@@ -131,7 +131,7 @@ variables are required.
 - `SENTRY_RELEASE` - The release version of the Gateway you are running _e.g.
   v1.0.8_
 - `SENTRY_ENVIRONMENT` - The server environment you are running _e.g.
-  ecbis.production_
+  production_
 - `SENTRY_LOG_LEVEL` - The minimum log level from which you wish to capture
   _e.g. error_
 
@@ -144,8 +144,24 @@ the classpath e.g.
 sentry.dsn=<dsn url>
 sentry.logging.minimum-event-level=error
 sentry.logging.minimum-breadcrumb-level=debug
-sentry.environment=<app deployment>.<envrironment> #e.g. echis.production
+sentry.environment=<environment> #e.g. production
 sentry.release=1.0.8
+```
+
+or as JSON data through the `SPRING_APPLICATION_JSON` environment variable e.g.
+
+```json
+{
+  "sentry": {
+    "dsn": "<sentry dsn>",
+    "debug": false,
+    "environment": "staging",
+    "release": "1.0.8",
+    "tags": {
+      "release-name": "OpenSRP FHIR Gateway"
+    }
+  }
+}
 ```
 
 **Note:** If you want to disable Sentry integration just leave out the
