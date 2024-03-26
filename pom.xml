@@ -11,7 +11,7 @@
 
   <groupId>org.smartregister</groupId>
   <artifactId>opensrp-gateway-plugin</artifactId>
-  <version>1.0.7</version>
+  <version>1.0.8</version>
   <packaging>pom</packaging>
 
   <modules>
@@ -41,7 +41,6 @@
           <skip>true</skip>
         </configuration>
       </plugin>
-
       <plugin>
         <groupId>com.diffplug.spotless</groupId>
         <artifactId>spotless-maven-plugin</artifactId>
