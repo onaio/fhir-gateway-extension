@@ -56,7 +56,7 @@ public class LocationHierarchyEndpointHelper {
         LocationHierarchy locationHierarchy = new LocationHierarchy();
         if (location != null) {
             logger.info("Building Location Hierarchy of Location Id : " + locationId);
-            locationHierarchyTree.buildTreeFromList(getLocationHierarchy(locationId, location));
+            locationHierarchyTree.buildTreeFromList(getDescendants(locationId, location));
             StringType locationIdString = new StringType().setId(locationId).getIdElement();
             locationHierarchy.setLocationId(locationIdString);
             locationHierarchy.setId(LOCATION_RESOURCE + locationId);
@@ -70,10 +70,10 @@ public class LocationHierarchyEndpointHelper {
     }
 
     private List<Location> getLocationHierarchy(String locationId, Location parentLocation) {
-        return descendants(locationId, parentLocation);
+        return getDescendants(locationId, parentLocation);
     }
 
-    public List<Location> descendants(String locationId, Location parentLocation) {
+    public List<Location> getDescendants(String locationId, Location parentLocation) {
 
         Bundle childLocationBundle =
                 getFhirClientForR4()
@@ -93,14 +93,14 @@ public class LocationHierarchyEndpointHelper {
                 Location childLocationEntity = (Location) childLocation.getResource();
                 allLocations.add(childLocationEntity);
                 allLocations.addAll(
-                        descendants(childLocationEntity.getIdElement().getIdPart(), null));
+                        getDescendants(childLocationEntity.getIdElement().getIdPart(), null));
             }
         }
 
         return allLocations;
     }
 
-    private @Nullable Location getLocationById(String locationId) {
+    public @Nullable Location getLocationById(String locationId) {
         Location location = null;
         try {
             location =
