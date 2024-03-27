@@ -46,8 +46,10 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
             String mode = request.getParameter(Constants.MODE);
             String resultContent;
             if (Objects.equals(mode, Constants.LIST)) {
+                Location parentLocation =
+                        locationHierarchyEndpointHelper.getLocationById(identifier);
                 List<Location> locations =
-                        locationHierarchyEndpointHelper.getDescendants(identifier);
+                        locationHierarchyEndpointHelper.getDescendants(identifier, parentLocation);
                 List<Resource> resourceLocations = new ArrayList<>(locations);
                 if (locations.isEmpty()) {
                     resultContent =
