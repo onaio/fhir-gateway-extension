@@ -364,12 +364,12 @@ public class SyncAccessDecision implements AccessDecision {
     }
 
     public static Bundle addPaginationLinks(
-        StringBuilder urlBuilder,
-        Bundle resultBundle,
-        int page,
-        int totalEntries,
-        int count,
-        Map<String, String[]> parameters) {
+            StringBuilder urlBuilder,
+            Bundle resultBundle,
+            int page,
+            int totalEntries,
+            int count,
+            Map<String, String[]> parameters) {
         resultBundle.setTotal(totalEntries);
 
         // add pagination links
@@ -486,7 +486,7 @@ public class SyncAccessDecision implements AccessDecision {
     }
 
     private static String constructUpdatedUrl(
-        StringBuilder urlBuilder, Map<String, String[]> parameters) {
+            StringBuilder urlBuilder, Map<String, String[]> parameters) {
         urlBuilder.append("?");
         for (Map.Entry<String, String[]> entry : parameters.entrySet()) {
             String paramName = entry.getKey();
