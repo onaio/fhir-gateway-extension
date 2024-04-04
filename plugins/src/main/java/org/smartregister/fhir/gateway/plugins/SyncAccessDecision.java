@@ -357,8 +357,20 @@ public class SyncAccessDecision implements AccessDecision {
 
         Bundle resultBundle = fhirR4Client.transaction().withBundle(requestBundle).execute();
 
-        // add total
-        resultBundle.setTotal(requestBundle.getEntry().size());
+        StringBuilder urlBuilder = new StringBuilder(request.getFhirServerBase());
+        urlBuilder.append("/").append(request.getRequestPath());
+
+        return addPaginationLinks(urlBuilder, resultBundle, page, totalEntries, count, parameters);
+    }
+
+    public static Bundle addPaginationLinks(
+        StringBuilder urlBuilder,
+        Bundle resultBundle,
+        int page,
+        int totalEntries,
+        int count,
+        Map<String, String[]> parameters) {
+        resultBundle.setTotal(totalEntries);
 
         // add pagination links
         int nextPage = page < totalEntries / count ? page + 1 : 0; // 0 indicates no next page
@@ -366,7 +378,7 @@ public class SyncAccessDecision implements AccessDecision {
 
         Bundle.BundleLinkComponent selfLink = new Bundle.BundleLinkComponent();
         List<Bundle.BundleLinkComponent> link = new ArrayList<>();
-        String selfUrl = constructUpdatedUrl(request, parameters);
+        String selfUrl = constructUpdatedUrl(new StringBuilder(urlBuilder), parameters);
         selfLink.setRelation(IBaseBundle.LINK_SELF);
         selfLink.setUrl(selfUrl);
         link.add(selfLink);
@@ -375,7 +387,7 @@ public class SyncAccessDecision implements AccessDecision {
         if (nextPage > 0) {
             parameters.put(
                     Constants.PAGINATION_PAGE_NUMBER, new String[] {String.valueOf(nextPage)});
-            String nextUrl = constructUpdatedUrl(request, parameters);
+            String nextUrl = constructUpdatedUrl(new StringBuilder(urlBuilder), parameters);
             Bundle.BundleLinkComponent nextLink = new Bundle.BundleLinkComponent();
             nextLink.setRelation(IBaseBundle.LINK_NEXT);
             nextLink.setUrl(nextUrl);
@@ -384,13 +396,12 @@ public class SyncAccessDecision implements AccessDecision {
         if (prevPage > 0) {
             parameters.put(
                     Constants.PAGINATION_PAGE_NUMBER, new String[] {String.valueOf(prevPage)});
-            String prevUrl = constructUpdatedUrl(request, parameters);
+            String prevUrl = constructUpdatedUrl(new StringBuilder(urlBuilder), parameters);
             Bundle.BundleLinkComponent previousLink = new Bundle.BundleLinkComponent();
             previousLink.setRelation(IBaseBundle.LINK_PREV);
             previousLink.setUrl(prevUrl);
             resultBundle.addLink(previousLink);
         }
-
         return resultBundle;
     }
 
@@ -475,27 +486,23 @@ public class SyncAccessDecision implements AccessDecision {
     }
 
     private static String constructUpdatedUrl(
-            RequestDetailsReader requestDetails, Map<String, String[]> parameters) {
-        StringBuilder updatedUrlBuilder = new StringBuilder(requestDetails.getFhirServerBase());
-
-        updatedUrlBuilder.append("/").append(requestDetails.getRequestPath());
-
-        updatedUrlBuilder.append("?");
+        StringBuilder urlBuilder, Map<String, String[]> parameters) {
+        urlBuilder.append("?");
         for (Map.Entry<String, String[]> entry : parameters.entrySet()) {
             String paramName = entry.getKey();
             String[] paramValues = entry.getValue();
 
             for (String paramValue : paramValues) {
-                updatedUrlBuilder.append(paramName).append("=").append(paramValue).append("&");
+                urlBuilder.append(paramName).append("=").append(paramValue).append("&");
             }
         }
 
         // Remove the trailing '&' if present
-        if (updatedUrlBuilder.charAt(updatedUrlBuilder.length() - 1) == '&') {
-            updatedUrlBuilder.deleteCharAt(updatedUrlBuilder.length() - 1);
+        if (urlBuilder.charAt(urlBuilder.length() - 1) == '&') {
+            urlBuilder.deleteCharAt(urlBuilder.length() - 1);
         }
 
-        return updatedUrlBuilder.toString();
+        return urlBuilder.toString();
     }
 
     private boolean isResourceTypeRequest(String requestPath) {
