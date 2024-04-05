@@ -1,11 +1,7 @@
 package org.smartregister.fhir.gateway.plugins;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 import javax.servlet.annotation.WebServlet;
@@ -14,8 +10,6 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.http.HttpStatus;
 import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.Location;
-import org.hl7.fhir.r4.model.Resource;
 import org.smartregister.model.location.LocationHierarchy;
 
 import com.google.fhir.gateway.TokenVerifier;
@@ -47,53 +41,12 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
             RestUtils.checkAuthentication(request, tokenVerifier);
             String identifier = request.getParameter(Constants.IDENTIFIER);
             String mode = request.getParameter(Constants.MODE);
-            String pageSize = request.getParameter(Constants.PAGINATION_PAGE_SIZE);
-            String pageNumber = request.getParameter(Constants.PAGINATION_PAGE_NUMBER);
-            Map<String, String[]> parameters = new HashMap<>(request.getParameterMap());
-
-            int count =
-                    pageSize != null
-                            ? Integer.parseInt(pageSize)
-                            : Constants.PAGINATION_DEFAULT_PAGE_SIZE;
-            int page =
-                    pageNumber != null
-                            ? Integer.parseInt(pageNumber)
-                            : Constants.PAGINATION_DEFAULT_PAGE_NUMBER;
-
-            int start = Math.max(0, (page - 1)) * count;
 
             String resultContent;
             if (Objects.equals(mode, Constants.LIST)) {
-                Location parentLocation =
-                        locationHierarchyEndpointHelper.getLocationById(identifier);
-                List<Location> locations =
-                        locationHierarchyEndpointHelper.getDescendants(identifier, parentLocation);
-                List<Resource> resourceLocations = new ArrayList<>(locations);
-                int totalEntries = locations.size();
-                int end = Math.min(start + count, resourceLocations.size());
-
-                List<Resource> paginatedResourceLocations = resourceLocations.subList(start, end);
-
-                if (locations.isEmpty()) {
-                    resultContent =
-                            fhirR4JsonParser.encodeResourceToString(
-                                    createEmptyBundle(
-                                            request.getRequestURL()
-                                                    + "?"
-                                                    + request.getQueryString()));
-                } else {
-                    Bundle resultBundle = createBundle(paginatedResourceLocations);
-                    StringBuilder urlBuilder = new StringBuilder(request.getRequestURL());
-                    resultBundle =
-                            SyncAccessDecision.addPaginationLinks(
-                                    urlBuilder,
-                                    resultBundle,
-                                    page,
-                                    totalEntries,
-                                    count,
-                                    parameters);
-                    resultContent = fhirR4JsonParser.encodeResourceToString(resultBundle);
-                }
+                Bundle resultBundle =
+                        locationHierarchyEndpointHelper.getPaginatedLocations(request);
+                resultContent = fhirR4JsonParser.encodeResourceToString(resultBundle);
 
             } else {
                 LocationHierarchy locationHierarchy =
