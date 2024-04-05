@@ -11,7 +11,7 @@ import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Resource;
 
 public abstract class BaseEndpoint extends HttpServlet {
-    public Bundle createBundle(List<Resource> resourceList) {
+    public static Bundle createBundle(List<Resource> resourceList) {
         Bundle responseBundle = new Bundle();
         List<Bundle.BundleEntryComponent> bundleEntryComponentList = new ArrayList<>();
 
@@ -24,7 +24,7 @@ public abstract class BaseEndpoint extends HttpServlet {
         return responseBundle;
     }
 
-    public Bundle createEmptyBundle(String requestURL) {
+    public static Bundle createEmptyBundle(String requestURL) {
         Bundle responseBundle = new Bundle();
         responseBundle.setId(UUID.randomUUID().toString());
         Bundle.BundleLinkComponent linkComponent = new Bundle.BundleLinkComponent();
