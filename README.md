@@ -308,6 +308,19 @@ Example:
 [GET] /List?_id=<some-id>&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
 ```
 
+##### LocationHierarchy list mode
+
+The LocationHierarchy endpoint supports two response formats: tree and list. By
+default, the response format remains a tree, providing hierarchical location
+data. In addition, clients can request the endpoint to return location resources
+in a flat list format by providing a request parameter `mode=list`.
+
+Example:
+
+```
+[GET] /LocationHierarchy?identifier=<some-location-id>&mode=list&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
+```
+
 #### Important Note:
 
 Developers, please update your client applications accordingly to accommodate
