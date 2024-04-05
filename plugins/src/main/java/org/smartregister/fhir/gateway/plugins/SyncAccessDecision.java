@@ -372,8 +372,8 @@ public class SyncAccessDecision implements AccessDecision {
             Map<String, String[]> parameters) {
         resultBundle.setTotal(totalEntries);
 
-        // add pagination links
-        int nextPage = page < ((float)totalEntries / count) ? page + 1 : 0; // 0 indicates no next page
+        int nextPage =
+                page < ((float) totalEntries / count) ? page + 1 : 0; // 0 indicates no next page
         int prevPage = page > 1 ? page - 1 : 0; // 0 indicates no previous page
 
         Bundle.BundleLinkComponent selfLink = new Bundle.BundleLinkComponent();
