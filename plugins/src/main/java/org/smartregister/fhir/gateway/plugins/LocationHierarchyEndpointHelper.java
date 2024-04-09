@@ -73,7 +73,8 @@ public class LocationHierarchyEndpointHelper {
         return locationHierarchy;
     }
 
-    private List<Location> getLocationHierarchy(String locationId, Location parentLocation) {
+    private List<Location> getLocationHierarchyLocations(
+            String locationId, Location parentLocation) {
         return getDescendants(locationId, parentLocation);
     }
 
@@ -143,12 +144,12 @@ public class LocationHierarchyEndpointHelper {
 
         if (locations.isEmpty()) {
             resultBundle =
-                    BaseEndpoint.createEmptyBundle(
+                    Utils.createEmptyBundle(
                             request.getRequestURL() + "?" + request.getQueryString());
         } else {
-            resultBundle = BaseEndpoint.createBundle(paginatedResourceLocations);
+            resultBundle = Utils.createBundle(paginatedResourceLocations);
             StringBuilder urlBuilder = new StringBuilder(request.getRequestURL());
-            SyncAccessDecision.addPaginationLinks(
+            Utils.addPaginationLinks(
                     urlBuilder, resultBundle, page, totalEntries, count, parameters);
         }
 
