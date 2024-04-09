@@ -2,7 +2,6 @@ package org.smartregister.fhir.gateway.plugins;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Objects;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -43,7 +42,7 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
             String mode = request.getParameter(Constants.MODE);
 
             String resultContent;
-            if (Objects.equals(mode, Constants.LIST)) {
+            if (Constants.LIST.equals(mode)) {
                 Bundle resultBundle =
                         locationHierarchyEndpointHelper.getPaginatedLocations(request);
                 resultContent = fhirR4JsonParser.encodeResourceToString(resultBundle);
@@ -56,14 +55,15 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
                         locationHierarchy.getId())) {
                     resultContent =
                             fhirR4JsonParser.encodeResourceToString(
-                                    createEmptyBundle(
+                                    Utils.createEmptyBundle(
                                             request.getRequestURL()
                                                     + "?"
                                                     + request.getQueryString()));
                 } else {
                     resultContent =
                             fhirR4JsonParser.encodeResourceToString(
-                                    createBundle(Collections.singletonList(locationHierarchy)));
+                                    Utils.createBundle(
+                                            Collections.singletonList(locationHierarchy)));
                 }
             }
             response.setContentType("application/json");

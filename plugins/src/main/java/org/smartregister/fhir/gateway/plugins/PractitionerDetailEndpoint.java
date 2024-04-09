@@ -47,12 +47,12 @@ public class PractitionerDetailEndpoint extends BaseEndpoint {
                     practitionerDetails.getId())) {
                 resultContent =
                         fhirR4JsonParser.encodeResourceToString(
-                                createEmptyBundle(
+                                Utils.createEmptyBundle(
                                         request.getRequestURL() + "?" + request.getQueryString()));
             } else {
                 resultContent =
                         fhirR4JsonParser.encodeResourceToString(
-                                createBundle(Collections.singletonList(practitionerDetails)));
+                                Utils.createBundle(Collections.singletonList(practitionerDetails)));
             }
 
             response.setContentType("application/json");
