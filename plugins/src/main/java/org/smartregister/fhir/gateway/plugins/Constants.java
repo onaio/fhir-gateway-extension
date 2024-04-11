@@ -35,6 +35,7 @@ public class Constants {
     public static final String ROLE_ALL_LOCATIONS = "ALL_LOCATIONS";
     public static final String MODE = "mode";
     public static final String LIST = "list";
+    public static final String FLAT_PREFIX = "flat-";
 
     public interface Literals {
         String EQUALS = "=";
