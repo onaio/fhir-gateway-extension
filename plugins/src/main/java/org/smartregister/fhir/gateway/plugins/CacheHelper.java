@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.DomainResource;
+import org.hl7.fhir.r4.model.Location;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -16,6 +17,8 @@ public enum CacheHelper {
 
     Cache<String, DomainResource> resourceCache;
 
+    Cache<String, List<Location>> locationListCache;
+
     CacheHelper() {
         cache =
                 Caffeine.newBuilder()
@@ -23,6 +26,11 @@ public enum CacheHelper {
                         .maximumSize(DEFAULT_CACHE_SIZE)
                         .build();
         resourceCache =
+                Caffeine.newBuilder()
+                        .expireAfterWrite(getCacheExpiryDurationInSeconds(), TimeUnit.SECONDS)
+                        .maximumSize(DEFAULT_CACHE_SIZE)
+                        .build();
+        locationListCache =
                 Caffeine.newBuilder()
                         .expireAfterWrite(getCacheExpiryDurationInSeconds(), TimeUnit.SECONDS)
                         .maximumSize(DEFAULT_CACHE_SIZE)

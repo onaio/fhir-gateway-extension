@@ -12,7 +12,6 @@ import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 
 import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.DomainResource;
 import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.StringType;
@@ -77,18 +76,13 @@ public class LocationHierarchyEndpointHelper {
     private List<Location> getLocationHierarchyLocations(
             String locationId, Location parentLocation) {
         List<Location> descendants;
-        String flatLocation = Constants.FLAT_PREFIX + locationId;
 
         if (CacheHelper.INSTANCE.skipCache()) {
             descendants = getDescendants(locationId, parentLocation);
         } else {
             descendants =
-                    (List<Location>)
-                            CacheHelper.INSTANCE.resourceCache.get(
-                                    flatLocation,
-                                    key ->
-                                            (DomainResource)
-                                                    getDescendants(locationId, parentLocation));
+                    CacheHelper.INSTANCE.locationListCache.get(
+                            locationId, key -> getDescendants(locationId, parentLocation));
         }
         return descendants;
     }
