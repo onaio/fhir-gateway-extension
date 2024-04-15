@@ -4,12 +4,16 @@ import static org.smartregister.utils.Constants.LOCATION_RESOURCE;
 import static org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.annotation.Nullable;
+import javax.servlet.http.HttpServletRequest;
 
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Location;
+import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.StringType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +60,7 @@ public class LocationHierarchyEndpointHelper {
         LocationHierarchy locationHierarchy = new LocationHierarchy();
         if (location != null) {
             logger.info("Building Location Hierarchy of Location Id : " + locationId);
-            locationHierarchyTree.buildTreeFromList(getLocationHierarchy(locationId, location));
+            locationHierarchyTree.buildTreeFromList(getDescendants(locationId, location));
             StringType locationIdString = new StringType().setId(locationId).getIdElement();
             locationHierarchy.setLocationId(locationIdString);
             locationHierarchy.setId(LOCATION_RESOURCE + locationId);
@@ -69,11 +73,21 @@ public class LocationHierarchyEndpointHelper {
         return locationHierarchy;
     }
 
-    private List<Location> getLocationHierarchy(String locationId, Location parentLocation) {
-        return descendants(locationId, parentLocation);
+    private List<Location> getLocationHierarchyLocations(
+            String locationId, Location parentLocation) {
+        List<Location> descendants;
+
+        if (CacheHelper.INSTANCE.skipCache()) {
+            descendants = getDescendants(locationId, parentLocation);
+        } else {
+            descendants =
+                    CacheHelper.INSTANCE.locationListCache.get(
+                            locationId, key -> getDescendants(locationId, parentLocation));
+        }
+        return descendants;
     }
 
-    public List<Location> descendants(String locationId, Location parentLocation) {
+    public List<Location> getDescendants(String locationId, Location parentLocation) {
 
         Bundle childLocationBundle =
                 getFhirClientForR4()
@@ -93,14 +107,14 @@ public class LocationHierarchyEndpointHelper {
                 Location childLocationEntity = (Location) childLocation.getResource();
                 allLocations.add(childLocationEntity);
                 allLocations.addAll(
-                        descendants(childLocationEntity.getIdElement().getIdPart(), null));
+                        getDescendants(childLocationEntity.getIdElement().getIdPart(), null));
             }
         }
 
         return allLocations;
     }
 
-    private @Nullable Location getLocationById(String locationId) {
+    public @Nullable Location getLocationById(String locationId) {
         Location location = null;
         try {
             location =
@@ -110,5 +124,44 @@ public class LocationHierarchyEndpointHelper {
             logger.error(e.getMessage());
         }
         return location;
+    }
+
+    public Bundle getPaginatedLocations(HttpServletRequest request) {
+        String identifier = request.getParameter(Constants.IDENTIFIER);
+        String pageSize = request.getParameter(Constants.PAGINATION_PAGE_SIZE);
+        String pageNumber = request.getParameter(Constants.PAGINATION_PAGE_NUMBER);
+        Map<String, String[]> parameters = new HashMap<>(request.getParameterMap());
+
+        int count =
+                pageSize != null
+                        ? Integer.parseInt(pageSize)
+                        : Constants.PAGINATION_DEFAULT_PAGE_SIZE;
+        int page =
+                pageNumber != null
+                        ? Integer.parseInt(pageNumber)
+                        : Constants.PAGINATION_DEFAULT_PAGE_NUMBER;
+
+        int start = Math.max(0, (page - 1)) * count;
+        Location parentLocation = getLocationById(identifier);
+        List<Location> locations = getLocationHierarchyLocations(identifier, parentLocation);
+        List<Resource> resourceLocations = new ArrayList<>(locations);
+        int totalEntries = locations.size();
+
+        int end = Math.min(start + count, resourceLocations.size());
+        List<Resource> paginatedResourceLocations = resourceLocations.subList(start, end);
+        Bundle resultBundle;
+
+        if (locations.isEmpty()) {
+            resultBundle =
+                    Utils.createEmptyBundle(
+                            request.getRequestURL() + "?" + request.getQueryString());
+        } else {
+            resultBundle = Utils.createBundle(paginatedResourceLocations);
+            StringBuilder urlBuilder = new StringBuilder(request.getRequestURL());
+            Utils.addPaginationLinks(
+                    urlBuilder, resultBundle, page, totalEntries, count, parameters);
+        }
+
+        return resultBundle;
     }
 }

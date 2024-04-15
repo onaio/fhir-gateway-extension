@@ -20,7 +20,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.impl.client.BasicResponseHandler;
 import org.apache.http.util.TextUtils;
-import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.ListResource;
@@ -357,41 +356,11 @@ public class SyncAccessDecision implements AccessDecision {
 
         Bundle resultBundle = fhirR4Client.transaction().withBundle(requestBundle).execute();
 
-        // add total
-        resultBundle.setTotal(requestBundle.getEntry().size());
+        StringBuilder urlBuilder = new StringBuilder(request.getFhirServerBase());
+        urlBuilder.append("/").append(request.getRequestPath());
 
-        // add pagination links
-        int nextPage = page < totalEntries / count ? page + 1 : 0; // 0 indicates no next page
-        int prevPage = page > 1 ? page - 1 : 0; // 0 indicates no previous page
-
-        Bundle.BundleLinkComponent selfLink = new Bundle.BundleLinkComponent();
-        List<Bundle.BundleLinkComponent> link = new ArrayList<>();
-        String selfUrl = constructUpdatedUrl(request, parameters);
-        selfLink.setRelation(IBaseBundle.LINK_SELF);
-        selfLink.setUrl(selfUrl);
-        link.add(selfLink);
-        resultBundle.setLink(link);
-
-        if (nextPage > 0) {
-            parameters.put(
-                    Constants.PAGINATION_PAGE_NUMBER, new String[] {String.valueOf(nextPage)});
-            String nextUrl = constructUpdatedUrl(request, parameters);
-            Bundle.BundleLinkComponent nextLink = new Bundle.BundleLinkComponent();
-            nextLink.setRelation(IBaseBundle.LINK_NEXT);
-            nextLink.setUrl(nextUrl);
-            resultBundle.addLink(nextLink);
-        }
-        if (prevPage > 0) {
-            parameters.put(
-                    Constants.PAGINATION_PAGE_NUMBER, new String[] {String.valueOf(prevPage)});
-            String prevUrl = constructUpdatedUrl(request, parameters);
-            Bundle.BundleLinkComponent previousLink = new Bundle.BundleLinkComponent();
-            previousLink.setRelation(IBaseBundle.LINK_PREV);
-            previousLink.setUrl(prevUrl);
-            resultBundle.addLink(previousLink);
-        }
-
-        return resultBundle;
+        return Utils.addPaginationLinks(
+                urlBuilder, resultBundle, page, totalEntries, count, parameters);
     }
 
     private String getSyncTagUrl(String syncStrategy) {
@@ -472,30 +441,6 @@ public class SyncAccessDecision implements AccessDecision {
         }
 
         return false;
-    }
-
-    private static String constructUpdatedUrl(
-            RequestDetailsReader requestDetails, Map<String, String[]> parameters) {
-        StringBuilder updatedUrlBuilder = new StringBuilder(requestDetails.getFhirServerBase());
-
-        updatedUrlBuilder.append("/").append(requestDetails.getRequestPath());
-
-        updatedUrlBuilder.append("?");
-        for (Map.Entry<String, String[]> entry : parameters.entrySet()) {
-            String paramName = entry.getKey();
-            String[] paramValues = entry.getValue();
-
-            for (String paramValue : paramValues) {
-                updatedUrlBuilder.append(paramName).append("=").append(paramValue).append("&");
-            }
-        }
-
-        // Remove the trailing '&' if present
-        if (updatedUrlBuilder.charAt(updatedUrlBuilder.length() - 1) == '&') {
-            updatedUrlBuilder.deleteCharAt(updatedUrlBuilder.length() - 1);
-        }
-
-        return updatedUrlBuilder.toString();
     }
 
     private boolean isResourceTypeRequest(String requestPath) {
