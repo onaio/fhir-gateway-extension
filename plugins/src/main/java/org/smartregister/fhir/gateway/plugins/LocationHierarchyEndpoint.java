@@ -8,6 +8,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.http.HttpStatus;
+import org.hl7.fhir.r4.model.Bundle;
 import org.smartregister.model.location.LocationHierarchy;
 
 import com.google.fhir.gateway.TokenVerifier;
@@ -38,21 +39,32 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
         try {
             RestUtils.checkAuthentication(request, tokenVerifier);
             String identifier = request.getParameter(Constants.IDENTIFIER);
+            String mode = request.getParameter(Constants.MODE);
 
-            LocationHierarchy locationHierarchy =
-                    locationHierarchyEndpointHelper.getLocationHierarchy(identifier);
             String resultContent;
+            if (Constants.LIST.equals(mode)) {
+                Bundle resultBundle =
+                        locationHierarchyEndpointHelper.getPaginatedLocations(request);
+                resultContent = fhirR4JsonParser.encodeResourceToString(resultBundle);
 
-            if (org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND.equals(
-                    locationHierarchy.getId())) {
-                resultContent =
-                        fhirR4JsonParser.encodeResourceToString(
-                                createEmptyBundle(
-                                        request.getRequestURL() + "?" + request.getQueryString()));
             } else {
-                resultContent =
-                        fhirR4JsonParser.encodeResourceToString(
-                                createBundle(Collections.singletonList(locationHierarchy)));
+                LocationHierarchy locationHierarchy =
+                        locationHierarchyEndpointHelper.getLocationHierarchy(identifier);
+
+                if (org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND.equals(
+                        locationHierarchy.getId())) {
+                    resultContent =
+                            fhirR4JsonParser.encodeResourceToString(
+                                    Utils.createEmptyBundle(
+                                            request.getRequestURL()
+                                                    + "?"
+                                                    + request.getQueryString()));
+                } else {
+                    resultContent =
+                            fhirR4JsonParser.encodeResourceToString(
+                                    Utils.createBundle(
+                                            Collections.singletonList(locationHierarchy)));
+                }
             }
             response.setContentType("application/json");
             response.getOutputStream().print(resultContent);

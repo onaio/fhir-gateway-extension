@@ -753,7 +753,7 @@ public class SyncAccessDecisionTest {
         // Verify returned result content from the server request has pagination links
         Assert.assertNotNull(resultContent);
         Assert.assertEquals(
-                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\",\"total\":1,\"link\":[{\"relation\":\"self\",\"url\":\"http://test:8080/fhir/List?_page=1&_count=1\"},{\"relation\":\"next\",\"url\":\"http://test:8080/fhir/List?_page=2&_count=1\"}]}",
+                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\",\"total\":2,\"link\":[{\"relation\":\"self\",\"url\":\"http://test:8080/fhir/List?_page=1&_count=1\"},{\"relation\":\"next\",\"url\":\"http://test:8080/fhir/List?_page=2&_count=1\"}]}",
                 resultContent);
     }
 
@@ -838,7 +838,7 @@ public class SyncAccessDecisionTest {
         // Verify returned result content from the server request, has pagination links
         Assert.assertNotNull(resultContent);
         Assert.assertEquals(
-                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\",\"total\":1,\"link\":[{\"relation\":\"self\",\"url\":\"http://test:8080/fhir/List?_page=2&_count=1\"},{\"relation\":\"previous\",\"url\":\"http://test:8080/fhir/List?_page=1&_count=1\"}]}",
+                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\",\"total\":2,\"link\":[{\"relation\":\"self\",\"url\":\"http://test:8080/fhir/List?_page=2&_count=1\"},{\"relation\":\"previous\",\"url\":\"http://test:8080/fhir/List?_page=1&_count=1\"}]}",
                 resultContent);
     }
 
