@@ -22,7 +22,7 @@
     {
       "path": "Composition/ANY_VALUE",
       "queryParams": {
-        "identifier":"ANY_VALUE"
+        "identifier": "ANY_VALUE"
       },
       "allowUnauthenticatedRequests": true,
       "allowExtraParams": true,
@@ -32,13 +32,22 @@
     {
       "path": "Binary/ANY_VALUE",
       "queryParams": {
-        "_id":"ANY_VALUE"
+        "_id": "ANY_VALUE"
+      },
+      "allowUnauthenticatedRequests": true,
+      "allowExtraParams": true,
+      "allParamsRequired": false,
+      "requestType": "GET"
+    },
+    {
+      "path": "ImplementationGuide/ANY_VALUE",
+      "queryParams": {
+        "identifier": "ANY_VALUE"
       },
       "allowUnauthenticatedRequests": true,
       "allowExtraParams": true,
       "allParamsRequired": false,
       "requestType": "GET"
     }
-
   ]
 }
