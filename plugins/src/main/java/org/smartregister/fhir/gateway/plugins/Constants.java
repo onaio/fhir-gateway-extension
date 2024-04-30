@@ -35,6 +35,13 @@ public class Constants {
     public static final String ROLE_ALL_LOCATIONS = "ALL_LOCATIONS";
     public static final String MODE = "mode";
     public static final String LIST = "list";
+    public static final String CORS_ALLOW_HEADERS_KEY = "Access-Control-Allow-Headers";
+    public static final String CORS_ALLOW_HEADERS_VALUE = "authorization, cache-control";
+    public static final String CORS_ALLOW_METHODS_KEY = "Access-Control-Allow-Methods";
+    public static final String CORS_ALLOW_METHODS_VALUE = "DELETE,POST,GET,OPTIONS,PUT,PATCH";
+    public static final String CORS_ALLOW_ORIGIN_KEY = "Access-Control-Allow-Origin";
+    public static final String CORS_ALLOW_ORIGIN_VALUE = "*";
+    public static final String CORS_ALLOW_ORIGIN_ENV = "CORS_ALLOW_ORIGIN";
 
     public interface Literals {
         String EQUALS = "=";
