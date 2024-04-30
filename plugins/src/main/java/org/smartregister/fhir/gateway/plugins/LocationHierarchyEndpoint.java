@@ -36,6 +36,7 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
+        RestUtils.addCorsHeaders(response);
         try {
             RestUtils.checkAuthentication(request, tokenVerifier);
             String identifier = request.getParameter(Constants.IDENTIFIER);
