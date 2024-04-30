@@ -3,6 +3,7 @@ package org.smartregister.fhir.gateway.plugins;
 import static org.smartregister.fhir.gateway.plugins.Constants.AUTHORIZATION;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,5 +25,16 @@ public class RestUtils {
                     logger, "No Authorization header provided!", new AuthenticationException());
         }
         tokenVerifier.decodeAndVerifyBearerToken(authHeader);
+    }
+
+    public static void addCorsHeaders(HttpServletResponse response) {
+        response.addHeader(Constants.CORS_ALLOW_HEADERS_KEY, Constants.CORS_ALLOW_HEADERS_VALUE);
+        response.addHeader(Constants.CORS_ALLOW_METHODS_KEY, Constants.CORS_ALLOW_METHODS_VALUE);
+        String corsAllowOrigin = System.getenv(Constants.CORS_ALLOW_ORIGIN_ENV);
+        response.addHeader(
+                Constants.CORS_ALLOW_ORIGIN_KEY,
+                corsAllowOrigin != null && !corsAllowOrigin.isEmpty()
+                        ? corsAllowOrigin
+                        : Constants.CORS_ALLOW_ORIGIN_VALUE);
     }
 }

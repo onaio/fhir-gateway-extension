@@ -32,6 +32,7 @@ public class PractitionerDetailEndpoint extends BaseEndpoint {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
+        RestUtils.addCorsHeaders(response);
         try {
             RestUtils.checkAuthentication(request, tokenVerifier);
             String keycloakUuid = request.getParameter(KEYCLOAK_UUID);
