@@ -119,6 +119,9 @@ environment variables. Below is a list of the required configurations.
 - `BACKEND_TYPE`: The type of backend, either `HAPI` or `GCP`. `HAPI` should be
   used for most FHIR servers, while `GCP` should be used for GCP FHIR stores.
 
+- `CORS_ALLOW_ORIGIN`: Specifies an CORS allowed origin. Only a single origin
+  can be specified. It defaults to `*` if not set
+
 **Logging**
 
 The OpenSRP FHIR Gateway uses Sentry to capture exception logs. The Sentry
