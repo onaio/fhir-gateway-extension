@@ -1,4 +1,4 @@
-package org.smartregister.fhir.gateway.plugins;
+package org.smartregister.fhir.gateway.plugins.endpoint;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -9,12 +9,12 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.http.HttpStatus;
 import org.hl7.fhir.r4.model.Bundle;
+import org.smartregister.fhir.gateway.plugins.Constants;
+import org.smartregister.fhir.gateway.plugins.LocationHierarchyEndpointHelper;
+import org.smartregister.fhir.gateway.plugins.RestUtils;
+import org.smartregister.fhir.gateway.plugins.Utils;
 import org.smartregister.model.location.LocationHierarchy;
 
-import com.google.fhir.gateway.TokenVerifier;
-
-import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 
 @WebServlet("/LocationHierarchy")
