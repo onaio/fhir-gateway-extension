@@ -221,7 +221,9 @@ public class PermissionAccessChecker implements AccessChecker {
                                                         && v.getFocus()
                                                                 .getIdentifier()
                                                                 .getValue()
-                                                                .equals(Constants.APPLICATION))
+                                                                .equals(
+                                                                        Constants.AppConfigJsonKey
+                                                                                .APPLICATION))
                                 .map(v -> composition.getSection().indexOf(v))
                                 .findFirst();
 
@@ -268,7 +270,8 @@ public class PermissionAccessChecker implements AccessChecker {
             if (bytes != null) {
                 String json = new String(bytes);
                 JsonObject jsonObject = new Gson().fromJson(json, JsonObject.class);
-                JsonArray jsonArray = jsonObject.getAsJsonArray(Constants.SYNC_STRATEGY);
+                JsonArray jsonArray =
+                        jsonObject.getAsJsonArray(Constants.AppConfigJsonKey.SYNC_STRATEGY);
                 if (jsonArray != null && !jsonArray.isEmpty())
                     syncStrategy = jsonArray.get(0).getAsString();
             }
@@ -366,7 +369,7 @@ public class PermissionAccessChecker implements AccessChecker {
             List<String> locationIds;
             List<String> relatedEntityLocationIds;
             if (StringUtils.isNotBlank(syncStrategy)) {
-                if (Constants.CARE_TEAM.equalsIgnoreCase(syncStrategy)) {
+                if (Constants.SyncStrategy.CARE_TEAM.equalsIgnoreCase(syncStrategy)) {
                     careTeams =
                             practitionerDetails != null
                                             && practitionerDetails.getFhirPractitionerDetails()
@@ -384,7 +387,7 @@ public class PermissionAccessChecker implements AccessChecker {
 
                     resultMap = Map.of(syncStrategy, careTeamIds);
 
-                } else if (Constants.ORGANIZATION.equalsIgnoreCase(syncStrategy)) {
+                } else if (Constants.SyncStrategy.ORGANIZATION.equalsIgnoreCase(syncStrategy)) {
                     organizations =
                             practitionerDetails != null
                                             && practitionerDetails.getFhirPractitionerDetails()
@@ -402,7 +405,7 @@ public class PermissionAccessChecker implements AccessChecker {
 
                     resultMap = Map.of(syncStrategy, organizationIds);
 
-                } else if (Constants.LOCATION.equalsIgnoreCase(syncStrategy)) {
+                } else if (Constants.SyncStrategy.LOCATION.equalsIgnoreCase(syncStrategy)) {
                     locationIds =
                             practitionerDetails != null
                                             && practitionerDetails.getFhirPractitionerDetails()
@@ -414,7 +417,8 @@ public class PermissionAccessChecker implements AccessChecker {
                                     : new ArrayList<>();
 
                     resultMap = Map.of(syncStrategy, locationIds);
-                } else if (Constants.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)) {
+                } else if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(
+                        syncStrategy)) {
                     // assigned locations
                     relatedEntityLocationIds =
                             practitionerDetails != null

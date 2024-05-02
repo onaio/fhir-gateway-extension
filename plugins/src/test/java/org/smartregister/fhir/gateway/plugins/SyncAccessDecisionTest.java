@@ -60,7 +60,7 @@ public class SyncAccessDecisionTest {
             throws IOException {
         locationIds.add("locationid12");
         locationIds.add("locationid2");
-        testInstance = createSyncAccessDecisionTestInstance(Constants.LOCATION);
+        testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.LOCATION);
 
         RequestDetails requestDetails = new ServletRequestDetails();
         requestDetails.setRequestType(RequestTypeEnum.GET);
@@ -101,7 +101,9 @@ public class SyncAccessDecisionTest {
                     throws IOException {
         relatedEntityLocationIds.add("relocationid12");
         relatedEntityLocationIds.add("relocationid2");
-        testInstance = createSyncAccessDecisionTestInstance(Constants.RELATED_ENTITY_LOCATION);
+        testInstance =
+                createSyncAccessDecisionTestInstance(
+                        Constants.SyncStrategy.RELATED_ENTITY_LOCATION);
 
         RequestDetails requestDetails = new ServletRequestDetails();
         requestDetails.setRequestType(RequestTypeEnum.GET);
@@ -159,7 +161,9 @@ public class SyncAccessDecisionTest {
                             + srelocationid2;
             relatedEntityLocationIds.add("relocationid1");
             relatedEntityLocationIds.add("relocationid2");
-            testInstance = createSyncAccessDecisionTestInstance(Constants.RELATED_ENTITY_LOCATION);
+            testInstance =
+                    createSyncAccessDecisionTestInstance(
+                            Constants.SyncStrategy.RELATED_ENTITY_LOCATION);
 
             mockPractitionerDetailsEndpointHelper
                     .when(
@@ -237,7 +241,9 @@ public class SyncAccessDecisionTest {
                             + srelocationid2;
             relatedEntityLocationIds.add("relocationid1");
             relatedEntityLocationIds.add("relocationid2");
-            testInstance = createSyncAccessDecisionTestInstance(Constants.RELATED_ENTITY_LOCATION);
+            testInstance =
+                    createSyncAccessDecisionTestInstance(
+                            Constants.SyncStrategy.RELATED_ENTITY_LOCATION);
 
             mockPractitionerDetailsEndpointHelper
                     .when(
@@ -277,7 +283,7 @@ public class SyncAccessDecisionTest {
             throws IOException {
         careTeamIds.add("careteamid1");
         careTeamIds.add("careteamid2");
-        testInstance = createSyncAccessDecisionTestInstance(Constants.CARE_TEAM);
+        testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.CARE_TEAM);
 
         RequestDetails requestDetails = new ServletRequestDetails();
         requestDetails.setRequestType(RequestTypeEnum.GET);
@@ -318,7 +324,7 @@ public class SyncAccessDecisionTest {
             throws IOException {
         organisationIds.add("organizationid1");
         organisationIds.add("organizationid2");
-        testInstance = createSyncAccessDecisionTestInstance(Constants.ORGANIZATION);
+        testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.ORGANIZATION);
 
         RequestDetails requestDetails = new ServletRequestDetails();
         requestDetails.setRequestType(RequestTypeEnum.GET);
@@ -354,7 +360,7 @@ public class SyncAccessDecisionTest {
     public void preProcessShouldAddFiltersWhenResourceNotInSyncFilterIgnoredResourcesFile() {
         organisationIds.add("organizationid1");
         organisationIds.add("organizationid2");
-        testInstance = createSyncAccessDecisionTestInstance(Constants.ORGANIZATION);
+        testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.ORGANIZATION);
 
         RequestDetails requestDetails = new ServletRequestDetails();
         requestDetails.setRequestType(RequestTypeEnum.GET);
@@ -389,7 +395,7 @@ public class SyncAccessDecisionTest {
     public void preProcessShouldSkipAddingFiltersWhenResourceInSyncFilterIgnoredResourcesFile() {
         organisationIds.add("organizationid1");
         organisationIds.add("organizationid2");
-        testInstance = createSyncAccessDecisionTestInstance(Constants.ORGANIZATION);
+        testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.ORGANIZATION);
 
         RequestDetails requestDetails = new ServletRequestDetails();
         requestDetails.setRequestType(RequestTypeEnum.GET);
@@ -414,7 +420,7 @@ public class SyncAccessDecisionTest {
             preProcessShouldSkipAddingFiltersWhenSearchResourceByIdsInSyncFilterIgnoredResourcesFile() {
         organisationIds.add("organizationid1");
         organisationIds.add("organizationid2");
-        testInstance = createSyncAccessDecisionTestInstance(Constants.ORGANIZATION);
+        testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.ORGANIZATION);
 
         RequestDetails requestDetails = new ServletRequestDetails();
         requestDetails.setRequestType(RequestTypeEnum.GET);
@@ -450,7 +456,7 @@ public class SyncAccessDecisionTest {
             preProcessShouldAddFiltersWhenSearchResourceByIdsDoNotMatchSyncFilterIgnoredResources() {
         organisationIds.add("organizationid1");
         organisationIds.add("organizationid2");
-        testInstance = createSyncAccessDecisionTestInstance(Constants.ORGANIZATION);
+        testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.ORGANIZATION);
 
         RequestDetails requestDetails = new ServletRequestDetails();
         requestDetails.setRequestType(RequestTypeEnum.GET);
@@ -512,7 +518,8 @@ public class SyncAccessDecisionTest {
     @Test
     public void testPostProcessWithListModeHeaderShouldFetchListEntriesBundle() throws IOException {
         locationIds.add("Location-1");
-        testInstance = Mockito.spy(createSyncAccessDecisionTestInstance(Constants.LOCATION));
+        testInstance =
+                Mockito.spy(createSyncAccessDecisionTestInstance(Constants.SyncStrategy.LOCATION));
 
         FhirContext fhirR4Context = mock(FhirContext.class);
         IGenericClient iGenericClient = mock(IGenericClient.class);
@@ -581,7 +588,7 @@ public class SyncAccessDecisionTest {
 
     @Test
     public void testPostProcessWithoutListModeHeaderShouldShouldReturnNull() throws IOException {
-        testInstance = createSyncAccessDecisionTestInstance(Constants.LOCATION);
+        testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.LOCATION);
 
         RequestDetailsReader requestDetailsSpy = Mockito.mock(RequestDetailsReader.class);
         Mockito.when(
@@ -600,7 +607,8 @@ public class SyncAccessDecisionTest {
     public void testPostProcessWithListModeHeaderSearchByTagShouldFetchListEntriesBundle()
             throws IOException {
         locationIds.add("Location-1");
-        testInstance = Mockito.spy(createSyncAccessDecisionTestInstance(Constants.LOCATION));
+        testInstance =
+                Mockito.spy(createSyncAccessDecisionTestInstance(Constants.SyncStrategy.LOCATION));
 
         FhirContext fhirR4Context = mock(FhirContext.class);
         IGenericClient iGenericClient = mock(IGenericClient.class);
@@ -682,7 +690,8 @@ public class SyncAccessDecisionTest {
     @Test
     public void testPostProcessWithListModeHeaderPaginateEntriesBundle() throws IOException {
         locationIds.add("Location-1");
-        testInstance = Mockito.spy(createSyncAccessDecisionTestInstance(Constants.LOCATION));
+        testInstance =
+                Mockito.spy(createSyncAccessDecisionTestInstance(Constants.SyncStrategy.LOCATION));
 
         FhirContext fhirR4Context = mock(FhirContext.class);
         IGenericClient iGenericClient = mock(IGenericClient.class);
@@ -761,7 +770,8 @@ public class SyncAccessDecisionTest {
     public void testPostProcessWithListModeHeaderSearchByTagPaginateEntriesBundle()
             throws IOException {
         locationIds.add("Location-1");
-        testInstance = Mockito.spy(createSyncAccessDecisionTestInstance(Constants.LOCATION));
+        testInstance =
+                Mockito.spy(createSyncAccessDecisionTestInstance(Constants.SyncStrategy.LOCATION));
 
         FhirContext fhirR4Context = mock(FhirContext.class);
         IGenericClient iGenericClient = mock(IGenericClient.class);
@@ -854,10 +864,11 @@ public class SyncAccessDecisionTest {
         FhirContext fhirR4Context = FhirContext.forR4();
 
         Map<String, List<String>> syncStrategyIds = new HashMap<>();
-        syncStrategyIds.put(Constants.LOCATION, locationIds);
-        syncStrategyIds.put(Constants.CARE_TEAM, careTeamIds);
-        syncStrategyIds.put(Constants.ORGANIZATION, organisationIds);
-        syncStrategyIds.put(Constants.RELATED_ENTITY_LOCATION, relatedEntityLocationIds);
+        syncStrategyIds.put(Constants.SyncStrategy.LOCATION, locationIds);
+        syncStrategyIds.put(Constants.SyncStrategy.CARE_TEAM, careTeamIds);
+        syncStrategyIds.put(Constants.SyncStrategy.ORGANIZATION, organisationIds);
+        syncStrategyIds.put(
+                Constants.SyncStrategy.RELATED_ENTITY_LOCATION, relatedEntityLocationIds);
 
         SyncAccessDecision accessDecision =
                 new SyncAccessDecision(
