@@ -72,7 +72,7 @@ public class PractitionerDetailsEndpointHelper {
     public Bundle getSupervisorPractitionerDetailsByKeycloakId(String keycloakUuid) {
         Bundle bundle = new Bundle();
 
-        logger.info("Searching for practitioner with user id: " + keycloakUuid);
+        logger.info("Searching for supervisor practitioner with user id: " + keycloakUuid);
         Practitioner practitioner = getPractitionerByIdentifier(keycloakUuid);
 
         if (practitioner != null) {
@@ -80,7 +80,8 @@ public class PractitionerDetailsEndpointHelper {
             bundle = getAttributedPractitionerDetailsByPractitioner(practitioner);
 
         } else {
-            logger.error("Practitioner with KC identifier: " + keycloakUuid + " not found");
+            logger.error(
+                    "Supervisor practitioner with KC identifier: " + keycloakUuid + " not found");
         }
 
         return bundle;
