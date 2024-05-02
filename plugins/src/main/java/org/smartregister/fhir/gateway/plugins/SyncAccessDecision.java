@@ -104,7 +104,7 @@ public class SyncAccessDecision implements AccessDecision {
                         requestDetailsReader)) { // Check if it is the Sync URL and Skip app-wide
 
             // accessible resource requests
-            if (Constants.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)) {
+            if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)) {
                 Map<String, String[]> parameters =
                         new HashMap<>(requestDetailsReader.getParameters());
                 String[] syncLocations = parameters.get(Constants.SYNC_LOCATIONS);
@@ -230,7 +230,7 @@ public class SyncAccessDecision implements AccessDecision {
     }
 
     private boolean includeAttributedPractitioners(String requestPath) {
-        return Constants.LOCATION.equalsIgnoreCase(syncStrategy)
+        return Constants.SyncStrategy.LOCATION.equalsIgnoreCase(syncStrategy)
                 && roles.contains(SyncAccessDecisionConstants.ROLE_SUPERVISOR)
                 && SyncAccessDecisionConstants.ENDPOINT_PRACTITIONER_DETAILS.equals(requestPath);
     }
@@ -364,16 +364,16 @@ public class SyncAccessDecision implements AccessDecision {
     }
 
     private String getSyncTagUrl(String syncStrategy) {
-        if (syncStrategy.equalsIgnoreCase(Constants.LOCATION)) {
+        if (syncStrategy.equalsIgnoreCase(Constants.SyncStrategy.LOCATION)) {
             return getEnvironmentVar(
                     Constants.LOCATION_TAG_URL_ENV, Constants.DEFAULT_LOCATION_TAG_URL);
-        } else if (syncStrategy.equalsIgnoreCase(Constants.ORGANIZATION)) {
+        } else if (syncStrategy.equalsIgnoreCase(Constants.SyncStrategy.ORGANIZATION)) {
             return getEnvironmentVar(
                     Constants.ORGANISATION_TAG_URL_ENV, Constants.DEFAULT_ORGANISATION_TAG_URL);
-        } else if (syncStrategy.equalsIgnoreCase(Constants.CARE_TEAM)) {
+        } else if (syncStrategy.equalsIgnoreCase(Constants.SyncStrategy.CARE_TEAM)) {
             return getEnvironmentVar(
                     Constants.CARE_TEAM_TAG_URL_ENV, Constants.DEFAULT_CARE_TEAM_TAG_URL);
-        } else if (syncStrategy.equalsIgnoreCase(Constants.RELATED_ENTITY_LOCATION)) {
+        } else if (syncStrategy.equalsIgnoreCase(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)) {
             return getEnvironmentVar(
                     Constants.RELATED_ENTITY_TAG_URL_ENV, Constants.DEFAULT_RELATED_ENTITY_TAG_URL);
         } else {
