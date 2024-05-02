@@ -16,17 +16,13 @@ import org.smartregister.fhir.gateway.plugins.RestUtils;
 import org.smartregister.fhir.gateway.plugins.Utils;
 import org.smartregister.model.practitioner.PractitionerDetails;
 
-import com.google.fhir.gateway.TokenVerifier;
-
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 
 @WebServlet("/PractitionerDetail")
 public class PractitionerDetailEndpoint extends BaseEndpoint {
-    private final TokenVerifier tokenVerifier;
     private final PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
 
     public PractitionerDetailEndpoint() throws IOException {
-        this.tokenVerifier = TokenVerifier.createFromEnvVars();
         this.practitionerDetailsEndpointHelper =
                 new PractitionerDetailsEndpointHelper(
                         fhirR4Context.newRestfulGenericClient(
