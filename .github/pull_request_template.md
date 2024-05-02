@@ -6,6 +6,7 @@ Resolves [link to issue]
 
 - [ ] I have written **Unit tests** for any new feature(s) and edge cases for
       bug fixes
+- [ ] I have added documentation for any new feature(s) and configuration option(s) on the `README.md`
 - [ ] I have run `mvn spotless:check` to check my code follows the project's
       style guide
 - [ ] I have run `mvn clean test jacoco:report` to confirm the coverage report
