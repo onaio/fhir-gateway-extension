@@ -168,9 +168,23 @@ public class PractitionerDetailsEndpointHelper {
                                                 .getParentChildren()
                                                 .stream())
                         .collect(Collectors.toList());
-        return parentChildrenList.stream()
-                .flatMap(parentChildren -> parentChildren.getChildIdentifiers().stream())
-                .map(it -> getReferenceIDPart(it.toString()))
+
+        return Stream.concat(
+                        parentChildrenList.stream()
+                                .flatMap(
+                                        parentChildren ->
+                                                parentChildren.getChildIdentifiers().stream())
+                                .map(it -> getReferenceIDPart(it.toString())),
+                        locationHierarchies.stream()
+                                .filter(
+                                        it ->
+                                                it.getLocationHierarchyTree()
+                                                        .getLocationsHierarchy()
+                                                        .getParentChildren()
+                                                        .isEmpty())
+                                .map(
+                                        locationHierarchy ->
+                                                locationHierarchy.getLocationId().getValue()))
                 .collect(Collectors.toList());
     }
 
