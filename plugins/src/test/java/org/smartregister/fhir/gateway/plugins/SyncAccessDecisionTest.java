@@ -16,6 +16,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpResponse;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.ListResource;
+import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
@@ -178,18 +179,8 @@ public class SyncAccessDecisionTest {
                                             Mockito.any()))
                     .thenReturn(searchTagValues);
 
-            Map<String, String[]> parameters = new HashMap<>();
-            String[] locations = {"srelocationid1", "srelocationid2"};
-            parameters.put(Constants.SYNC_LOCATIONS, locations);
-
-            RequestDetails requestDetails = new ServletRequestDetails();
-            requestDetails.setRequestType(RequestTypeEnum.GET);
-            requestDetails.setRestOperationType(RestOperationTypeEnum.SEARCH_TYPE);
-            requestDetails.setResourceName("Patient");
-            requestDetails.setFhirServerBase("https://smartregister.org/fhir");
-            requestDetails.setCompleteUrl("https://smartregister.org/fhir/Patient");
-            requestDetails.setRequestPath("Patient");
-            requestDetails.setParameters(parameters);
+            RequestDetails requestDetails =
+                    getRequestDetails(new String[] {"srelocationid1", "srelocationid2"});
             userRoles.add(Constants.ROLE_ALL_LOCATIONS);
 
             RequestMutation mutatedRequest =
@@ -258,24 +249,28 @@ public class SyncAccessDecisionTest {
                                             Mockito.any()))
                     .thenReturn(searchTagValues);
 
-            Map<String, String[]> parameters = new HashMap<>();
-
-            // empty string
-            String[] locations = new String[] {};
-            parameters.put(Constants.SYNC_LOCATIONS, locations);
-
-            RequestDetails requestDetails = new ServletRequestDetails();
-            requestDetails.setRequestType(RequestTypeEnum.GET);
-            requestDetails.setRestOperationType(RestOperationTypeEnum.SEARCH_TYPE);
-            requestDetails.setResourceName("Patient");
-            requestDetails.setFhirServerBase("https://smartregister.org/fhir");
-            requestDetails.setCompleteUrl("https://smartregister.org/fhir/Patient");
-            requestDetails.setRequestPath("Patient");
-            requestDetails.setParameters(parameters);
+            RequestDetails requestDetails = getRequestDetails(new String[] {});
             userRoles.add(Constants.ROLE_ALL_LOCATIONS);
 
             testInstance.getRequestMutation(new TestRequestDetailsToReader(requestDetails));
         }
+    }
+
+    private static @NotNull RequestDetails getRequestDetails(String[] locations) {
+        Map<String, String[]> parameters = new HashMap<>();
+
+        // empty string
+        parameters.put(Constants.SYNC_LOCATIONS, locations);
+
+        RequestDetails requestDetails = new ServletRequestDetails();
+        requestDetails.setRequestType(RequestTypeEnum.GET);
+        requestDetails.setRestOperationType(RestOperationTypeEnum.SEARCH_TYPE);
+        requestDetails.setResourceName("Patient");
+        requestDetails.setFhirServerBase("https://smartregister.org/fhir");
+        requestDetails.setCompleteUrl("https://smartregister.org/fhir/Patient");
+        requestDetails.setRequestPath("Patient");
+        requestDetails.setParameters(parameters);
+        return requestDetails;
     }
 
     @Test
@@ -874,7 +869,6 @@ public class SyncAccessDecisionTest {
                 new SyncAccessDecision(
                         fhirR4Context,
                         "sample-keycloak-id",
-                        "sample-application-id",
                         true,
                         syncStrategyIds,
                         syncStrategy,
