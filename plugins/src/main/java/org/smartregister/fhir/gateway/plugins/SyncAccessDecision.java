@@ -330,16 +330,16 @@ public class SyncAccessDecision implements AccessDecision {
     }
 
     private String getSyncTagUrl(String syncStrategy) {
-        if (syncStrategy.equalsIgnoreCase(Constants.SyncStrategy.LOCATION)) {
+        if (Constants.SyncStrategy.LOCATION.equalsIgnoreCase(syncStrategy)) {
             return getEnvironmentVar(
                     Constants.LOCATION_TAG_URL_ENV, Constants.DEFAULT_LOCATION_TAG_URL);
-        } else if (syncStrategy.equalsIgnoreCase(Constants.SyncStrategy.ORGANIZATION)) {
+        } else if (Constants.SyncStrategy.ORGANIZATION.equalsIgnoreCase(syncStrategy)) {
             return getEnvironmentVar(
                     Constants.ORGANISATION_TAG_URL_ENV, Constants.DEFAULT_ORGANISATION_TAG_URL);
-        } else if (syncStrategy.equalsIgnoreCase(Constants.SyncStrategy.CARE_TEAM)) {
+        } else if (Constants.SyncStrategy.CARE_TEAM.equalsIgnoreCase(syncStrategy)) {
             return getEnvironmentVar(
                     Constants.CARE_TEAM_TAG_URL_ENV, Constants.DEFAULT_CARE_TEAM_TAG_URL);
-        } else if (syncStrategy.equalsIgnoreCase(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)) {
+        } else if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)) {
             return getEnvironmentVar(
                     Constants.RELATED_ENTITY_TAG_URL_ENV, Constants.DEFAULT_RELATED_ENTITY_TAG_URL);
         } else {
