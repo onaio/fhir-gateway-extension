@@ -19,14 +19,9 @@ import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 
 @WebServlet("/LocationHierarchy")
 public class LocationHierarchyEndpoint extends BaseEndpoint {
-    private final TokenVerifier tokenVerifier;
-
-    private final FhirContext fhirR4Context = FhirContext.forR4();
-    private final IParser fhirR4JsonParser = fhirR4Context.newJsonParser().setPrettyPrint(true);
     private final LocationHierarchyEndpointHelper locationHierarchyEndpointHelper;
 
     public LocationHierarchyEndpoint() throws IOException {
-        this.tokenVerifier = TokenVerifier.createFromEnvVars();
         this.locationHierarchyEndpointHelper =
                 new LocationHierarchyEndpointHelper(
                         fhirR4Context.newRestfulGenericClient(
