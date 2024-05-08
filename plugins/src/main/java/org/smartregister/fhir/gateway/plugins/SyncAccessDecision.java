@@ -158,7 +158,13 @@ public class SyncAccessDecision implements AccessDecision {
 
         String resultContent = null;
         Resource resultContentBundle;
-        String gatewayMode = request.getHeader(SyncAccessDecisionConstants.FHIR_GATEWAY_MODE);
+
+        Map<String, String[]> parameters = new HashMap<>(request.getParameters());
+        String[] listMode = parameters.get(Constants.Header.MODE);
+        String gatewayModeQueryParam = listMode != null && listMode.length > 0 ? listMode[0] : null;
+        String gatewayMode = request.getHeader(Constants.Header.FHIR_GATEWAY_MODE);
+        gatewayMode =
+                StringUtils.isNotBlank(gatewayModeQueryParam) ? gatewayModeQueryParam : gatewayMode;
 
         if (StringUtils.isNotBlank(gatewayMode)) {
 
@@ -533,7 +539,6 @@ public class SyncAccessDecision implements AccessDecision {
     }
 
     public static final class SyncAccessDecisionConstants {
-        public static final String FHIR_GATEWAY_MODE = "fhir-gateway-mode";
         public static final String LIST_ENTRIES = "list-entries";
         public static final String ROLE_SUPERVISOR = "SUPERVISOR";
         public static final String ENDPOINT_PRACTITIONER_DETAILS = "PractitionerDetail";

@@ -538,9 +538,7 @@ public class SyncAccessDecisionTest {
 
         RequestDetailsReader requestDetailsSpy = Mockito.mock(RequestDetailsReader.class);
 
-        Mockito.when(
-                        requestDetailsSpy.getHeader(
-                                SyncAccessDecision.SyncAccessDecisionConstants.FHIR_GATEWAY_MODE))
+        Mockito.when(requestDetailsSpy.getHeader(Constants.Header.FHIR_GATEWAY_MODE))
                 .thenReturn(SyncAccessDecision.SyncAccessDecisionConstants.LIST_ENTRIES);
 
         URL listUrl = Resources.getResource("test_list_resource.json");
@@ -582,13 +580,85 @@ public class SyncAccessDecisionTest {
     }
 
     @Test
+    public void testPostProcessWithListModeQueryParamShouldFetchListEntriesBundle()
+            throws IOException {
+        locationIds.add("Location-1");
+        testInstance =
+                Mockito.spy(createSyncAccessDecisionTestInstance(Constants.SyncStrategy.LOCATION));
+
+        FhirContext fhirR4Context = mock(FhirContext.class);
+        IGenericClient iGenericClient = mock(IGenericClient.class);
+        ITransaction iTransaction = mock(ITransaction.class);
+        ITransactionTyped<Bundle> iClientExecutable = mock(ITransactionTyped.class);
+        testInstance.setFhirR4Client(iGenericClient);
+        testInstance.setFhirR4Context(fhirR4Context);
+
+        Mockito.when(iGenericClient.transaction()).thenReturn(iTransaction);
+        Mockito.when(iTransaction.withBundle(any(Bundle.class))).thenReturn(iClientExecutable);
+
+        Bundle resultBundle = new Bundle();
+        resultBundle.setType(Bundle.BundleType.BATCHRESPONSE);
+        resultBundle.setId("bundle-result-id");
+
+        Mockito.when(iClientExecutable.execute()).thenReturn(resultBundle);
+
+        ArgumentCaptor<Bundle> bundleArgumentCaptor = ArgumentCaptor.forClass(Bundle.class);
+
+        testInstance.setFhirR4Context(fhirR4Context);
+
+        RequestDetailsReader requestDetailsSpy = Mockito.mock(RequestDetailsReader.class);
+
+        Map<String, String[]> params = new HashMap<>();
+        params.put(
+                Constants.Header.MODE,
+                new String[] {SyncAccessDecision.SyncAccessDecisionConstants.LIST_ENTRIES});
+
+        Mockito.when(requestDetailsSpy.getParameters()).thenReturn(params);
+
+        URL listUrl = Resources.getResource("test_list_resource.json");
+        String testListJson = Resources.toString(listUrl, StandardCharsets.UTF_8);
+
+        HttpResponse fhirResponseMock =
+                Mockito.mock(HttpResponse.class, Answers.RETURNS_DEEP_STUBS);
+
+        TestUtil.setUpFhirResponseMock(fhirResponseMock, testListJson);
+        String fhirServerBase = "http://test:8080/fhir";
+        Mockito.when(requestDetailsSpy.getFhirServerBase()).thenReturn(fhirServerBase);
+        Mockito.when(requestDetailsSpy.getRequestPath()).thenReturn("List");
+        String resultContent = testInstance.postProcess(requestDetailsSpy, fhirResponseMock);
+
+        Mockito.verify(iTransaction).withBundle(bundleArgumentCaptor.capture());
+        Bundle requestBundle = bundleArgumentCaptor.getValue();
+
+        // Verify modified request to the server
+        Assert.assertNotNull(requestBundle);
+        Assert.assertEquals(Bundle.BundleType.BATCH, requestBundle.getType());
+        List<Bundle.BundleEntryComponent> requestBundleEntries = requestBundle.getEntry();
+        Assert.assertEquals(2, requestBundleEntries.size());
+
+        Assert.assertEquals(
+                Bundle.HTTPVerb.GET, requestBundleEntries.get(0).getRequest().getMethod());
+        Assert.assertEquals(
+                "Group/proxy-list-entry-id-1", requestBundleEntries.get(0).getRequest().getUrl());
+
+        Assert.assertEquals(
+                Bundle.HTTPVerb.GET, requestBundleEntries.get(1).getRequest().getMethod());
+        Assert.assertEquals(
+                "Group/proxy-list-entry-id-2", requestBundleEntries.get(1).getRequest().getUrl());
+
+        // Verify returned result content from the server request
+        Assert.assertNotNull(resultContent);
+        Assert.assertEquals(
+                "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\",\"total\":2,\"link\":[{\"relation\":\"self\",\"url\":\"http://test:8080/fhir/List?mode=list-entries\"}]}",
+                resultContent);
+    }
+
+    @Test
     public void testPostProcessWithoutListModeHeaderShouldShouldReturnNull() throws IOException {
         testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.LOCATION);
 
         RequestDetailsReader requestDetailsSpy = Mockito.mock(RequestDetailsReader.class);
-        Mockito.when(
-                        requestDetailsSpy.getHeader(
-                                SyncAccessDecision.SyncAccessDecisionConstants.FHIR_GATEWAY_MODE))
+        Mockito.when(requestDetailsSpy.getHeader(Constants.Header.FHIR_GATEWAY_MODE))
                 .thenReturn("");
 
         String resultContent =
@@ -625,9 +695,7 @@ public class SyncAccessDecisionTest {
 
         RequestDetailsReader requestDetailsSpy = Mockito.mock(RequestDetailsReader.class);
 
-        Mockito.when(
-                        requestDetailsSpy.getHeader(
-                                SyncAccessDecision.SyncAccessDecisionConstants.FHIR_GATEWAY_MODE))
+        Mockito.when(requestDetailsSpy.getHeader(Constants.Header.FHIR_GATEWAY_MODE))
                 .thenReturn(SyncAccessDecision.SyncAccessDecisionConstants.LIST_ENTRIES);
 
         URL listUrl = Resources.getResource("test_list_resource.json");
@@ -710,9 +778,7 @@ public class SyncAccessDecisionTest {
 
         RequestDetailsReader requestDetailsSpy = Mockito.mock(RequestDetailsReader.class);
 
-        Mockito.when(
-                        requestDetailsSpy.getHeader(
-                                SyncAccessDecision.SyncAccessDecisionConstants.FHIR_GATEWAY_MODE))
+        Mockito.when(requestDetailsSpy.getHeader(Constants.Header.FHIR_GATEWAY_MODE))
                 .thenReturn(SyncAccessDecision.SyncAccessDecisionConstants.LIST_ENTRIES);
 
         Map<String, String[]> params = new HashMap<>();
@@ -788,9 +854,7 @@ public class SyncAccessDecisionTest {
 
         RequestDetailsReader requestDetailsSpy = Mockito.mock(RequestDetailsReader.class);
 
-        Mockito.when(
-                        requestDetailsSpy.getHeader(
-                                SyncAccessDecision.SyncAccessDecisionConstants.FHIR_GATEWAY_MODE))
+        Mockito.when(requestDetailsSpy.getHeader(Constants.Header.FHIR_GATEWAY_MODE))
                 .thenReturn(SyncAccessDecision.SyncAccessDecisionConstants.LIST_ENTRIES);
 
         Map<String, String[]> params = new HashMap<>();
