@@ -268,7 +268,7 @@ Example:
 
 ### Custom Endpoints
 
-For custom endpoints such as `/Practitioner-Detail` and `/LocationHierarchy`,
+For custom endpoints such as `/PractitionerDetail` and `/LocationHierarchy`,
 there is no need to include the `/fhir/` part. Directly use the endpoint in the
 URL:
 
@@ -282,17 +282,36 @@ types through the gateway.
 ##### Overview
 
 The FHIR Gateway Mode allows for custom processing of responses from the FHIR
-server. The mode is triggered by a HTTP Header sent by the client named
-`FHIR-Gateway-Mode` with a value e.g. `list-entries`(Currently only supported).
+server.
 
-##### FHIR-Gateway-Mode: list-entries
+##### FHIR-Gateway-Mode: list-entries (Deprecated)
 
 This mode is used when using the `/List` endpoint. Normally, fetching using this
 endpoint returns a list of references which can then be used to query for the
 actual resources. With this header value configured the response is instead a
-Bundle that contains all the actual (referenced) resources.
+Bundle that contains all the actual (referenced) resources. This is now
+deprecated in favor of the `mode` query parameter.
+[See below](https://github.com/onaio/fhir-gateway-extension/edit/main/README.md#mode).
 
-###### Pagination
+### Custom Query Parameters
+
+#### Mode
+
+##### List Resource
+
+When fetching `List` resources, the endpoint returns a list of references which
+can then be used to query for the actual resources. With this query parameter
+value configured the response is instead a Bundle that contains all the actual
+(referenced) resources. To activate this mode, supply a `mode` query parameter
+and give it a value of `list-entries`
+
+Example:
+
+```
+/List?mode=list-entries
+```
+
+#### Pagination
 
 Pagination is supported in fetching the data from a FHIR server. This can be
 useful when dealing with List resources that have a large number of referenced

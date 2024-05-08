@@ -52,4 +52,9 @@ public class Constants {
         String ORGANIZATION = "Organization";
         String CARE_TEAM = "CareTeam";
     }
+
+    public interface Header {
+        @Deprecated String FHIR_GATEWAY_MODE = "fhir-gateway-mode";
+        String MODE = "mode";
+    }
 }
