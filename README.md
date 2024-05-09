@@ -1,3 +1,6 @@
+[![Android CI with Gradle](https://onaio/fhir-gateway-extension/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/onaio/fhir-gateway-extension/actions/workflows/ci.yml?query=branch%3Amain)
+[![codecov](https://codecov.io/gh/onaio/fhir-gateway-extension/graph/badge.svg?token=mJXoNJlNvn)](https://codecov.io/gh/onaio/fhir-gateway-extension)
+
 # fhir-gateway-extension
 
 This repository extends the FHIR Info Gateway code base release artifact found
