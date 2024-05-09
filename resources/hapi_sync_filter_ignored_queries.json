@@ -43,14 +43,14 @@
       }
     },
     {
-      "path": "LocationHierarchy/",
+      "path": "LocationHierarchy",
       "methodType": "GET",
       "queryParams": {
         "identifier": "ANY_VALUE"
       }
     },
     {
-      "path": "PractitionerDetails",
+      "path": "PractitionerDetail",
       "methodType": "GET",
       "queryParams": {
         "keycloak-uuid": "ANY_VALUE"

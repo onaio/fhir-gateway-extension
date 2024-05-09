@@ -6,20 +6,25 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Practitioner;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.internal.stubbing.defaultanswers.ReturnsDeepStubs;
+import org.smartregister.model.location.LocationHierarchy;
 import org.smartregister.model.practitioner.PractitionerDetails;
 
+import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.ICriterion;
 
-public class PractitonerDetailsEndpointHelperTest {
+public class PractitionerDetailsEndpointHelperTest {
 
     private PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
     IGenericClient client;
@@ -74,6 +79,40 @@ public class PractitonerDetailsEndpointHelperTest {
         assertEquals(
                 "Practitioner/1234",
                 practitionerDetails.getFhirPractitionerDetails().getPractitioners().get(0).getId());
+    }
+
+    @Test
+    public void testGetAttributedLocationsWithNoParentChildrenReturnsLocationId() {
+
+        String locationHierarchyNoParentChildren =
+                "{\n"
+                        + "  \"resourceType\": \"LocationHierarchy\",\n"
+                        + "  \"id\": \"Location Resource : 12345\",\n"
+                        + "  \"meta\": {\n"
+                        + "    \"profile\": [\n"
+                        + "      \"http://hl7.org/fhir/profiles/custom-resource\"\n"
+                        + "    ]\n"
+                        + "  },\n"
+                        + "  \"LocationHierarchyTree\": {\n"
+                        + "    \"locationsHierarchy\": { \n"
+                        + "    }\n"
+                        + "  },\n"
+                        + "  \"locationId\": \"12345\"\n"
+                        + "}";
+
+        FhirContext ctx = FhirContext.forR4Cached();
+        ctx.registerCustomType(LocationHierarchy.class);
+        IParser parser = ctx.newJsonParser();
+        LocationHierarchy locationHierarchy =
+                (LocationHierarchy) parser.parseResource(locationHierarchyNoParentChildren);
+
+        List<LocationHierarchy> hierarchies = Arrays.asList(locationHierarchy);
+        List<String> attributedLocationIds =
+                PractitionerDetailsEndpointHelper.getAttributedLocations(hierarchies);
+        Assert.assertNotNull(attributedLocationIds);
+        Assert.assertFalse(attributedLocationIds.isEmpty());
+        Assert.assertEquals(1, attributedLocationIds.size());
+        Assert.assertEquals("12345", attributedLocationIds.get(0));
     }
 
     private Bundle getPractitionerBundle() {
