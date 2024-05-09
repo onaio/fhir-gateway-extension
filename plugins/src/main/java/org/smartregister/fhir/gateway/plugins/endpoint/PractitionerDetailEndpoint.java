@@ -1,4 +1,4 @@
-package org.smartregister.fhir.gateway.plugins;
+package org.smartregister.fhir.gateway.plugins.endpoint;
 
 import static org.smartregister.fhir.gateway.plugins.Constants.KEYCLOAK_UUID;
 
@@ -10,19 +10,19 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.http.HttpStatus;
+import org.smartregister.fhir.gateway.plugins.Constants;
+import org.smartregister.fhir.gateway.plugins.PractitionerDetailsEndpointHelper;
+import org.smartregister.fhir.gateway.plugins.RestUtils;
+import org.smartregister.fhir.gateway.plugins.Utils;
 import org.smartregister.model.practitioner.PractitionerDetails;
-
-import com.google.fhir.gateway.TokenVerifier;
 
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 
 @WebServlet("/PractitionerDetail")
 public class PractitionerDetailEndpoint extends BaseEndpoint {
-    private final TokenVerifier tokenVerifier;
     private final PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
 
     public PractitionerDetailEndpoint() throws IOException {
-        this.tokenVerifier = TokenVerifier.createFromEnvVars();
         this.practitionerDetailsEndpointHelper =
                 new PractitionerDetailsEndpointHelper(
                         fhirR4Context.newRestfulGenericClient(

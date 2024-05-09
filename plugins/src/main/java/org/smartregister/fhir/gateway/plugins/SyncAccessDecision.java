@@ -6,11 +6,9 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
@@ -50,9 +48,8 @@ public class SyncAccessDecision implements AccessDecision {
     public static final String MATCHES_ANY_VALUE = "ANY_VALUE";
     private static final Logger logger = LoggerFactory.getLogger(SyncAccessDecision.class);
     private final String syncStrategy;
-    private final String applicationId;
     private final boolean accessGranted;
-    private Map<String, List<String>> syncStrategyIds;
+    private Map<String, List<String>> syncStrategyIdsMap;
     private final List<String> roles;
     private IgnoredResourcesConfig config;
     private final String keycloakUUID;
@@ -66,16 +63,14 @@ public class SyncAccessDecision implements AccessDecision {
     public SyncAccessDecision(
             FhirContext fhirContext,
             String keycloakUUID,
-            String applicationId,
             boolean accessGranted,
-            Map<String, List<String>> syncStrategyIds,
+            Map<String, List<String>> syncStrategyIdsMap,
             String syncStrategy,
             List<String> roles) {
         this.fhirR4Context = fhirContext;
         this.keycloakUUID = keycloakUUID;
-        this.applicationId = applicationId;
         this.accessGranted = accessGranted;
-        this.syncStrategyIds = syncStrategyIds;
+        this.syncStrategyIdsMap = syncStrategyIdsMap;
         this.syncStrategy = syncStrategy;
         this.config = getSkippedResourcesConfigs();
         this.roles = roles;
@@ -102,27 +97,12 @@ public class SyncAccessDecision implements AccessDecision {
         if (isSyncUrl(requestDetailsReader)
                 && !shouldSkipDataFiltering(
                         requestDetailsReader)) { // Check if it is the Sync URL and Skip app-wide
-
             // accessible resource requests
-            if (Constants.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)) {
-                Map<String, String[]> parameters =
-                        new HashMap<>(requestDetailsReader.getParameters());
-                String[] syncLocations = parameters.get(Constants.SYNC_LOCATIONS);
-                List<String> relatedEntityLocationIds;
-                if (roles.contains(Constants.ROLE_ALL_LOCATIONS) && syncLocations != null) {
-                    // selected locations
-                    List<String> locationUuids = getLocationUuids(syncLocations);
-                    relatedEntityLocationIds =
-                            PractitionerDetailsEndpointHelper.getAttributedLocations(
-                                    PractitionerDetailsEndpointHelper.getLocationsHierarchy(
-                                            locationUuids));
-                    this.syncStrategyIds = Map.of(syncStrategy, relatedEntityLocationIds);
-                }
-            }
-            if (syncStrategyIds.isEmpty()
+
+            if (syncStrategyIdsMap.isEmpty()
                     || StringUtils.isBlank(syncStrategy)
-                    || (syncStrategyIds.containsKey(syncStrategy)
-                            && syncStrategyIds.get(syncStrategy).isEmpty())) {
+                    || (syncStrategyIdsMap.containsKey(syncStrategy)
+                            && syncStrategyIdsMap.get(syncStrategy).isEmpty())) {
 
                 ForbiddenOperationException forbiddenOperationException =
                         new ForbiddenOperationException(
@@ -139,33 +119,19 @@ public class SyncAccessDecision implements AccessDecision {
             }
 
             List<String> syncFilterParameterValues =
-                    addSyncFilters(getSyncTags(this.syncStrategy, this.syncStrategyIds));
+                    addSyncFilters(getSyncTags(this.syncStrategy, this.syncStrategyIdsMap));
             requestMutation =
                     RequestMutation.builder()
                             .queryParams(
                                     Map.of(
                                             Constants.TAG_SEARCH_PARAM,
-                                            Arrays.asList(
+                                            List.of(
                                                     StringUtils.join(
                                                             syncFilterParameterValues, ","))))
                             .build();
         }
 
         return requestMutation;
-    }
-
-    private static List<String> getLocationUuids(String[] syncLocations) {
-        List<String> locationUuids = Collections.emptyList();
-
-        if (syncLocations.length > 0) {
-            String syncLocationParam = syncLocations[0];
-            if (!syncLocationParam.isEmpty()) {
-                locationUuids =
-                        List.copyOf(
-                                Set.of(syncLocationParam.split(Constants.PARAM_VALUES_SEPARATOR)));
-            }
-        }
-        return locationUuids;
     }
 
     /**
@@ -192,7 +158,13 @@ public class SyncAccessDecision implements AccessDecision {
 
         String resultContent = null;
         Resource resultContentBundle;
-        String gatewayMode = request.getHeader(SyncAccessDecisionConstants.FHIR_GATEWAY_MODE);
+
+        Map<String, String[]> parameters = new HashMap<>(request.getParameters());
+        String[] listMode = parameters.get(Constants.Header.MODE);
+        String gatewayModeQueryParam = listMode != null && listMode.length > 0 ? listMode[0] : null;
+        String gatewayMode = request.getHeader(Constants.Header.FHIR_GATEWAY_MODE);
+        gatewayMode =
+                StringUtils.isNotBlank(gatewayModeQueryParam) ? gatewayModeQueryParam : gatewayMode;
 
         if (StringUtils.isNotBlank(gatewayMode)) {
 
@@ -230,7 +202,7 @@ public class SyncAccessDecision implements AccessDecision {
     }
 
     private boolean includeAttributedPractitioners(String requestPath) {
-        return Constants.LOCATION.equalsIgnoreCase(syncStrategy)
+        return Constants.SyncStrategy.LOCATION.equalsIgnoreCase(syncStrategy)
                 && roles.contains(SyncAccessDecisionConstants.ROLE_SUPERVISOR)
                 && SyncAccessDecisionConstants.ENDPOINT_PRACTITIONER_DETAILS.equals(requestPath);
     }
@@ -243,7 +215,7 @@ public class SyncAccessDecision implements AccessDecision {
         operationOutcomeIssueComponent.setSeverity(OperationOutcome.IssueSeverity.ERROR);
         operationOutcomeIssueComponent.setCode(OperationOutcome.IssueType.PROCESSING);
         operationOutcomeIssueComponent.setDiagnostics(exception);
-        operationOutcome.setIssue(Arrays.asList(operationOutcomeIssueComponent));
+        operationOutcome.setIssue(List.of(operationOutcomeIssueComponent));
         return operationOutcome;
     }
 
@@ -364,16 +336,16 @@ public class SyncAccessDecision implements AccessDecision {
     }
 
     private String getSyncTagUrl(String syncStrategy) {
-        if (syncStrategy.equalsIgnoreCase(Constants.LOCATION)) {
+        if (Constants.SyncStrategy.LOCATION.equalsIgnoreCase(syncStrategy)) {
             return getEnvironmentVar(
                     Constants.LOCATION_TAG_URL_ENV, Constants.DEFAULT_LOCATION_TAG_URL);
-        } else if (syncStrategy.equalsIgnoreCase(Constants.ORGANIZATION)) {
+        } else if (Constants.SyncStrategy.ORGANIZATION.equalsIgnoreCase(syncStrategy)) {
             return getEnvironmentVar(
                     Constants.ORGANISATION_TAG_URL_ENV, Constants.DEFAULT_ORGANISATION_TAG_URL);
-        } else if (syncStrategy.equalsIgnoreCase(Constants.CARE_TEAM)) {
+        } else if (Constants.SyncStrategy.CARE_TEAM.equalsIgnoreCase(syncStrategy)) {
             return getEnvironmentVar(
                     Constants.CARE_TEAM_TAG_URL_ENV, Constants.DEFAULT_CARE_TEAM_TAG_URL);
-        } else if (syncStrategy.equalsIgnoreCase(Constants.RELATED_ENTITY_LOCATION)) {
+        } else if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)) {
             return getEnvironmentVar(
                     Constants.RELATED_ENTITY_TAG_URL_ENV, Constants.DEFAULT_RELATED_ENTITY_TAG_URL);
         } else {
@@ -567,7 +539,6 @@ public class SyncAccessDecision implements AccessDecision {
     }
 
     public static final class SyncAccessDecisionConstants {
-        public static final String FHIR_GATEWAY_MODE = "fhir-gateway-mode";
         public static final String LIST_ENTRIES = "list-entries";
         public static final String ROLE_SUPERVISOR = "SUPERVISOR";
         public static final String ENDPOINT_PRACTITIONER_DETAILS = "PractitionerDetail";

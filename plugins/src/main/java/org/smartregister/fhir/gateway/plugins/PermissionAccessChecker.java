@@ -1,11 +1,6 @@
 package org.smartregister.fhir.gateway.plugins;
 
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import javax.inject.Named;
@@ -50,36 +45,31 @@ public class PermissionAccessChecker implements AccessChecker {
     private static final Logger logger = LoggerFactory.getLogger(PermissionAccessChecker.class);
     private final ResourceFinder resourceFinder;
     private final List<String> userRoles;
-    private final SyncAccessDecision syncAccessDecision;
+    private SyncAccessDecision syncAccessDecision;
+    private final String applicationId;
+    private final FhirContext fhirContext;
+    private final DecodedJWT jwt;
 
     private PermissionAccessChecker(
             FhirContext fhirContext,
-            String keycloakUUID,
+            DecodedJWT jwt,
             List<String> userRoles,
             ResourceFinderImp resourceFinder,
-            String applicationId,
-            String syncStrategy,
-            Map<String, List<String>> syncStrategyIds) {
+            String applicationId) {
         Preconditions.checkNotNull(userRoles);
         Preconditions.checkNotNull(resourceFinder);
-        Preconditions.checkNotNull(applicationId);
-        Preconditions.checkNotNull(syncStrategyIds);
-        Preconditions.checkNotNull(syncStrategy);
         this.resourceFinder = resourceFinder;
         this.userRoles = userRoles;
-        this.syncAccessDecision =
-                new SyncAccessDecision(
-                        fhirContext,
-                        keycloakUUID,
-                        applicationId,
-                        true,
-                        syncStrategyIds,
-                        syncStrategy,
-                        userRoles);
+        this.applicationId = applicationId;
+        this.jwt = jwt;
+        this.fhirContext = fhirContext;
     }
 
     @Override
     public AccessDecision checkAccess(RequestDetailsReader requestDetails) {
+
+        initSyncAccessDecision(requestDetails);
+
         //  For a Bundle requestDetails.getResourceName() returns null
         if (requestDetails.getRequestType() == RequestTypeEnum.POST
                 && requestDetails.getResourceName() == null) {
@@ -108,6 +98,35 @@ public class PermissionAccessChecker implements AccessChecker {
                     return NoOpAccessDecision.accessDenied();
             }
         }
+    }
+
+    private void initSyncAccessDecision(RequestDetailsReader requestDetailsReader) {
+        Map<String, List<String>> syncStrategyIds;
+
+        if (CacheHelper.INSTANCE.skipCache()) {
+            syncStrategyIds =
+                    getSyncStrategyIds(
+                            jwt.getSubject(), applicationId, fhirContext, requestDetailsReader);
+        } else {
+            syncStrategyIds =
+                    CacheHelper.INSTANCE.cache.get(
+                            jwt.getSubject(),
+                            userId ->
+                                    getSyncStrategyIds(
+                                            userId,
+                                            applicationId,
+                                            fhirContext,
+                                            requestDetailsReader));
+        }
+
+        this.syncAccessDecision =
+                new SyncAccessDecision(
+                        fhirContext,
+                        jwt.getSubject(),
+                        true,
+                        syncStrategyIds,
+                        syncStrategyIds.keySet().iterator().next(),
+                        userRoles);
     }
 
     private boolean checkUserHasRole(String resourceName, String requestType) {
@@ -182,137 +201,262 @@ public class PermissionAccessChecker implements AccessChecker {
         return existingRoles.contains(roleName);
     }
 
+    private IGenericClient createFhirClientForR4(FhirContext fhirContext) {
+        String fhirServer = System.getenv(Constants.PROXY_TO_ENV);
+        return fhirContext.newRestfulGenericClient(fhirServer);
+    }
+
+    private String getBinaryResourceReference(Composition composition) {
+
+        String id = "";
+        if (composition != null && composition.getSection() != null) {
+            Optional<Integer> firstIndex =
+                    composition.getSection().stream()
+                            .filter(
+                                    sectionComponent ->
+                                            sectionComponent.getFocus().getIdentifier() != null
+                                                    && sectionComponent
+                                                                    .getFocus()
+                                                                    .getIdentifier()
+                                                                    .getValue()
+                                                            != null
+                                                    && sectionComponent
+                                                            .getFocus()
+                                                            .getIdentifier()
+                                                            .getValue()
+                                                            .equals(
+                                                                    Constants.AppConfigJsonKey
+                                                                            .APPLICATION))
+                            .map(
+                                    sectionComponent ->
+                                            composition.getSection().indexOf(sectionComponent))
+                            .findFirst();
+
+            Integer result = firstIndex.orElse(-1);
+            Composition.SectionComponent sectionComponent = composition.getSection().get(result);
+            Reference focus = sectionComponent != null ? sectionComponent.getFocus() : null;
+            id = focus != null ? focus.getReference() : null;
+        }
+        return id;
+    }
+
+    private Binary readApplicationConfigBinaryResource(
+            String binaryResourceId, FhirContext fhirContext) {
+        IGenericClient client = createFhirClientForR4(fhirContext);
+        Binary binary = null;
+        if (!binaryResourceId.isBlank()) {
+            binary = client.read().resource(Binary.class).withId(binaryResourceId).execute();
+        }
+        return binary;
+    }
+
+    private Composition readCompositionResource(String applicationId, FhirContext fhirContext) {
+        IGenericClient client = createFhirClientForR4(fhirContext);
+
+        Bundle compositionBundle =
+                client.search()
+                        .forResource(Composition.class)
+                        .where(Composition.IDENTIFIER.exactly().identifier(applicationId))
+                        .returnBundle(Bundle.class)
+                        .execute();
+
+        Bundle.BundleEntryComponent compositionEntry = compositionBundle.getEntryFirstRep();
+        return compositionEntry != null ? (Composition) compositionEntry.getResource() : null;
+    }
+
+    private String findSyncStrategy(Binary binary) {
+
+        byte[] bytes =
+                binary != null && binary.getDataElement() != null
+                        ? Base64.getDecoder().decode(binary.getDataElement().getValueAsString())
+                        : null;
+        String syncStrategy = org.smartregister.utils.Constants.EMPTY_STRING;
+        if (bytes != null) {
+            String json = new String(bytes);
+            JsonObject jsonObject = new Gson().fromJson(json, JsonObject.class);
+            JsonArray jsonArray =
+                    jsonObject.getAsJsonArray(Constants.AppConfigJsonKey.SYNC_STRATEGY);
+            if (jsonArray != null && !jsonArray.isEmpty())
+                syncStrategy = jsonArray.get(0).getAsString();
+        }
+
+        return syncStrategy;
+    }
+
+    Pair<Composition, PractitionerDetails> fetchCompositionAndPractitionerDetails(
+            String subject, String applicationId, FhirContext fhirContext) {
+        fhirContext.registerCustomType(PractitionerDetails.class);
+
+        IGenericClient client = createFhirClientForR4(fhirContext);
+
+        PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper =
+                new PractitionerDetailsEndpointHelper(client);
+        PractitionerDetails practitionerDetails =
+                practitionerDetailsEndpointHelper.getPractitionerDetailsByKeycloakId(subject);
+
+        Composition composition = readCompositionResource(applicationId, fhirContext);
+
+        if (composition == null)
+            throw new IllegalStateException(
+                    "No Composition resource found for application id '" + applicationId + "'");
+
+        if (practitionerDetails == null)
+            throw new IllegalStateException(
+                    "No PractitionerDetail resource found for user with id '" + subject + "'");
+
+        return Pair.of(composition, practitionerDetails);
+    }
+
+    Pair<String, PractitionerDetails> fetchSyncStrategyDetails(
+            String subject, String applicationId, FhirContext fhirContext) {
+
+        Pair<Composition, PractitionerDetails> compositionPractitionerDetailsPair =
+                fetchCompositionAndPractitionerDetails(subject, applicationId, fhirContext);
+        Composition composition = compositionPractitionerDetailsPair.getLeft();
+        PractitionerDetails practitionerDetails = compositionPractitionerDetailsPair.getRight();
+
+        String binaryResourceReference = getBinaryResourceReference(composition);
+        Binary binary = readApplicationConfigBinaryResource(binaryResourceReference, fhirContext);
+
+        return Pair.of(findSyncStrategy(binary), practitionerDetails);
+    }
+
+    private Map<String, List<String>> getSyncStrategyIds(
+            String subjectId,
+            String applicationId,
+            FhirContext fhirContext,
+            RequestDetailsReader requestDetailsReader) {
+        Pair<String, PractitionerDetails> syncStrategyDetails =
+                fetchSyncStrategyDetails(subjectId, applicationId, fhirContext);
+
+        String syncStrategy = syncStrategyDetails.getLeft();
+        PractitionerDetails practitionerDetails = syncStrategyDetails.getRight();
+
+        return collateSyncStrategyIds(syncStrategy, practitionerDetails, requestDetailsReader);
+    }
+
+    private List<String> getLocationUuids(String[] syncLocations) {
+        List<String> locationUuids = new ArrayList<>();
+        String syncLocationParam;
+        for (int i = 0; i < syncLocations.length; i++) {
+            syncLocationParam = syncLocations[i];
+            if (!syncLocationParam.isEmpty())
+                locationUuids.addAll(
+                        Set.of(syncLocationParam.split(Constants.PARAM_VALUES_SEPARATOR)));
+        }
+
+        return locationUuids;
+    }
+
+    @NotNull
+    private Map<String, List<String>> collateSyncStrategyIds(
+            String syncStrategy,
+            PractitionerDetails practitionerDetails,
+            RequestDetailsReader requestDetailsReader) {
+        Map<String, List<String>> resultMap;
+        List<String> syncStrategyIds;
+
+        if (StringUtils.isNotBlank(syncStrategy)) {
+            if (Constants.SyncStrategy.CARE_TEAM.equalsIgnoreCase(syncStrategy)) {
+                List<CareTeam> careTeams =
+                        practitionerDetails != null
+                                        && practitionerDetails.getFhirPractitionerDetails() != null
+                                ? practitionerDetails.getFhirPractitionerDetails().getCareTeams()
+                                : new ArrayList<>();
+
+                syncStrategyIds =
+                        careTeams.stream()
+                                .filter(careTeam -> careTeam.getIdElement() != null)
+                                .map(careTeam -> careTeam.getIdElement().getIdPart())
+                                .collect(Collectors.toList());
+
+            } else if (Constants.SyncStrategy.ORGANIZATION.equalsIgnoreCase(syncStrategy)) {
+                List<Organization> organizations =
+                        practitionerDetails != null
+                                        && practitionerDetails.getFhirPractitionerDetails() != null
+                                ? practitionerDetails
+                                        .getFhirPractitionerDetails()
+                                        .getOrganizations()
+                                : new ArrayList<>();
+
+                syncStrategyIds =
+                        organizations.stream()
+                                .filter(organization -> organization.getIdElement() != null)
+                                .map(organization -> organization.getIdElement().getIdPart())
+                                .collect(Collectors.toList());
+
+            } else if (Constants.SyncStrategy.LOCATION.equalsIgnoreCase(syncStrategy)) {
+                syncStrategyIds =
+                        practitionerDetails != null
+                                        && practitionerDetails.getFhirPractitionerDetails() != null
+                                ? PractitionerDetailsEndpointHelper.getAttributedLocations(
+                                        practitionerDetails
+                                                .getFhirPractitionerDetails()
+                                                .getLocationHierarchyList())
+                                : new ArrayList<>();
+
+            } else if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(
+                    syncStrategy)) {
+
+                Map<String, String[]> parameters =
+                        new HashMap<>(requestDetailsReader.getParameters());
+                String[] syncLocations = parameters.get(Constants.SYNC_LOCATIONS);
+
+                if (this.userRoles.contains(Constants.ROLE_ALL_LOCATIONS)
+                        && syncLocations != null) {
+                    // Selected locations
+                    List<String> locationUuids = getLocationUuids(syncLocations);
+                    syncStrategyIds =
+                            PractitionerDetailsEndpointHelper.getAttributedLocations(
+                                    PractitionerDetailsEndpointHelper.getLocationsHierarchy(
+                                            locationUuids));
+
+                } else {
+
+                    // Assigned locations
+                    syncStrategyIds =
+                            practitionerDetails != null
+                                            && practitionerDetails.getFhirPractitionerDetails()
+                                                    != null
+                                    ? PractitionerDetailsEndpointHelper.getAttributedLocations(
+                                            practitionerDetails
+                                                    .getFhirPractitionerDetails()
+                                                    .getLocationHierarchyList())
+                                    : new ArrayList<>();
+                }
+
+            } else
+                throw new IllegalStateException(
+                        "'" + syncStrategy + "' sync strategy NOT supported!!");
+
+            resultMap = Map.of(syncStrategy, syncStrategyIds);
+
+        } else
+            throw new IllegalStateException(
+                    "App config Sync strategy or Keycloak NOT configured correctly. Please confirm"
+                        + " Keycloak the fhir_core_app_id attribute for the user matches the"
+                        + " Composition.json config's official identifier value. Additionally"
+                        + " confirm the Keycloak fhir_core_app_id user attribute protocol mapper is"
+                        + " set up correctly.");
+
+        return resultMap;
+    }
+
     @Named(value = "permission")
     static class Factory implements AccessCheckerFactory {
 
         @VisibleForTesting static final String REALM_ACCESS_CLAIM = "realm_access";
         @VisibleForTesting static final String ROLES = "roles";
-
         @VisibleForTesting static final String FHIR_CORE_APPLICATION_ID_CLAIM = "fhir_core_app_id";
 
         private List<String> getUserRolesFromJWT(DecodedJWT jwt) {
             Claim claim = jwt.getClaim(REALM_ACCESS_CLAIM);
             Map<String, Object> roles = claim.asMap();
-            List<String> rolesList = (List) roles.get(ROLES);
-            return rolesList;
+            return (List<String>) roles.get(ROLES);
         }
 
         private String getApplicationIdFromJWT(DecodedJWT jwt) {
             return JwtUtil.getClaimOrDie(jwt, FHIR_CORE_APPLICATION_ID_CLAIM);
-        }
-
-        private IGenericClient createFhirClientForR4(FhirContext fhirContext) {
-            String fhirServer = System.getenv(Constants.PROXY_TO_ENV);
-            IGenericClient client = fhirContext.newRestfulGenericClient(fhirServer);
-            return client;
-        }
-
-        private String getBinaryResourceReference(Composition composition) {
-
-            String id = "";
-            if (composition != null && composition.getSection() != null) {
-                Optional<Integer> firstIndex =
-                        composition.getSection().stream()
-                                .filter(
-                                        v ->
-                                                v.getFocus().getIdentifier() != null
-                                                        && v.getFocus().getIdentifier().getValue()
-                                                                != null
-                                                        && v.getFocus()
-                                                                .getIdentifier()
-                                                                .getValue()
-                                                                .equals(Constants.APPLICATION))
-                                .map(v -> composition.getSection().indexOf(v))
-                                .findFirst();
-
-                Integer result = firstIndex.orElse(-1);
-                Composition.SectionComponent sectionComponent =
-                        composition.getSection().get(result);
-                Reference focus = sectionComponent != null ? sectionComponent.getFocus() : null;
-                id = focus != null ? focus.getReference() : null;
-            }
-            return id;
-        }
-
-        private Binary readApplicationConfigBinaryResource(
-                String binaryResourceId, FhirContext fhirContext) {
-            IGenericClient client = createFhirClientForR4(fhirContext);
-            Binary binary = null;
-            if (!binaryResourceId.isBlank()) {
-                binary = client.read().resource(Binary.class).withId(binaryResourceId).execute();
-            }
-            return binary;
-        }
-
-        private Composition readCompositionResource(String applicationId, FhirContext fhirContext) {
-            IGenericClient client = createFhirClientForR4(fhirContext);
-
-            Bundle compositionBundle =
-                    client.search()
-                            .forResource(Composition.class)
-                            .where(Composition.IDENTIFIER.exactly().identifier(applicationId))
-                            .returnBundle(Bundle.class)
-                            .execute();
-
-            Bundle.BundleEntryComponent compositionEntry = compositionBundle.getEntryFirstRep();
-            return compositionEntry != null ? (Composition) compositionEntry.getResource() : null;
-        }
-
-        private String findSyncStrategy(Binary binary) {
-
-            byte[] bytes =
-                    binary != null && binary.getDataElement() != null
-                            ? Base64.getDecoder().decode(binary.getDataElement().getValueAsString())
-                            : null;
-            String syncStrategy = org.smartregister.utils.Constants.EMPTY_STRING;
-            if (bytes != null) {
-                String json = new String(bytes);
-                JsonObject jsonObject = new Gson().fromJson(json, JsonObject.class);
-                JsonArray jsonArray = jsonObject.getAsJsonArray(Constants.SYNC_STRATEGY);
-                if (jsonArray != null && !jsonArray.isEmpty())
-                    syncStrategy = jsonArray.get(0).getAsString();
-            }
-
-            return syncStrategy;
-        }
-
-        Pair<Composition, PractitionerDetails> fetchCompositionAndPractitionerDetails(
-                String subject, String applicationId, FhirContext fhirContext) {
-            fhirContext.registerCustomType(PractitionerDetails.class);
-
-            IGenericClient client = createFhirClientForR4(fhirContext);
-
-            PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper =
-                    new PractitionerDetailsEndpointHelper(client);
-            PractitionerDetails practitionerDetails =
-                    practitionerDetailsEndpointHelper.getPractitionerDetailsByKeycloakId(subject);
-
-            Composition composition = readCompositionResource(applicationId, fhirContext);
-
-            if (composition == null)
-                throw new IllegalStateException(
-                        "No Composition resource found for application id '" + applicationId + "'");
-
-            if (practitionerDetails == null)
-                throw new IllegalStateException(
-                        "No PractitionerDetail resource found for user with id '" + subject + "'");
-
-            return Pair.of(composition, practitionerDetails);
-        }
-
-        Pair<String, PractitionerDetails> fetchSyncStrategyDetails(
-                String subject, String applicationId, FhirContext fhirContext) {
-
-            Pair<Composition, PractitionerDetails> compositionPractitionerDetailsPair =
-                    fetchCompositionAndPractitionerDetails(subject, applicationId, fhirContext);
-            Composition composition = compositionPractitionerDetailsPair.getLeft();
-            PractitionerDetails practitionerDetails = compositionPractitionerDetailsPair.getRight();
-
-            String binaryResourceReference = getBinaryResourceReference(composition);
-            Binary binary =
-                    readApplicationConfigBinaryResource(binaryResourceReference, fhirContext);
-
-            return Pair.of(findSyncStrategy(binary), practitionerDetails);
         }
 
         @Override
@@ -324,116 +468,12 @@ public class PermissionAccessChecker implements AccessChecker {
                 throws AuthenticationException {
             List<String> userRoles = getUserRolesFromJWT(jwt);
             String applicationId = getApplicationIdFromJWT(jwt);
-            Map<String, List<String>> syncStrategyIds;
-
-            if (CacheHelper.INSTANCE.skipCache()) {
-                syncStrategyIds = getSyncStrategyIds(jwt.getSubject(), applicationId, fhirContext);
-            } else {
-                syncStrategyIds =
-                        CacheHelper.INSTANCE.cache.get(
-                                jwt.getSubject(),
-                                userId -> getSyncStrategyIds(userId, applicationId, fhirContext));
-            }
             return new PermissionAccessChecker(
                     fhirContext,
-                    jwt.getSubject(),
+                    jwt,
                     userRoles,
                     ResourceFinderImp.getInstance(fhirContext),
-                    applicationId,
-                    syncStrategyIds.keySet().iterator().next(),
-                    syncStrategyIds);
-        }
-
-        private Map<String, List<String>> getSyncStrategyIds(
-                String subjectId, String applicationId, FhirContext fhirContext) {
-            Pair<String, PractitionerDetails> syncStrategyDetails =
-                    fetchSyncStrategyDetails(subjectId, applicationId, fhirContext);
-
-            String syncStrategy = syncStrategyDetails.getLeft();
-            PractitionerDetails practitionerDetails = syncStrategyDetails.getRight();
-
-            return collateSyncStrategyIds(syncStrategy, practitionerDetails);
-        }
-
-        @NotNull
-        private static Map<String, List<String>> collateSyncStrategyIds(
-                String syncStrategy, PractitionerDetails practitionerDetails) {
-            Map<String, List<String>> resultMap = new HashMap<>();
-            List<CareTeam> careTeams;
-            List<Organization> organizations;
-            List<String> careTeamIds;
-            List<String> organizationIds;
-            List<String> locationIds;
-            List<String> relatedEntityLocationIds;
-            if (StringUtils.isNotBlank(syncStrategy)) {
-                if (Constants.CARE_TEAM.equalsIgnoreCase(syncStrategy)) {
-                    careTeams =
-                            practitionerDetails != null
-                                            && practitionerDetails.getFhirPractitionerDetails()
-                                                    != null
-                                    ? practitionerDetails
-                                            .getFhirPractitionerDetails()
-                                            .getCareTeams()
-                                    : new ArrayList<>();
-
-                    careTeamIds =
-                            careTeams.stream()
-                                    .filter(careTeam -> careTeam.getIdElement() != null)
-                                    .map(careTeam -> careTeam.getIdElement().getIdPart())
-                                    .collect(Collectors.toList());
-
-                    resultMap = Map.of(syncStrategy, careTeamIds);
-
-                } else if (Constants.ORGANIZATION.equalsIgnoreCase(syncStrategy)) {
-                    organizations =
-                            practitionerDetails != null
-                                            && practitionerDetails.getFhirPractitionerDetails()
-                                                    != null
-                                    ? practitionerDetails
-                                            .getFhirPractitionerDetails()
-                                            .getOrganizations()
-                                    : new ArrayList<>();
-
-                    organizationIds =
-                            organizations.stream()
-                                    .filter(organization -> organization.getIdElement() != null)
-                                    .map(organization -> organization.getIdElement().getIdPart())
-                                    .collect(Collectors.toList());
-
-                    resultMap = Map.of(syncStrategy, organizationIds);
-
-                } else if (Constants.LOCATION.equalsIgnoreCase(syncStrategy)) {
-                    locationIds =
-                            practitionerDetails != null
-                                            && practitionerDetails.getFhirPractitionerDetails()
-                                                    != null
-                                    ? PractitionerDetailsEndpointHelper.getAttributedLocations(
-                                            practitionerDetails
-                                                    .getFhirPractitionerDetails()
-                                                    .getLocationHierarchyList())
-                                    : new ArrayList<>();
-
-                    resultMap = Map.of(syncStrategy, locationIds);
-                } else if (Constants.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)) {
-                    // assigned locations
-                    relatedEntityLocationIds =
-                            practitionerDetails != null
-                                            && practitionerDetails.getFhirPractitionerDetails()
-                                                    != null
-                                    ? PractitionerDetailsEndpointHelper.getAttributedLocations(
-                                            practitionerDetails
-                                                    .getFhirPractitionerDetails()
-                                                    .getLocationHierarchyList())
-                                    : new ArrayList<>();
-                    resultMap = Map.of(syncStrategy, relatedEntityLocationIds);
-                }
-            } else
-                throw new IllegalStateException(
-                        "Sync strategy not configured. Please confirm Keycloak fhir_core_app_id"
-                            + " attribute for the user matches the Composition.json config official"
-                            + " identifier value");
-
-            return resultMap;
+                    applicationId);
         }
     }
 }
