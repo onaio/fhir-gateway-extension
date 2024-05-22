@@ -11,7 +11,7 @@
 
   <groupId>org.smartregister</groupId>
   <artifactId>opensrp-gateway-plugin</artifactId>
-  <version>1.0.13</version>
+  <version>1.0.14</version>
   <packaging>pom</packaging>
 
   <modules>
