@@ -118,20 +118,45 @@ public class SyncAccessDecision implements AccessDecision {
                         forbiddenOperationException);
             }
 
-            List<String> syncFilterParameterValues =
-                    addSyncFilters(getSyncTags(this.syncStrategy, this.syncStrategyIdsMap));
-            requestMutation =
-                    RequestMutation.builder()
-                            .queryParams(
-                                    Map.of(
-                                            Constants.TAG_SEARCH_PARAM,
-                                            List.of(
-                                                    StringUtils.join(
-                                                            syncFilterParameterValues, ","))))
-                            .build();
+            String clientRole = getClientRole();
+
+            if (clientRole.equals(Constants.ROLE_ANDROID_CLIENT)) {
+                List<String> syncFilterParameterValues =
+                        addSyncFilters(getSyncTags(this.syncStrategy, this.syncStrategyIdsMap));
+                requestMutation =
+                        RequestMutation.builder()
+                                .queryParams(
+                                        Map.of(
+                                                Constants.TAG_SEARCH_PARAM,
+                                                List.of(
+                                                        StringUtils.join(
+                                                                syncFilterParameterValues, ","))))
+                                .build();
+            } else if (clientRole.equals(Constants.ROLE_WEB_CLIENT)) {
+                requestMutation = RequestMutation.builder().build();
+            }
         }
 
         return requestMutation;
+    }
+
+    private String getClientRole() {
+        List<String> matchedRoles = new ArrayList<>();
+
+        for (String role : Constants.CLIENT_ROLES) {
+            if (roles.contains(role)) {
+                matchedRoles.add(role);
+            }
+        }
+        if (matchedRoles.size() != 1) {
+            ForbiddenOperationException forbiddenOperationException =
+                    new ForbiddenOperationException(
+                            "User must have only one of these client roles "
+                                    + Arrays.toString(Constants.CLIENT_ROLES));
+            ExceptionUtil.throwRuntimeExceptionAndLog(
+                    logger, forbiddenOperationException.getMessage(), forbiddenOperationException);
+        }
+        return matchedRoles.get(0);
     }
 
     /**

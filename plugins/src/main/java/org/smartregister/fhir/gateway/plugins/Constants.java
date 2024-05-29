@@ -27,6 +27,8 @@ public class Constants {
     public static final String DEFAULT_RELATED_ENTITY_TAG_URL =
             "https://smartregister.org/related-entity-location-tag-id";
     public static final String ROLE_ALL_LOCATIONS = "ALL_LOCATIONS";
+    public static final String ROLE_ANDROID_CLIENT = "ANDROID_CLIENT";
+    public static final String ROLE_WEB_CLIENT = "WEB_CLIENT";
     public static final String MODE = "mode";
     public static final String LIST = "list";
     public static final String CORS_ALLOW_HEADERS_KEY = "Access-Control-Allow-Headers";
@@ -37,6 +39,7 @@ public class Constants {
     public static final String CORS_ALLOW_ORIGIN_VALUE = "*";
     public static final String CORS_ALLOW_ORIGIN_ENV = "CORS_ALLOW_ORIGIN";
     public static final String UNDERSCORE = "_";
+    public static final String[] CLIENT_ROLES = {ROLE_WEB_CLIENT, ROLE_ANDROID_CLIENT};
 
     public interface Literals {
         String EQUALS = "=";
