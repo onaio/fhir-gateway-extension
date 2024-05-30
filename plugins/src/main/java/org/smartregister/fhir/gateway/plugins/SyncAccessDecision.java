@@ -419,7 +419,9 @@ public class SyncAccessDecision implements AccessDecision {
         if (!TextUtils.isEmpty(requestPath)) {
             String[] sections = requestPath.split(ProxyConstants.HTTP_URL_SEPARATOR);
 
-            return sections.length == 1 || (sections.length == 2 && TextUtils.isEmpty(sections[1]));
+            return sections.length == 1
+                    || (sections.length == 2 && TextUtils.isEmpty(sections[1]))
+                    || (sections.length == 2 && sections[1].startsWith(Constants.UNDERSCORE));
         }
 
         return false;
