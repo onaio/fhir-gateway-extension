@@ -343,7 +343,7 @@ in a flat list format by providing a request parameter `mode=list`.
 Example:
 
 ```
-[GET] /LocationHierarchy?identifier=<some-location-id>&mode=list&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
+[GET] /LocationHierarchy?_id=<some-location-id>&mode=list&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
 ```
 
 #### Important Note:
