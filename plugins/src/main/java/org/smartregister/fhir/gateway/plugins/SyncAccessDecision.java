@@ -94,9 +94,12 @@ public class SyncAccessDecision implements AccessDecision {
     public RequestMutation getRequestMutation(RequestDetailsReader requestDetailsReader) {
 
         RequestMutation requestMutation = null;
+        String clientRole = getClientRole();
+
+        // Check if it is the Sync URL and Skip app-wide
         if (isSyncUrl(requestDetailsReader)
-                && !shouldSkipDataFiltering(
-                        requestDetailsReader)) { // Check if it is the Sync URL and Skip app-wide
+                && !shouldSkipDataFiltering(requestDetailsReader)
+                && clientRole.equals(Constants.ROLE_ANDROID_CLIENT)) {
             // accessible resource requests
 
             if (syncStrategyIdsMap.isEmpty()
@@ -117,24 +120,17 @@ public class SyncAccessDecision implements AccessDecision {
                         forbiddenOperationException.getMessage(),
                         forbiddenOperationException);
             }
-
-            String clientRole = getClientRole();
-
-            if (clientRole.equals(Constants.ROLE_ANDROID_CLIENT)) {
-                List<String> syncFilterParameterValues =
-                        addSyncFilters(getSyncTags(this.syncStrategy, this.syncStrategyIdsMap));
-                requestMutation =
-                        RequestMutation.builder()
-                                .queryParams(
-                                        Map.of(
-                                                Constants.TAG_SEARCH_PARAM,
-                                                List.of(
-                                                        StringUtils.join(
-                                                                syncFilterParameterValues, ","))))
-                                .build();
-            } else if (clientRole.equals(Constants.ROLE_WEB_CLIENT)) {
-                requestMutation = RequestMutation.builder().build();
-            }
+            List<String> syncFilterParameterValues =
+                    addSyncFilters(getSyncTags(this.syncStrategy, this.syncStrategyIdsMap));
+            requestMutation =
+                    RequestMutation.builder()
+                            .queryParams(
+                                    Map.of(
+                                            Constants.TAG_SEARCH_PARAM,
+                                            List.of(
+                                                    StringUtils.join(
+                                                            syncFilterParameterValues, ","))))
+                            .build();
         }
 
         return requestMutation;

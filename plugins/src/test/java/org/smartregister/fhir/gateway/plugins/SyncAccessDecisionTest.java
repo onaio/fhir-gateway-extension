@@ -971,6 +971,7 @@ public class SyncAccessDecisionTest {
 
     @Test
     public void preProcessWhenRequestIsAnOperationRequestShouldAddFilters() {
+        userRoles.add(Constants.ROLE_ANDROID_CLIENT);
         locationIds.add("locationid12");
         locationIds.add("locationid2");
         testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.LOCATION);
