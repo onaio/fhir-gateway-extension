@@ -97,13 +97,13 @@ public class LocationHierarchyEndpointHelperTest {
         Assert.assertEquals(2, resultBundle.getEntry().size());
         Assert.assertEquals(3, resultBundle.getLink().size());
         Assert.assertEquals(
-                "http://test:8080/LocationHierarchy?identifier=12345&_page=1&_count=2",
+                "http://test:8080/LocationHierarchy?_page=1&_count=2&_id=12345",
                 resultBundle.getLink("previous").getUrl());
         Assert.assertEquals(
-                "http://test:8080/LocationHierarchy?identifier=12345&_page=2&_count=2",
+                "http://test:8080/LocationHierarchy?_page=2&_count=2&_id=12345",
                 resultBundle.getLink("self").getUrl());
         Assert.assertEquals(
-                "http://test:8080/LocationHierarchy?identifier=12345&_page=3&_count=2",
+                "http://test:8080/LocationHierarchy?_page=3&_count=2&_id=12345",
                 resultBundle.getLink("next").getUrl());
     }
 
