@@ -911,6 +911,45 @@ public class SyncAccessDecisionTest {
                 resultContent);
     }
 
+    @Test
+    public void preProcessWhenRequestIsAnOperationRequestShouldAddFilters() {
+        locationIds.add("locationid12");
+        locationIds.add("locationid2");
+        testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.LOCATION);
+
+        RequestDetails requestDetails = new ServletRequestDetails();
+        requestDetails.setRequestType(RequestTypeEnum.GET);
+        requestDetails.setRestOperationType(RestOperationTypeEnum.SEARCH_TYPE);
+        requestDetails.setResourceName("Location");
+        requestDetails.setFhirServerBase("https://smartregister.org/fhir");
+        requestDetails.setCompleteUrl("https://smartregister.org/fhir/Location/_search");
+        requestDetails.setRequestPath("Location/_search");
+
+        RequestMutation mutatedRequest =
+                testInstance.getRequestMutation(new TestRequestDetailsToReader(requestDetails));
+
+        for (String locationId : locationIds) {
+            Assert.assertFalse(requestDetails.getCompleteUrl().contains(locationId));
+            Assert.assertFalse(requestDetails.getRequestPath().contains(locationId));
+        }
+        Assert.assertTrue(
+                mutatedRequest
+                        .getQueryParams()
+                        .get(Constants.TAG_SEARCH_PARAM)
+                        .get(0)
+                        .contains(
+                                StringUtils.join(
+                                        locationIds,
+                                        Constants.PARAM_VALUES_SEPARATOR
+                                                + Constants.DEFAULT_LOCATION_TAG_URL
+                                                + Constants.CODE_URL_VALUE_SEPARATOR)));
+
+        for (String param : mutatedRequest.getQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
+            Assert.assertFalse(param.contains(Constants.DEFAULT_CARE_TEAM_TAG_URL));
+            Assert.assertFalse(param.contains(Constants.DEFAULT_ORGANISATION_TAG_URL));
+        }
+    }
+
     @After
     public void cleanUp() {
         locationIds.clear();
