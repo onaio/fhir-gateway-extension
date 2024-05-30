@@ -36,6 +36,7 @@ public class Constants {
     public static final String CORS_ALLOW_ORIGIN_KEY = "Access-Control-Allow-Origin";
     public static final String CORS_ALLOW_ORIGIN_VALUE = "*";
     public static final String CORS_ALLOW_ORIGIN_ENV = "CORS_ALLOW_ORIGIN";
+    public static final String UNDERSCORE = "_";
 
     public interface Literals {
         String EQUALS = "=";
