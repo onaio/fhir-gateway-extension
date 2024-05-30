@@ -17,7 +17,7 @@ public class Constants {
     public static final String TAG_SEARCH_PARAM = "_tag";
     public static final String AUTHORIZATION = "Authorization";
     public static final String KEYCLOAK_UUID = "keycloak-uuid";
-    public static final String IDENTIFIER = "identifier";
+    public static final String IDENTIFIER = "_id";
     public static final String PAGINATION_PAGE_SIZE = "_count";
     public static final String PAGINATION_PAGE_NUMBER = "_page";
     public static final int PAGINATION_DEFAULT_PAGE_SIZE = 20;
