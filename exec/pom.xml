@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.smartregister</groupId>
     <artifactId>opensrp-gateway-plugin</artifactId>
-    <version>1.0.14</version>
+    <version>1.0.15</version>
   </parent>
 
   <artifactId>exec</artifactId>
@@ -70,7 +70,7 @@
     <dependency>
       <groupId>org.smartregister</groupId>
       <artifactId>plugins</artifactId>
-      <version>1.0.14</version>
+      <version>1.0.15</version>
     </dependency>
 
     <dependency>
