@@ -59,6 +59,7 @@ public class SyncAccessDecisionTest {
     @Test
     public void preProcessShouldAddLocationIdFiltersWhenUserIsAssignedToLocationsOnly()
             throws IOException {
+        userRoles.add(Constants.ROLE_ANDROID_CLIENT);
         locationIds.add("locationid12");
         locationIds.add("locationid2");
         testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.LOCATION);
@@ -97,9 +98,57 @@ public class SyncAccessDecisionTest {
     }
 
     @Test
+    public void preProcessWhenNotOneClientRoleIsAddedShouldThrowError() throws IOException {
+        // More than one
+        userRoles.add(Constants.ROLE_ANDROID_CLIENT);
+        userRoles.add(Constants.ROLE_WEB_CLIENT);
+        locationIds.add("locationid12");
+        locationIds.add("locationid2");
+        testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.LOCATION);
+
+        RequestDetails requestDetails = new ServletRequestDetails();
+        requestDetails.setRequestType(RequestTypeEnum.GET);
+        requestDetails.setRestOperationType(RestOperationTypeEnum.SEARCH_TYPE);
+        requestDetails.setResourceName("Patient");
+        requestDetails.setFhirServerBase("https://smartregister.org/fhir");
+        requestDetails.setCompleteUrl("https://smartregister.org/fhir/Patient");
+        requestDetails.setRequestPath("Patient");
+
+        RuntimeException firstException =
+                Assert.assertThrows(
+                        RuntimeException.class,
+                        () -> {
+                            testInstance.getRequestMutation(
+                                    new TestRequestDetailsToReader(requestDetails));
+                        });
+
+        Assert.assertTrue(
+                firstException
+                        .getMessage()
+                        .contains("User must have only one of these client roles"));
+
+        // less than one
+        userRoles.remove(Constants.ROLE_ANDROID_CLIENT);
+        userRoles.remove(Constants.ROLE_WEB_CLIENT);
+        RuntimeException secondException =
+                Assert.assertThrows(
+                        RuntimeException.class,
+                        () -> {
+                            testInstance.getRequestMutation(
+                                    new TestRequestDetailsToReader(requestDetails));
+                        });
+
+        Assert.assertTrue(
+                secondException
+                        .getMessage()
+                        .contains("User must have only one of these client roles"));
+    }
+
+    @Test
     public void
             requestMutationWhenUserIsAssignedToRelatedEntityLocationIdsShouldAddAssignedRelatedEntityLocationIdsFilters()
                     throws IOException {
+        userRoles.add(Constants.ROLE_ANDROID_CLIENT);
         relatedEntityLocationIds.add("relocationid12");
         relatedEntityLocationIds.add("relocationid2");
         testInstance =
@@ -145,6 +194,7 @@ public class SyncAccessDecisionTest {
                     throws IOException {
         try (MockedStatic<PractitionerDetailsEndpointHelper> mockPractitionerDetailsEndpointHelper =
                 Mockito.mockStatic(PractitionerDetailsEndpointHelper.class)) {
+            userRoles.add(Constants.ROLE_ANDROID_CLIENT);
             List<String> selectedRelatedEntityLocationIds = new ArrayList<>();
             String srelocationid1 = "srelocationid1";
             String srelocationid2 = "srelocationid2";
@@ -215,6 +265,7 @@ public class SyncAccessDecisionTest {
     public void requestMutationWhenLocationUuidAreEmptyShouldNotError() throws IOException {
         try (MockedStatic<PractitionerDetailsEndpointHelper> mockPractitionerDetailsEndpointHelper =
                 Mockito.mockStatic(PractitionerDetailsEndpointHelper.class)) {
+            userRoles.add(Constants.ROLE_ANDROID_CLIENT);
             List<String> selectedRelatedEntityLocationIds = new ArrayList<>();
             String srelocationid1 = "";
             String srelocationid2 = " ";
@@ -276,6 +327,7 @@ public class SyncAccessDecisionTest {
     @Test
     public void preProcessShouldAddCareTeamIdFiltersWhenUserIsAssignedToCareTeamsOnly()
             throws IOException {
+        userRoles.add(Constants.ROLE_ANDROID_CLIENT);
         careTeamIds.add("careteamid1");
         careTeamIds.add("careteamid2");
         testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.CARE_TEAM);
@@ -317,6 +369,7 @@ public class SyncAccessDecisionTest {
     @Test
     public void preProcessShouldAddOrganisationIdFiltersWhenUserIsAssignedToOrganisationsOnly()
             throws IOException {
+        userRoles.add(Constants.ROLE_ANDROID_CLIENT);
         organisationIds.add("organizationid1");
         organisationIds.add("organizationid2");
         testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.ORGANIZATION);
@@ -353,6 +406,7 @@ public class SyncAccessDecisionTest {
 
     @Test
     public void preProcessShouldAddFiltersWhenResourceNotInSyncFilterIgnoredResourcesFile() {
+        userRoles.add(Constants.ROLE_ANDROID_CLIENT);
         organisationIds.add("organizationid1");
         organisationIds.add("organizationid2");
         testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.ORGANIZATION);
@@ -388,6 +442,7 @@ public class SyncAccessDecisionTest {
 
     @Test
     public void preProcessShouldSkipAddingFiltersWhenResourceInSyncFilterIgnoredResourcesFile() {
+        userRoles.add(Constants.ROLE_ANDROID_CLIENT);
         organisationIds.add("organizationid1");
         organisationIds.add("organizationid2");
         testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.ORGANIZATION);
@@ -413,6 +468,7 @@ public class SyncAccessDecisionTest {
     @Test
     public void
             preProcessShouldSkipAddingFiltersWhenSearchResourceByIdsInSyncFilterIgnoredResourcesFile() {
+        userRoles.add(Constants.ROLE_ANDROID_CLIENT);
         organisationIds.add("organizationid1");
         organisationIds.add("organizationid2");
         testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.ORGANIZATION);
@@ -449,6 +505,7 @@ public class SyncAccessDecisionTest {
     @Test
     public void
             preProcessShouldAddFiltersWhenSearchResourceByIdsDoNotMatchSyncFilterIgnoredResources() {
+        userRoles.add(Constants.ROLE_ANDROID_CLIENT);
         organisationIds.add("organizationid1");
         organisationIds.add("organizationid2");
         testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.ORGANIZATION);
@@ -496,6 +553,7 @@ public class SyncAccessDecisionTest {
 
     @Test(expected = RuntimeException.class)
     public void preprocessShouldThrowRuntimeExceptionWhenNoSyncStrategyFilterIsProvided() {
+        userRoles.add(Constants.ROLE_ANDROID_CLIENT);
         testInstance = createSyncAccessDecisionTestInstance(null);
 
         RequestDetails requestDetails = new ServletRequestDetails();
@@ -913,6 +971,7 @@ public class SyncAccessDecisionTest {
 
     @Test
     public void preProcessWhenRequestIsAnOperationRequestShouldAddFilters() {
+        userRoles.add(Constants.ROLE_ANDROID_CLIENT);
         locationIds.add("locationid12");
         locationIds.add("locationid2");
         testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.LOCATION);
