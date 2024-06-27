@@ -41,7 +41,7 @@ public class LocationHierarchyEndpointHelperTest {
                 .when(client)
                 .fetchResourceFromUrl(any(), any());
         LocationHierarchy locationHierarchy =
-                locationHierarchyEndpointHelper.getLocationHierarchy("non-existent");
+                locationHierarchyEndpointHelper.getLocationHierarchy("non-existent", null);
         assertEquals(
                 org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND,
                 locationHierarchy.getId());
@@ -56,7 +56,7 @@ public class LocationHierarchyEndpointHelperTest {
                 .when(client)
                 .fetchResourceFromUrl(Location.class, "Location/12345");
         LocationHierarchy locationHierarchy =
-                locationHierarchyEndpointHelper.getLocationHierarchy("12345");
+                locationHierarchyEndpointHelper.getLocationHierarchy("12345", null);
         assertEquals("Location Resource : 12345", locationHierarchy.getId());
     }
 
@@ -81,13 +81,14 @@ public class LocationHierarchyEndpointHelperTest {
         LocationHierarchyEndpointHelper mockLocationHierarchyEndpointHelper =
                 mock(LocationHierarchyEndpointHelper.class);
         List<Location> locations = createLocationList(5);
+        List<String> adminLevels = new ArrayList<>();
 
         Mockito.doCallRealMethod()
                 .when(mockLocationHierarchyEndpointHelper)
                 .getPaginatedLocations(request);
         Mockito.doReturn(locations)
                 .when(mockLocationHierarchyEndpointHelper)
-                .getDescendants("12345", null);
+                .getDescendants("12345", null, adminLevels);
 
         Bundle resultBundle = mockLocationHierarchyEndpointHelper.getPaginatedLocations(request);
 
