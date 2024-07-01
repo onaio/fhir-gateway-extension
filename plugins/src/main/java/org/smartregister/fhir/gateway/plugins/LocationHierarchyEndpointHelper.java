@@ -199,7 +199,7 @@ public class LocationHierarchyEndpointHelper {
             String administrativeLevelMin, String administrativeLevelMax) {
         List<String> adminLevels = new ArrayList<>();
 
-        int max = Integer.parseInt(Constants.DEFAULT_MAX_ADMIN_LEVEL);
+        int max = Constants.DEFAULT_MAX_ADMIN_LEVEL;
 
         if (administrativeLevelMin != null && !administrativeLevelMin.isEmpty()) {
             int min = Integer.parseInt(administrativeLevelMin);

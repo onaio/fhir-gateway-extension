@@ -3,6 +3,8 @@ package org.smartregister.fhir.gateway.plugins;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,9 +13,8 @@ import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
-import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.Identifier;
-import org.hl7.fhir.r4.model.Location;
+import org.hl7.fhir.instance.model.api.IBaseBundle;
+import org.hl7.fhir.r4.model.*;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -22,6 +23,7 @@ import org.mockito.internal.stubbing.defaultanswers.ReturnsDeepStubs;
 import org.smartregister.model.location.LocationHierarchy;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
+import ca.uhn.fhir.rest.gclient.*;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 
 public class LocationHierarchyEndpointHelperTest {
@@ -80,7 +82,7 @@ public class LocationHierarchyEndpointHelperTest {
 
         LocationHierarchyEndpointHelper mockLocationHierarchyEndpointHelper =
                 mock(LocationHierarchyEndpointHelper.class);
-        List<Location> locations = createLocationList(5);
+        List<Location> locations = createLocationList(5, false);
         List<String> adminLevels = new ArrayList<>();
 
         Mockito.doCallRealMethod()
@@ -108,6 +110,92 @@ public class LocationHierarchyEndpointHelperTest {
                 resultBundle.getLink("next").getUrl());
     }
 
+    @Test
+    public void testGenerateAdminLevelsWithMinAndMax() {
+        List<String> adminLevels = locationHierarchyEndpointHelper.generateAdminLevels("1", "3");
+        List<String> expectedLevels = new ArrayList<>();
+        expectedLevels.add("1");
+        expectedLevels.add("2");
+        expectedLevels.add("3");
+        assertEquals(expectedLevels, adminLevels);
+    }
+
+    @Test
+    public void testGenerateAdminLevelsWithMinOnly() {
+        List<String> adminLevels = locationHierarchyEndpointHelper.generateAdminLevels("2", null);
+        List<String> expectedLevels = new ArrayList<>();
+        for (int i = 2; i <= Constants.DEFAULT_MAX_ADMIN_LEVEL; i++) {
+            expectedLevels.add(String.valueOf(i));
+        }
+        assertEquals(expectedLevels, adminLevels);
+    }
+
+    @Test
+    public void testGenerateAdminLevelsWithMaxOnly() {
+        List<String> adminLevels = locationHierarchyEndpointHelper.generateAdminLevels(null, "2");
+        List<String> expectedLevels = new ArrayList<>();
+        expectedLevels.add("0");
+        expectedLevels.add("1");
+        expectedLevels.add("2");
+        assertEquals(expectedLevels, adminLevels);
+    }
+
+    @Test
+    public void testGenerateAdminLevelsWithNoMinAndMax() {
+        List<String> adminLevels = locationHierarchyEndpointHelper.generateAdminLevels(null, null);
+        List<String> expectedLevels = new ArrayList<>();
+        assertEquals(expectedLevels, adminLevels);
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void testGenerateAdminLevelsWithInvalidRange() {
+        locationHierarchyEndpointHelper.generateAdminLevels("3", "1");
+    }
+
+    @Test
+    public void testGetPaginatedLocationsPaginatesLocationsNa() {
+        String locationId = "12345";
+        Location parentLocation = new Location();
+        parentLocation.setId(locationId);
+
+        List<String> adminLevels = new ArrayList<>();
+        adminLevels.add("1");
+        adminLevels.add("2");
+        adminLevels.add("3");
+
+        IUntypedQuery<IBaseBundle> untypedQueryMock = mock(IUntypedQuery.class);
+        IQuery<IBaseBundle> queryMock = mock(IQuery.class);
+
+        Bundle firstBundleMock = new Bundle();
+        List<Bundle.BundleEntryComponent> firstBundleEntries = new ArrayList<>();
+        Location firstChildLocation = new Location();
+        firstChildLocation.setId("54321");
+        firstBundleEntries.add(new Bundle.BundleEntryComponent().setResource(firstChildLocation));
+        firstBundleMock.setEntry(firstBundleEntries);
+
+        Bundle secondBundleMock = new Bundle();
+        secondBundleMock.setEntry(new ArrayList<>());
+
+        Mockito.doReturn(untypedQueryMock).when(client).search();
+        Mockito.doReturn(queryMock).when(untypedQueryMock).forResource(Location.class);
+        Mockito.doReturn(queryMock).when(queryMock).where(any(ICriterion.class));
+        Mockito.doReturn(queryMock).when(queryMock).and(any(ICriterion.class));
+        Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
+
+        Mockito.doReturn(firstBundleMock, secondBundleMock).when(queryMock).execute();
+
+        List<Location> descendants =
+                locationHierarchyEndpointHelper.getDescendants(
+                        locationId, parentLocation, adminLevels);
+
+        Assert.assertNotNull(descendants);
+        Assert.assertEquals(2, descendants.size());
+        Assert.assertEquals(locationId, descendants.get(0).getId());
+        Assert.assertEquals("54321", descendants.get(1).getId());
+
+        verify(queryMock, times(2)).execute();
+    }
+
     private Bundle getLocationBundle() {
         Bundle bundleLocation = new Bundle();
         bundleLocation.setId("Location/1234");
@@ -124,13 +212,21 @@ public class LocationHierarchyEndpointHelperTest {
         return bundleLocation;
     }
 
-    private List<Location> createLocationList(int numLocations) {
-        // Create a list of locations
+    private List<Location> createLocationList(int numLocations, boolean setAdminLevel) {
         List<Location> locations = new ArrayList<>();
         for (int i = 0; i < numLocations; i++) {
             Location location = new Location();
             location.setId(Integer.toString(i));
             locations.add(location);
+            if (setAdminLevel) {
+                CodeableConcept type = new CodeableConcept();
+                Coding coding = new Coding();
+                coding.setSystem(Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL);
+                coding.setCode(Integer.toString(i));
+                coding.setDisplay(String.format("Level %d", i));
+                type.addCoding(coding);
+                location.addType(type);
+            }
         }
         return locations;
     }
