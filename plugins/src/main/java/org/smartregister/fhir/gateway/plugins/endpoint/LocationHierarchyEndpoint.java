@@ -2,6 +2,7 @@ package org.smartregister.fhir.gateway.plugins.endpoint;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -35,6 +36,12 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
         try {
             RestUtils.checkAuthentication(request, tokenVerifier);
             String identifier = request.getParameter(Constants.IDENTIFIER);
+            String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
+            String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
+            List<String> adminLevels =
+                    locationHierarchyEndpointHelper.generateAdminLevels(
+                            administrativeLevelMin, administrativeLevelMax);
+
             String mode = request.getParameter(Constants.MODE);
 
             String resultContent;
@@ -45,7 +52,8 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
 
             } else {
                 LocationHierarchy locationHierarchy =
-                        locationHierarchyEndpointHelper.getLocationHierarchy(identifier);
+                        locationHierarchyEndpointHelper.getLocationHierarchy(
+                                identifier, adminLevels);
 
                 if (org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND.equals(
                         locationHierarchy.getId())) {
