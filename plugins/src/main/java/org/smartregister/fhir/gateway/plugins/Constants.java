@@ -17,7 +17,7 @@ public class Constants {
     public static final String TAG_SEARCH_PARAM = "_tag";
     public static final String TYPE_SEARCH_PARAM = "type";
     public static final String DEFAULT_ADMIN_LEVEL_TYPE_URL =
-            "https://smartregister.org/codes/administrative-level";
+            "https://smartregister.org/CodeSystem/administrative-level";
     public static final String AUTHORIZATION = "Authorization";
     public static final String KEYCLOAK_UUID = "keycloak-uuid";
     public static final String IDENTIFIER = "_id";

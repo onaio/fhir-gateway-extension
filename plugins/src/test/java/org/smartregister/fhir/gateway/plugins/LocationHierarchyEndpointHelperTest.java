@@ -14,7 +14,11 @@ import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 
 import org.hl7.fhir.instance.model.api.IBaseBundle;
-import org.hl7.fhir.r4.model.*;
+import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.CodeableConcept;
+import org.hl7.fhir.r4.model.Coding;
+import org.hl7.fhir.r4.model.Identifier;
+import org.hl7.fhir.r4.model.Location;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -23,7 +27,9 @@ import org.mockito.internal.stubbing.defaultanswers.ReturnsDeepStubs;
 import org.smartregister.model.location.LocationHierarchy;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
-import ca.uhn.fhir.rest.gclient.*;
+import ca.uhn.fhir.rest.gclient.ICriterion;
+import ca.uhn.fhir.rest.gclient.IQuery;
+import ca.uhn.fhir.rest.gclient.IUntypedQuery;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 
 public class LocationHierarchyEndpointHelperTest {
@@ -153,7 +159,7 @@ public class LocationHierarchyEndpointHelperTest {
     }
 
     @Test
-    public void testGetPaginatedLocationsPaginatesLocationsNa() {
+    public void testGetDecendantsWithAdminLevelFiltersReturnsLocationsWithinAdminLevel() {
         String locationId = "12345";
         Location parentLocation = new Location();
         parentLocation.setId(locationId);
