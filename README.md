@@ -346,6 +346,40 @@ Example:
 [GET] /LocationHierarchy?_id=<some-location-id>&mode=list&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
 ```
 
+##### LocationHierarchy Dynamic Identifier
+
+The `LocationHierarchy` endpoint has the following supported functionalities
+when the `_id` is not provided as a parameter.
+
+1. Build location hierarchies of the **_User Assigned Locations_**: The
+   `LocationHierarchy` endpoint will build location hierarchies of all user
+   assigned locations
+
+Example:
+
+```
+[GET] /LocationHierarchy
+```
+
+2. Build location hierarchies of the **_User Selected Locations_**: The
+   `LocationHierarchy` endpoint will build locations hierarchies of the
+   locations provided by the user via the `_syncLocations` parameter.
+
+   ###### Conditions for User Selected LocationsHierarchies
+
+   - The deployment/app user should have Related Entity Location as its sync
+     strategy
+   - The deployment/app user should have `ALL_LOCATIONS` role on keycloak.
+   - The request should have `_syncLocations` parameter set
+
+Example:
+
+```
+[GET] /LocationHierarchy?_syncLocations=<some-location-id>,<some-location-id>,<some-location-id>
+```
+
+All other valid parameters can be used on this endpoint.
+
 ##### LocationHierarchy Administrative Level Filters
 
 The LocationHierarchy endpoint supports filtering by administrative levels. This
@@ -355,7 +389,7 @@ following search parameters are available:
 - `administrativeLevelMin`: Specifies the minimum administrative level to
   include in the response. Locations at this level and above will be included.
 - `administrativeLevelMax`: Specifies the maximum administrative level to
-  include in the response. Locations at this level and below will be included.
+  include in the response. Locations at this level and below will be included. If not set, it defaults to the value of `DEFAULT_MAX_ADMIN_LEVEL` set in the `Constants.java` file.
 
 Behavior based on parameters:
 
