@@ -7,6 +7,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,9 +23,12 @@ import org.hl7.fhir.r4.model.Location;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.internal.stubbing.defaultanswers.ReturnsDeepStubs;
 import org.smartregister.model.location.LocationHierarchy;
+
+import com.auth0.jwt.interfaces.DecodedJWT;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.ICriterion;
@@ -91,14 +95,16 @@ public class LocationHierarchyEndpointHelperTest {
         List<Location> locations = createLocationList(5, false);
         List<String> adminLevels = new ArrayList<>();
 
+        List<String> locationIds = Collections.singletonList("12345");
         Mockito.doCallRealMethod()
                 .when(mockLocationHierarchyEndpointHelper)
-                .getPaginatedLocations(request);
+                .getPaginatedLocations(request, locationIds);
         Mockito.doReturn(locations)
                 .when(mockLocationHierarchyEndpointHelper)
                 .getDescendants("12345", null, adminLevels);
 
-        Bundle resultBundle = mockLocationHierarchyEndpointHelper.getPaginatedLocations(request);
+        Bundle resultBundle =
+                mockLocationHierarchyEndpointHelper.getPaginatedLocations(request, locationIds);
 
         Assert.assertTrue(resultBundle.hasEntry());
         Assert.assertTrue(resultBundle.hasLink());
@@ -114,6 +120,72 @@ public class LocationHierarchyEndpointHelperTest {
         Assert.assertEquals(
                 "http://test:8080/LocationHierarchy?_page=3&_count=2&_id=12345",
                 resultBundle.getLink("next").getUrl());
+    }
+
+    @Test
+    public void testExtractSyncLocations() {
+        String syncLocationsParam = "loc1,loc2,loc3";
+        List<String> syncLocations =
+                locationHierarchyEndpointHelper.extractSyncLocations(syncLocationsParam);
+        assertEquals(3, syncLocations.size());
+        assertEquals("loc1", syncLocations.get(0));
+        assertEquals("loc2", syncLocations.get(1));
+        assertEquals("loc3", syncLocations.get(2));
+    }
+
+    @Test
+    public void testHandleNonIdentifierRequestListModePaginatesLocations() {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        Mockito.doReturn("list").when(request).getParameter(Constants.MODE);
+        Mockito.doReturn("1,2,3,4").when(request).getParameter(Constants.SYNC_LOCATIONS);
+        Mockito.doReturn(new StringBuffer("http://test:8080/LocationHierarchy"))
+                .when(request)
+                .getRequestURL();
+
+        Map<String, String[]> parameters = new HashMap<>();
+        parameters.put(Constants.MODE, new String[] {"list"});
+        parameters.put(Constants.SYNC_LOCATIONS, new String[] {"1,2,3,4"});
+        LocationHierarchyEndpointHelper mockLocationHierarchyEndpointHelper =
+                mock(LocationHierarchyEndpointHelper.class);
+        PractitionerDetailsEndpointHelper mockPractitionerDetailsEndpointHelper =
+                mock(PractitionerDetailsEndpointHelper.class);
+        DecodedJWT mockDecodedJWT = mock(DecodedJWT.class);
+        MockedStatic<JwtUtils> mockJwtUtils = Mockito.mockStatic(JwtUtils.class);
+
+        List<Location> locations = createLocationList(4, false);
+        List<String> locationIds = List.of("1", "2", "3", "4");
+        List<String> userRoles = Collections.singletonList(Constants.ROLE_ALL_LOCATIONS);
+
+        Mockito.doReturn(parameters).when(request).getParameterMap();
+        Mockito.doCallRealMethod()
+                .when(mockLocationHierarchyEndpointHelper)
+                .getPaginatedLocations(request, locationIds);
+        Mockito.doCallRealMethod()
+                .when(mockLocationHierarchyEndpointHelper)
+                .extractSyncLocations("1,2,3,4");
+        Mockito.doCallRealMethod()
+                .when(mockLocationHierarchyEndpointHelper)
+                .handleNonIdentifierRequest(
+                        request, mockPractitionerDetailsEndpointHelper, mockDecodedJWT);
+        Mockito.doReturn(locations)
+                .when(mockLocationHierarchyEndpointHelper)
+                .getDescendants(Mockito.anyString(), Mockito.any(), Mockito.any());
+        Mockito.doReturn(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                .when(mockLocationHierarchyEndpointHelper)
+                .getSyncStrategy(mockDecodedJWT);
+
+        mockJwtUtils
+                .when(() -> JwtUtils.getUserRolesFromJWT(any(DecodedJWT.class)))
+                .thenReturn(userRoles);
+
+        Bundle resultBundle =
+                mockLocationHierarchyEndpointHelper.handleNonIdentifierRequest(
+                        request, mockPractitionerDetailsEndpointHelper, mockDecodedJWT);
+
+        Assert.assertTrue(resultBundle.hasEntry());
+        Assert.assertTrue(resultBundle.hasLink());
+        Assert.assertTrue(resultBundle.hasTotal());
+        Assert.assertEquals(16, resultBundle.getEntry().size());
     }
 
     @Test
