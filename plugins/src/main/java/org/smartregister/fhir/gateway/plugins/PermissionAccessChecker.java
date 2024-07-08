@@ -1,6 +1,12 @@
 package org.smartregister.fhir.gateway.plugins;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.inject.Named;
@@ -19,13 +25,11 @@ import org.slf4j.LoggerFactory;
 import org.smartregister.fhir.gateway.plugins.interfaces.ResourceFinder;
 import org.smartregister.model.practitioner.PractitionerDetails;
 
-import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.fhir.gateway.FhirProxyServer;
 import com.google.fhir.gateway.HttpFhirClient;
-import com.google.fhir.gateway.JwtUtil;
 import com.google.fhir.gateway.interfaces.AccessChecker;
 import com.google.fhir.gateway.interfaces.AccessCheckerFactory;
 import com.google.fhir.gateway.interfaces.AccessDecision;
@@ -201,12 +205,12 @@ public class PermissionAccessChecker implements AccessChecker {
         return existingRoles.contains(roleName);
     }
 
-    private IGenericClient createFhirClientForR4(FhirContext fhirContext) {
+    public static IGenericClient createFhirClientForR4(FhirContext fhirContext) {
         String fhirServer = System.getenv(Constants.PROXY_TO_ENV);
         return fhirContext.newRestfulGenericClient(fhirServer);
     }
 
-    private String getBinaryResourceReference(Composition composition) {
+    public static String getBinaryResourceReference(Composition composition) {
 
         String id = "";
         if (composition != null && composition.getSection() != null) {
@@ -240,7 +244,7 @@ public class PermissionAccessChecker implements AccessChecker {
         return id;
     }
 
-    private Binary readApplicationConfigBinaryResource(
+    public static Binary readApplicationConfigBinaryResource(
             String binaryResourceId, FhirContext fhirContext) {
         IGenericClient client = createFhirClientForR4(fhirContext);
         Binary binary = null;
@@ -264,7 +268,7 @@ public class PermissionAccessChecker implements AccessChecker {
         return compositionEntry != null ? (Composition) compositionEntry.getResource() : null;
     }
 
-    private String findSyncStrategy(Binary binary) {
+    public static String findSyncStrategy(Binary binary) {
 
         byte[] bytes =
                 binary != null && binary.getDataElement() != null
@@ -449,16 +453,6 @@ public class PermissionAccessChecker implements AccessChecker {
         @VisibleForTesting static final String ROLES = "roles";
         @VisibleForTesting static final String FHIR_CORE_APPLICATION_ID_CLAIM = "fhir_core_app_id";
 
-        private List<String> getUserRolesFromJWT(DecodedJWT jwt) {
-            Claim claim = jwt.getClaim(REALM_ACCESS_CLAIM);
-            Map<String, Object> roles = claim.asMap();
-            return (List<String>) roles.get(ROLES);
-        }
-
-        private String getApplicationIdFromJWT(DecodedJWT jwt) {
-            return JwtUtil.getClaimOrDie(jwt, FHIR_CORE_APPLICATION_ID_CLAIM);
-        }
-
         @Override
         public AccessChecker create(
                 DecodedJWT jwt,
@@ -466,8 +460,8 @@ public class PermissionAccessChecker implements AccessChecker {
                 FhirContext fhirContext,
                 PatientFinder patientFinder)
                 throws AuthenticationException {
-            List<String> userRoles = getUserRolesFromJWT(jwt);
-            String applicationId = getApplicationIdFromJWT(jwt);
+            List<String> userRoles = JwtUtils.getUserRolesFromJWT(jwt);
+            String applicationId = JwtUtils.getApplicationIdFromJWT(jwt);
             return new PermissionAccessChecker(
                     fhirContext,
                     jwt,

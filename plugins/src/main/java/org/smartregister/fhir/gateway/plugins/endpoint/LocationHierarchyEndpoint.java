@@ -1,8 +1,8 @@
 package org.smartregister.fhir.gateway.plugins.endpoint;
 
+import static org.smartregister.fhir.gateway.plugins.Constants.AUTHORIZATION;
+
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -12,9 +12,10 @@ import org.apache.http.HttpStatus;
 import org.hl7.fhir.r4.model.Bundle;
 import org.smartregister.fhir.gateway.plugins.Constants;
 import org.smartregister.fhir.gateway.plugins.LocationHierarchyEndpointHelper;
+import org.smartregister.fhir.gateway.plugins.PractitionerDetailsEndpointHelper;
 import org.smartregister.fhir.gateway.plugins.RestUtils;
-import org.smartregister.fhir.gateway.plugins.Utils;
-import org.smartregister.model.location.LocationHierarchy;
+
+import com.auth0.jwt.interfaces.DecodedJWT;
 
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 
@@ -36,39 +37,24 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
         try {
             RestUtils.checkAuthentication(request, tokenVerifier);
             String identifier = request.getParameter(Constants.IDENTIFIER);
-            String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
-            String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
-            List<String> adminLevels =
-                    locationHierarchyEndpointHelper.generateAdminLevels(
-                            administrativeLevelMin, administrativeLevelMax);
-
-            String mode = request.getParameter(Constants.MODE);
+            String authHeader = request.getHeader(AUTHORIZATION);
+            DecodedJWT verifiedJwt = tokenVerifier.decodeAndVerifyBearerToken(authHeader);
 
             String resultContent;
-            if (Constants.LIST.equals(mode)) {
+            if (identifier != null && !identifier.isEmpty()) {
                 Bundle resultBundle =
-                        locationHierarchyEndpointHelper.getPaginatedLocations(request);
+                        locationHierarchyEndpointHelper.handleIdentifierRequest(
+                                request, identifier);
                 resultContent = fhirR4JsonParser.encodeResourceToString(resultBundle);
-
             } else {
-                LocationHierarchy locationHierarchy =
-                        locationHierarchyEndpointHelper.getLocationHierarchy(
-                                identifier, adminLevels);
-
-                if (org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND.equals(
-                        locationHierarchy.getId())) {
-                    resultContent =
-                            fhirR4JsonParser.encodeResourceToString(
-                                    Utils.createEmptyBundle(
-                                            request.getRequestURL()
-                                                    + "?"
-                                                    + request.getQueryString()));
-                } else {
-                    resultContent =
-                            fhirR4JsonParser.encodeResourceToString(
-                                    Utils.createBundle(
-                                            Collections.singletonList(locationHierarchy)));
-                }
+                PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper =
+                        new PractitionerDetailsEndpointHelper(
+                                fhirR4Context.newRestfulGenericClient(
+                                        System.getenv(Constants.PROXY_TO_ENV)));
+                Bundle resultBundle =
+                        locationHierarchyEndpointHelper.handleNonIdentifierRequest(
+                                request, practitionerDetailsEndpointHelper, verifiedJwt);
+                resultContent = fhirR4JsonParser.encodeResourceToString(resultBundle);
             }
             response.setContentType("application/json");
             response.getOutputStream().print(resultContent);
