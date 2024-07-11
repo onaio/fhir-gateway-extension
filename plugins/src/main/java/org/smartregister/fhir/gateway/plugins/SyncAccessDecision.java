@@ -147,7 +147,7 @@ public class SyncAccessDecision implements AccessDecision {
         if (matchedRoles.size() != 1) {
             ForbiddenOperationException forbiddenOperationException =
                     new ForbiddenOperationException(
-                            "User must have only one of these client roles "
+                            "User must have at least one and at most one of these client roles "
                                     + Arrays.toString(Constants.CLIENT_ROLES));
             ExceptionUtil.throwRuntimeExceptionAndLog(
                     logger, forbiddenOperationException.getMessage(), forbiddenOperationException);
