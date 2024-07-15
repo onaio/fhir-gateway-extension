@@ -13,13 +13,13 @@ import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 
-import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Binary;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.StringType;
+import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartregister.model.location.LocationHierarchy;
@@ -244,7 +244,7 @@ public class LocationHierarchyEndpointHelper {
     public String getSyncStrategy(DecodedJWT verifiedJwt) {
         String applicationId = JwtUtils.getApplicationIdFromJWT(verifiedJwt);
         FhirContext fhirContext = FhirContext.forR4();
-        IGenericClient client = PermissionAccessChecker.createFhirClientForR4(fhirContext);
+        IGenericClient client = Utils.createFhirClientForR4(fhirContext);
 
         Bundle compositionBundle =
                 client.search()
@@ -260,12 +260,10 @@ public class LocationHierarchyEndpointHelper {
         } else {
             composition = null;
         }
-        String binaryResourceReference =
-                PermissionAccessChecker.getBinaryResourceReference(composition);
+        String binaryResourceReference = Utils.getBinaryResourceReference(composition);
         Binary binary =
-                PermissionAccessChecker.readApplicationConfigBinaryResource(
-                        binaryResourceReference, fhirContext);
-        return PermissionAccessChecker.findSyncStrategy(binary);
+                Utils.readApplicationConfigBinaryResource(binaryResourceReference, fhirContext);
+        return Utils.findSyncStrategy(binary);
     }
 
     public List<String> extractSyncLocations(String syncLocationsParam) {

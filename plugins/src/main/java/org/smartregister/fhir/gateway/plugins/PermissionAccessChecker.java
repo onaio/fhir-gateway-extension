@@ -1,11 +1,9 @@
 package org.smartregister.fhir.gateway.plugins;
 
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -18,7 +16,6 @@ import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CareTeam;
 import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.Organization;
-import org.hl7.fhir.r4.model.Reference;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,9 +33,6 @@ import com.google.fhir.gateway.interfaces.AccessDecision;
 import com.google.fhir.gateway.interfaces.NoOpAccessDecision;
 import com.google.fhir.gateway.interfaces.PatientFinder;
 import com.google.fhir.gateway.interfaces.RequestDetailsReader;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.api.RequestTypeEnum;
@@ -205,57 +199,8 @@ public class PermissionAccessChecker implements AccessChecker {
         return existingRoles.contains(roleName);
     }
 
-    public static IGenericClient createFhirClientForR4(FhirContext fhirContext) {
-        String fhirServer = System.getenv(Constants.PROXY_TO_ENV);
-        return fhirContext.newRestfulGenericClient(fhirServer);
-    }
-
-    public static String getBinaryResourceReference(Composition composition) {
-
-        String id = "";
-        if (composition != null && composition.getSection() != null) {
-            Optional<Integer> firstIndex =
-                    composition.getSection().stream()
-                            .filter(
-                                    sectionComponent ->
-                                            sectionComponent.getFocus().getIdentifier() != null
-                                                    && sectionComponent
-                                                                    .getFocus()
-                                                                    .getIdentifier()
-                                                                    .getValue()
-                                                            != null
-                                                    && sectionComponent
-                                                            .getFocus()
-                                                            .getIdentifier()
-                                                            .getValue()
-                                                            .equals(
-                                                                    Constants.AppConfigJsonKey
-                                                                            .APPLICATION))
-                            .map(
-                                    sectionComponent ->
-                                            composition.getSection().indexOf(sectionComponent))
-                            .findFirst();
-
-            Integer result = firstIndex.orElse(-1);
-            Composition.SectionComponent sectionComponent = composition.getSection().get(result);
-            Reference focus = sectionComponent != null ? sectionComponent.getFocus() : null;
-            id = focus != null ? focus.getReference() : null;
-        }
-        return id;
-    }
-
-    public static Binary readApplicationConfigBinaryResource(
-            String binaryResourceId, FhirContext fhirContext) {
-        IGenericClient client = createFhirClientForR4(fhirContext);
-        Binary binary = null;
-        if (!binaryResourceId.isBlank()) {
-            binary = client.read().resource(Binary.class).withId(binaryResourceId).execute();
-        }
-        return binary;
-    }
-
     private Composition readCompositionResource(String applicationId, FhirContext fhirContext) {
-        IGenericClient client = createFhirClientForR4(fhirContext);
+        IGenericClient client = Utils.createFhirClientForR4(fhirContext);
 
         Bundle compositionBundle =
                 client.search()
@@ -268,30 +213,11 @@ public class PermissionAccessChecker implements AccessChecker {
         return compositionEntry != null ? (Composition) compositionEntry.getResource() : null;
     }
 
-    public static String findSyncStrategy(Binary binary) {
-
-        byte[] bytes =
-                binary != null && binary.getDataElement() != null
-                        ? Base64.getDecoder().decode(binary.getDataElement().getValueAsString())
-                        : null;
-        String syncStrategy = org.smartregister.utils.Constants.EMPTY_STRING;
-        if (bytes != null) {
-            String json = new String(bytes);
-            JsonObject jsonObject = new Gson().fromJson(json, JsonObject.class);
-            JsonArray jsonArray =
-                    jsonObject.getAsJsonArray(Constants.AppConfigJsonKey.SYNC_STRATEGY);
-            if (jsonArray != null && !jsonArray.isEmpty())
-                syncStrategy = jsonArray.get(0).getAsString();
-        }
-
-        return syncStrategy;
-    }
-
     Pair<Composition, PractitionerDetails> fetchCompositionAndPractitionerDetails(
             String subject, String applicationId, FhirContext fhirContext) {
         fhirContext.registerCustomType(PractitionerDetails.class);
 
-        IGenericClient client = createFhirClientForR4(fhirContext);
+        IGenericClient client = Utils.createFhirClientForR4(fhirContext);
 
         PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper =
                 new PractitionerDetailsEndpointHelper(client);
@@ -319,10 +245,11 @@ public class PermissionAccessChecker implements AccessChecker {
         Composition composition = compositionPractitionerDetailsPair.getLeft();
         PractitionerDetails practitionerDetails = compositionPractitionerDetailsPair.getRight();
 
-        String binaryResourceReference = getBinaryResourceReference(composition);
-        Binary binary = readApplicationConfigBinaryResource(binaryResourceReference, fhirContext);
+        String binaryResourceReference = Utils.getBinaryResourceReference(composition);
+        Binary binary =
+                Utils.readApplicationConfigBinaryResource(binaryResourceReference, fhirContext);
 
-        return Pair.of(findSyncStrategy(binary), practitionerDetails);
+        return Pair.of(Utils.findSyncStrategy(binary), practitionerDetails);
     }
 
     private Map<String, List<String>> getSyncStrategyIds(
