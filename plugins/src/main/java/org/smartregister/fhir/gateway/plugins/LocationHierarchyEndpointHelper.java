@@ -194,7 +194,7 @@ public class LocationHierarchyEndpointHelper {
         List<String> selectedSyncLocations = extractSyncLocations(syncLocationsParam);
         String practitionerId = verifiedJwt.getSubject();
         List<String> userRoles = JwtUtils.getUserRolesFromJWT(verifiedJwt);
-        String syncStrategy = getSyncStrategy(verifiedJwt);
+        String syncStrategy = getSyncStrategyFromJwtToken(verifiedJwt);
 
         if (Constants.LIST.equals(mode)) {
             if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)
@@ -241,8 +241,22 @@ public class LocationHierarchyEndpointHelper {
         }
     }
 
-    public String getSyncStrategy(DecodedJWT verifiedJwt) {
+    public String getSyncStrategyFromJwtToken(DecodedJWT verifiedJwt) {
         String applicationId = JwtUtils.getApplicationIdFromJWT(verifiedJwt);
+
+        String syncStrategy;
+
+        if (CacheHelper.INSTANCE.skipCache()) {
+            syncStrategy = getSyncStrategy(applicationId);
+        } else {
+            syncStrategy =
+                    CacheHelper.INSTANCE.stringCache.get(
+                            applicationId, key -> getSyncStrategy(applicationId));
+        }
+        return syncStrategy;
+    }
+
+    private String getSyncStrategy(String applicationId) {
         FhirContext fhirContext = FhirContext.forR4();
         IGenericClient client = Utils.createFhirClientForR4(fhirContext);
 
