@@ -125,7 +125,9 @@ public class SyncAccessDecisionTest {
         Assert.assertTrue(
                 firstException
                         .getMessage()
-                        .contains("User must have only one of these client roles"));
+                        .contains(
+                                "User must have at least one and at most one of these client"
+                                        + " roles"));
 
         // less than one
         userRoles.remove(Constants.ROLE_ANDROID_CLIENT);
@@ -141,7 +143,9 @@ public class SyncAccessDecisionTest {
         Assert.assertTrue(
                 secondException
                         .getMessage()
-                        .contains("User must have only one of these client roles"));
+                        .contains(
+                                "User must have at least one and at most one of these client"
+                                        + " roles"));
     }
 
     @Test
