@@ -13,21 +13,20 @@ import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 
+import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Binary;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.StringType;
-import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartregister.model.location.LocationHierarchy;
 import org.smartregister.model.location.LocationHierarchyTree;
 
-import com.google.fhir.gateway.ExceptionUtil;
-
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.google.fhir.gateway.ExceptionUtil;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
@@ -67,7 +66,8 @@ public class LocationHierarchyEndpointHelper {
         return locationHierarchy;
     }
 
-    public List<LocationHierarchy> getLocationHierarchies(List<String> locationIds, List<String> adminLevels) {
+    public List<LocationHierarchy> getLocationHierarchies(
+            List<String> locationIds, List<String> adminLevels) {
         List<LocationHierarchy> locationHierarchies = new ArrayList<>();
         for (String locationId : locationIds) {
             locationHierarchies.add(getLocationHierarchy(locationId, adminLevels));
@@ -170,7 +170,7 @@ public class LocationHierarchyEndpointHelper {
         String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
         String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
         List<String> adminLevels =
-            generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
+                generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         String mode = request.getParameter(Constants.MODE);
         if (Constants.LIST.equals(mode)) {
             List<String> locationIds = Collections.singletonList(identifier);
@@ -190,7 +190,7 @@ public class LocationHierarchyEndpointHelper {
         String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
         String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
         List<String> adminLevels =
-            generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
+                generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         List<String> selectedSyncLocations = extractSyncLocations(syncLocationsParam);
         String practitionerId = verifiedJwt.getSubject();
         List<String> userRoles = JwtUtils.getUserRolesFromJWT(verifiedJwt);
@@ -312,7 +312,7 @@ public class LocationHierarchyEndpointHelper {
         for (String identifier : locationIds) {
             Location parentLocation = getLocationById(identifier);
             List<Location> locations =
-                getLocationHierarchyLocations(identifier, parentLocation, adminLevels);
+                    getLocationHierarchyLocations(identifier, parentLocation, adminLevels);
             resourceLocations.addAll(locations);
         }
         int totalEntries = resourceLocations.size();

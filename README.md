@@ -389,7 +389,9 @@ following search parameters are available:
 - `administrativeLevelMin`: Specifies the minimum administrative level to
   include in the response. Locations at this level and above will be included.
 - `administrativeLevelMax`: Specifies the maximum administrative level to
-  include in the response. Locations at this level and below will be included. If not set, it defaults to the value of `DEFAULT_MAX_ADMIN_LEVEL` set in the `Constants.java` file.
+  include in the response. Locations at this level and below will be included.
+  If not set, it defaults to the value of `DEFAULT_MAX_ADMIN_LEVEL` set in the
+  `Constants.java` file.
 
 Behavior based on parameters:
 
