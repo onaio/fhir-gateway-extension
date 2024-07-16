@@ -565,7 +565,7 @@ public class PractitionerDetailsEndpointHelper {
         LocationHierarchy locationHierarchy;
         for (String locationsIdentifier : locationsIdentifiers) {
             locationHierarchy =
-                    locationHierarchyEndpointHelper.getLocationHierarchy(locationsIdentifier);
+                    locationHierarchyEndpointHelper.getLocationHierarchy(locationsIdentifier, null);
             if (!org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND.equals(
                     locationHierarchy.getId())) locationHierarchyList.add(locationHierarchy);
         }

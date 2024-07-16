@@ -11,6 +11,7 @@ import java.util.Map;
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 
+import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.Resource;
@@ -20,8 +21,13 @@ import org.slf4j.LoggerFactory;
 import org.smartregister.model.location.LocationHierarchy;
 import org.smartregister.model.location.LocationHierarchyTree;
 
+import com.google.fhir.gateway.ExceptionUtil;
+
 import ca.uhn.fhir.rest.client.api.IGenericClient;
+import ca.uhn.fhir.rest.gclient.IQuery;
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
+import ca.uhn.fhir.rest.gclient.TokenClientParam;
+import ca.uhn.fhir.rest.server.exceptions.ForbiddenOperationException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 
 public class LocationHierarchyEndpointHelper {
@@ -39,28 +45,30 @@ public class LocationHierarchyEndpointHelper {
         return r4FHIRClient;
     }
 
-    public LocationHierarchy getLocationHierarchy(String locationId) {
+    public LocationHierarchy getLocationHierarchy(String locationId, List<String> adminLevels) {
         LocationHierarchy locationHierarchy;
 
         if (CacheHelper.INSTANCE.skipCache()) {
-            locationHierarchy = getLocationHierarchyCore(locationId);
+            locationHierarchy = getLocationHierarchyCore(locationId, adminLevels);
         } else {
             locationHierarchy =
                     (LocationHierarchy)
                             CacheHelper.INSTANCE.resourceCache.get(
-                                    locationId, this::getLocationHierarchyCore);
+                                    locationId,
+                                    key -> getLocationHierarchyCore(locationId, adminLevels));
         }
         return locationHierarchy;
     }
 
-    public LocationHierarchy getLocationHierarchyCore(String locationId) {
+    public LocationHierarchy getLocationHierarchyCore(String locationId, List<String> adminLevels) {
         Location location = getLocationById(locationId);
 
         LocationHierarchyTree locationHierarchyTree = new LocationHierarchyTree();
         LocationHierarchy locationHierarchy = new LocationHierarchy();
         if (location != null) {
             logger.info("Building Location Hierarchy of Location Id : " + locationId);
-            locationHierarchyTree.buildTreeFromList(getDescendants(locationId, location));
+            locationHierarchyTree.buildTreeFromList(
+                    getDescendants(locationId, location, adminLevels));
             StringType locationIdString = new StringType().setId(locationId).getIdElement();
             locationHierarchy.setLocationId(locationIdString);
             locationHierarchy.setId(LOCATION_RESOURCE + locationId);
@@ -74,28 +82,44 @@ public class LocationHierarchyEndpointHelper {
     }
 
     private List<Location> getLocationHierarchyLocations(
-            String locationId, Location parentLocation) {
+            String locationId, Location parentLocation, List<String> adminLevels) {
         List<Location> descendants;
 
         if (CacheHelper.INSTANCE.skipCache()) {
-            descendants = getDescendants(locationId, parentLocation);
+            descendants = getDescendants(locationId, parentLocation, adminLevels);
         } else {
             descendants =
                     CacheHelper.INSTANCE.locationListCache.get(
-                            locationId, key -> getDescendants(locationId, parentLocation));
+                            locationId,
+                            key -> getDescendants(locationId, parentLocation, adminLevels));
         }
         return descendants;
     }
 
-    public List<Location> getDescendants(String locationId, Location parentLocation) {
-
-        Bundle childLocationBundle =
+    public List<Location> getDescendants(
+            String locationId, Location parentLocation, List<String> adminLevels) {
+        IQuery<IBaseBundle> query =
                 getFhirClientForR4()
                         .search()
                         .forResource(Location.class)
-                        .where(new ReferenceClientParam(Location.SP_PARTOF).hasAnyOfIds(locationId))
-                        .returnBundle(Bundle.class)
-                        .execute();
+                        .where(
+                                new ReferenceClientParam(Location.SP_PARTOF)
+                                        .hasAnyOfIds(locationId));
+
+        if (adminLevels != null && !adminLevels.isEmpty()) {
+            TokenClientParam adminLevelParam = new TokenClientParam(Constants.TYPE_SEARCH_PARAM);
+            String[] adminLevelArray = adminLevels.toArray(new String[0]);
+
+            query =
+                    query.and(
+                            adminLevelParam
+                                    .exactly()
+                                    .systemAndValues(
+                                            Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL,
+                                            adminLevelArray));
+        }
+
+        Bundle childLocationBundle = query.returnBundle(Bundle.class).execute();
 
         List<Location> allLocations = new ArrayList<>();
         if (parentLocation != null) {
@@ -107,7 +131,8 @@ public class LocationHierarchyEndpointHelper {
                 Location childLocationEntity = (Location) childLocation.getResource();
                 allLocations.add(childLocationEntity);
                 allLocations.addAll(
-                        getDescendants(childLocationEntity.getIdElement().getIdPart(), null));
+                        getDescendants(
+                                childLocationEntity.getIdElement().getIdPart(), null, adminLevels));
             }
         }
 
@@ -130,6 +155,10 @@ public class LocationHierarchyEndpointHelper {
         String identifier = request.getParameter(Constants.IDENTIFIER);
         String pageSize = request.getParameter(Constants.PAGINATION_PAGE_SIZE);
         String pageNumber = request.getParameter(Constants.PAGINATION_PAGE_NUMBER);
+        String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
+        String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
+        List<String> adminLevels =
+                generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         Map<String, String[]> parameters = new HashMap<>(request.getParameterMap());
 
         int count =
@@ -143,7 +172,8 @@ public class LocationHierarchyEndpointHelper {
 
         int start = Math.max(0, (page - 1)) * count;
         Location parentLocation = getLocationById(identifier);
-        List<Location> locations = getLocationHierarchyLocations(identifier, parentLocation);
+        List<Location> locations =
+                getLocationHierarchyLocations(identifier, parentLocation, adminLevels);
         List<Resource> resourceLocations = new ArrayList<>(locations);
         int totalEntries = locations.size();
 
@@ -163,5 +193,44 @@ public class LocationHierarchyEndpointHelper {
         }
 
         return resultBundle;
+    }
+
+    public List<String> generateAdminLevels(
+            String administrativeLevelMin, String administrativeLevelMax) {
+        List<String> adminLevels = new ArrayList<>();
+
+        int max = Constants.DEFAULT_MAX_ADMIN_LEVEL;
+
+        if (administrativeLevelMin != null && !administrativeLevelMin.isEmpty()) {
+            int min = Integer.parseInt(administrativeLevelMin);
+
+            if (administrativeLevelMax != null && !administrativeLevelMax.isEmpty()) {
+                int maxLevel = Integer.parseInt(administrativeLevelMax);
+                if (min > maxLevel) {
+                    ForbiddenOperationException forbiddenOperationException =
+                            new ForbiddenOperationException(
+                                    "administrativeLevelMin cannot be greater than"
+                                            + " administrativeLevelMax");
+                    ExceptionUtil.throwRuntimeExceptionAndLog(
+                            logger,
+                            forbiddenOperationException.getMessage(),
+                            forbiddenOperationException);
+                }
+                for (int i = min; i <= maxLevel; i++) {
+                    adminLevels.add(String.valueOf(i));
+                }
+            } else {
+                for (int i = min; i <= max; i++) {
+                    adminLevels.add(String.valueOf(i));
+                }
+            }
+        } else if (administrativeLevelMax != null && !administrativeLevelMax.isEmpty()) {
+            int maxLevel = Integer.parseInt(administrativeLevelMax);
+            for (int i = 0; i <= maxLevel; i++) {
+                adminLevels.add(String.valueOf(i));
+            }
+        }
+
+        return adminLevels;
     }
 }

@@ -229,7 +229,7 @@ environment variables
 
 ### Run project
 
-As document on the Info Gateway modules
+As documented on the Info Gateway modules
 [section here](https://github.com/google/fhir-gateway#modules), the command to
 run is:
 
@@ -344,6 +344,34 @@ Example:
 
 ```
 [GET] /LocationHierarchy?_id=<some-location-id>&mode=list&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
+```
+
+##### LocationHierarchy Administrative Level Filters
+
+The LocationHierarchy endpoint supports filtering by administrative levels. This
+is useful for querying locations at specific levels within the hierarchy. The
+following search parameters are available:
+
+- `administrativeLevelMin`: Specifies the minimum administrative level to
+  include in the response. Locations at this level and above will be included.
+- `administrativeLevelMax`: Specifies the maximum administrative level to
+  include in the response. Locations at this level and below will be included.
+
+Behavior based on parameters:
+
+- No Parameters Defined: The endpoint works as it does currently, returning the
+  full hierarchy.
+- Only `administrativeLevelMin` Defined: The response will include all locations
+  from the specified minimum administrative level up to the root.
+- Only `administrativeLevelMax` Defined: The response will include all locations
+  from the root down to the specified maximum administrative level.
+- Both Parameters Defined: The response will include locations only within the
+  specified range of administrative levels.
+
+Example:
+
+```
+[GET] /LocationHierarchy?_id=<some-location-id>&administrativeLevelMin=2&administrativeLevelMax=4&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
 ```
 
 #### Important Note:
