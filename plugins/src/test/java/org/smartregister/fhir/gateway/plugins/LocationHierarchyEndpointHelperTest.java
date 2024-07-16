@@ -172,7 +172,7 @@ public class LocationHierarchyEndpointHelperTest {
                 .getDescendants(Mockito.anyString(), Mockito.any(), Mockito.any());
         Mockito.doReturn(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
                 .when(mockLocationHierarchyEndpointHelper)
-                .getSyncStrategyFromJwtToken(mockDecodedJWT);
+                .getSyncStrategyByAppId(Mockito.any());
 
         mockJwtUtils
                 .when(() -> JwtUtils.getUserRolesFromJWT(any(DecodedJWT.class)))

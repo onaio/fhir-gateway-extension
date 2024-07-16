@@ -194,7 +194,8 @@ public class LocationHierarchyEndpointHelper {
         List<String> selectedSyncLocations = extractSyncLocations(syncLocationsParam);
         String practitionerId = verifiedJwt.getSubject();
         List<String> userRoles = JwtUtils.getUserRolesFromJWT(verifiedJwt);
-        String syncStrategy = getSyncStrategyFromJwtToken(verifiedJwt);
+        String applicationId = JwtUtils.getApplicationIdFromJWT(verifiedJwt);
+        String syncStrategy = getSyncStrategyByAppId(applicationId);
 
         if (Constants.LIST.equals(mode)) {
             if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)
@@ -241,11 +242,8 @@ public class LocationHierarchyEndpointHelper {
         }
     }
 
-    public String getSyncStrategyFromJwtToken(DecodedJWT verifiedJwt) {
-        String applicationId = JwtUtils.getApplicationIdFromJWT(verifiedJwt);
-
+    public String getSyncStrategyByAppId(String applicationId) {
         String syncStrategy;
-
         if (CacheHelper.INSTANCE.skipCache()) {
             syncStrategy = getSyncStrategy(applicationId);
         } else {
