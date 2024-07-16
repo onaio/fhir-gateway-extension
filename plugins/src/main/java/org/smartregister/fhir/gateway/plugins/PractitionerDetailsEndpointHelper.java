@@ -295,7 +295,7 @@ public class PractitionerDetailsEndpointHelper {
 
         Bundle groupsBundle = getGroupsAssignedToPractitioner(practitionerId);
         logger.info(
-                "Practitioner Groups fetched "
+                "Practitioner Groups fetched : "
                         + (groupsBundle != null ? groupsBundle.getTotal() : 0));
 
         List<Group> groupsList = mapBundleToGroups(groupsBundle);

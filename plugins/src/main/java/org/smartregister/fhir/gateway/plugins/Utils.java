@@ -1,10 +1,26 @@
 package org.smartregister.fhir.gateway.plugins;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.hl7.fhir.instance.model.api.IBaseBundle;
+import org.hl7.fhir.r4.model.Binary;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Composition;
+import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+
+import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.rest.client.api.IGenericClient;
 
 public class Utils {
 
@@ -100,5 +116,73 @@ public class Utils {
         responseBundle.setType(Bundle.BundleType.SEARCHSET);
         responseBundle.setTotal(0);
         return responseBundle;
+    }
+
+    public static IGenericClient createFhirClientForR4(FhirContext fhirContext) {
+        String fhirServer = System.getenv(Constants.PROXY_TO_ENV);
+        return fhirContext.newRestfulGenericClient(fhirServer);
+    }
+
+    public static String getBinaryResourceReference(Composition composition) {
+
+        String id = "";
+        if (composition != null && composition.getSection() != null) {
+            Optional<Integer> firstIndex =
+                    composition.getSection().stream()
+                            .filter(
+                                    sectionComponent ->
+                                            sectionComponent.getFocus().getIdentifier() != null
+                                                    && sectionComponent
+                                                                    .getFocus()
+                                                                    .getIdentifier()
+                                                                    .getValue()
+                                                            != null
+                                                    && sectionComponent
+                                                            .getFocus()
+                                                            .getIdentifier()
+                                                            .getValue()
+                                                            .equals(
+                                                                    Constants.AppConfigJsonKey
+                                                                            .APPLICATION))
+                            .map(
+                                    sectionComponent ->
+                                            composition.getSection().indexOf(sectionComponent))
+                            .findFirst();
+
+            Integer result = firstIndex.orElse(-1);
+            Composition.SectionComponent sectionComponent = composition.getSection().get(result);
+            Reference focus = sectionComponent != null ? sectionComponent.getFocus() : null;
+            id = focus != null ? focus.getReference() : null;
+        }
+        return id;
+    }
+
+    public static Binary readApplicationConfigBinaryResource(
+            String binaryResourceId, FhirContext fhirContext) {
+        IGenericClient client = Utils.createFhirClientForR4(fhirContext);
+        Binary binary = null;
+        if (!binaryResourceId.isBlank()) {
+            binary = client.read().resource(Binary.class).withId(binaryResourceId).execute();
+        }
+        return binary;
+    }
+
+    public static String findSyncStrategy(Binary binary) {
+
+        byte[] bytes =
+                binary != null && binary.getDataElement() != null
+                        ? Base64.getDecoder().decode(binary.getDataElement().getValueAsString())
+                        : null;
+        String syncStrategy = org.smartregister.utils.Constants.EMPTY_STRING;
+        if (bytes != null) {
+            String json = new String(bytes);
+            JsonObject jsonObject = new Gson().fromJson(json, JsonObject.class);
+            JsonArray jsonArray =
+                    jsonObject.getAsJsonArray(Constants.AppConfigJsonKey.SYNC_STRATEGY);
+            if (jsonArray != null && !jsonArray.isEmpty())
+                syncStrategy = jsonArray.get(0).getAsString();
+        }
+
+        return syncStrategy;
     }
 }

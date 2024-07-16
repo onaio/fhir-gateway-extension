@@ -4,15 +4,19 @@ import static org.smartregister.utils.Constants.LOCATION_RESOURCE;
 import static org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 
 import org.hl7.fhir.instance.model.api.IBaseBundle;
+import org.hl7.fhir.r4.model.Binary;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.StringType;
@@ -21,8 +25,10 @@ import org.slf4j.LoggerFactory;
 import org.smartregister.model.location.LocationHierarchy;
 import org.smartregister.model.location.LocationHierarchyTree;
 
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.fhir.gateway.ExceptionUtil;
 
+import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.IQuery;
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
@@ -58,6 +64,15 @@ public class LocationHierarchyEndpointHelper {
                                     key -> getLocationHierarchyCore(locationId, adminLevels));
         }
         return locationHierarchy;
+    }
+
+    public List<LocationHierarchy> getLocationHierarchies(
+            List<String> locationIds, List<String> adminLevels) {
+        List<LocationHierarchy> locationHierarchies = new ArrayList<>();
+        for (String locationId : locationIds) {
+            locationHierarchies.add(getLocationHierarchy(locationId, adminLevels));
+        }
+        return locationHierarchies;
     }
 
     public LocationHierarchy getLocationHierarchyCore(String locationId, List<String> adminLevels) {
@@ -151,8 +166,127 @@ public class LocationHierarchyEndpointHelper {
         return location;
     }
 
-    public Bundle getPaginatedLocations(HttpServletRequest request) {
-        String identifier = request.getParameter(Constants.IDENTIFIER);
+    public Bundle handleIdentifierRequest(HttpServletRequest request, String identifier) {
+        String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
+        String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
+        List<String> adminLevels =
+                generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
+        String mode = request.getParameter(Constants.MODE);
+        if (Constants.LIST.equals(mode)) {
+            List<String> locationIds = Collections.singletonList(identifier);
+            return getPaginatedLocations(request, locationIds);
+        } else {
+            LocationHierarchy locationHierarchy = getLocationHierarchy(identifier, adminLevels);
+            return Utils.createBundle(Collections.singletonList(locationHierarchy));
+        }
+    }
+
+    public Bundle handleNonIdentifierRequest(
+            HttpServletRequest request,
+            PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper,
+            DecodedJWT verifiedJwt) {
+        String mode = request.getParameter(Constants.MODE);
+        String syncLocationsParam = request.getParameter(Constants.SYNC_LOCATIONS);
+        String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
+        String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
+        List<String> adminLevels =
+                generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
+        List<String> selectedSyncLocations = extractSyncLocations(syncLocationsParam);
+        String practitionerId = verifiedJwt.getSubject();
+        List<String> userRoles = JwtUtils.getUserRolesFromJWT(verifiedJwt);
+        String applicationId = JwtUtils.getApplicationIdFromJWT(verifiedJwt);
+        String syncStrategy = getSyncStrategyByAppId(applicationId);
+
+        if (Constants.LIST.equals(mode)) {
+            if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)
+                    && userRoles.contains(Constants.ROLE_ALL_LOCATIONS)
+                    && !selectedSyncLocations.isEmpty()) {
+                return getPaginatedLocations(request, selectedSyncLocations);
+
+            } else {
+                List<Location> locations =
+                        practitionerDetailsEndpointHelper
+                                .getPractitionerDetailsByKeycloakId(practitionerId)
+                                .getFhirPractitionerDetails()
+                                .getLocations();
+                List<String> locationIds = new ArrayList<>();
+                for (Location location : locations) {
+                    locationIds.add(location.getIdElement().getIdPart());
+                }
+                return getPaginatedLocations(request, locationIds);
+            }
+
+        } else {
+            if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)
+                    && userRoles.contains(Constants.ROLE_ALL_LOCATIONS)
+                    && !selectedSyncLocations.isEmpty()) {
+                List<LocationHierarchy> locationHierarchies =
+                        getLocationHierarchies(selectedSyncLocations, adminLevels);
+                List<Resource> resourceList =
+                        locationHierarchies.stream()
+                                .map(locationHierarchy -> (Resource) locationHierarchy)
+                                .collect(Collectors.toList());
+                return Utils.createBundle(resourceList);
+            } else {
+                List<LocationHierarchy> locationHierarchies =
+                        practitionerDetailsEndpointHelper
+                                .getPractitionerDetailsByKeycloakId(practitionerId)
+                                .getFhirPractitionerDetails()
+                                .getLocationHierarchyList();
+                List<Resource> resourceList =
+                        locationHierarchies.stream()
+                                .map(locationHierarchy -> (Resource) locationHierarchy)
+                                .collect(Collectors.toList());
+                return Utils.createBundle(resourceList);
+            }
+        }
+    }
+
+    public String getSyncStrategyByAppId(String applicationId) {
+        String syncStrategy;
+        if (CacheHelper.INSTANCE.skipCache()) {
+            syncStrategy = getSyncStrategy(applicationId);
+        } else {
+            syncStrategy =
+                    CacheHelper.INSTANCE.stringCache.get(
+                            applicationId, key -> getSyncStrategy(applicationId));
+        }
+        return syncStrategy;
+    }
+
+    private String getSyncStrategy(String applicationId) {
+        FhirContext fhirContext = FhirContext.forR4();
+        IGenericClient client = Utils.createFhirClientForR4(fhirContext);
+
+        Bundle compositionBundle =
+                client.search()
+                        .forResource(Composition.class)
+                        .where(Composition.IDENTIFIER.exactly().identifier(applicationId))
+                        .returnBundle(Bundle.class)
+                        .execute();
+
+        Bundle.BundleEntryComponent compositionEntry = compositionBundle.getEntryFirstRep();
+        Composition composition;
+        if (compositionEntry != null) {
+            composition = (Composition) compositionEntry.getResource();
+        } else {
+            composition = null;
+        }
+        String binaryResourceReference = Utils.getBinaryResourceReference(composition);
+        Binary binary =
+                Utils.readApplicationConfigBinaryResource(binaryResourceReference, fhirContext);
+        return Utils.findSyncStrategy(binary);
+    }
+
+    public List<String> extractSyncLocations(String syncLocationsParam) {
+        List<String> selectedSyncLocations = new ArrayList<>();
+        if (syncLocationsParam != null && !syncLocationsParam.isEmpty()) {
+            Collections.addAll(selectedSyncLocations, syncLocationsParam.split(","));
+        }
+        return selectedSyncLocations;
+    }
+
+    public Bundle getPaginatedLocations(HttpServletRequest request, List<String> locationIds) {
         String pageSize = request.getParameter(Constants.PAGINATION_PAGE_SIZE);
         String pageNumber = request.getParameter(Constants.PAGINATION_PAGE_NUMBER);
         String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
@@ -171,17 +305,21 @@ public class LocationHierarchyEndpointHelper {
                         : Constants.PAGINATION_DEFAULT_PAGE_NUMBER;
 
         int start = Math.max(0, (page - 1)) * count;
-        Location parentLocation = getLocationById(identifier);
-        List<Location> locations =
-                getLocationHierarchyLocations(identifier, parentLocation, adminLevels);
-        List<Resource> resourceLocations = new ArrayList<>(locations);
-        int totalEntries = locations.size();
+
+        List<Resource> resourceLocations = new ArrayList<>();
+        for (String identifier : locationIds) {
+            Location parentLocation = getLocationById(identifier);
+            List<Location> locations =
+                    getLocationHierarchyLocations(identifier, parentLocation, adminLevels);
+            resourceLocations.addAll(locations);
+        }
+        int totalEntries = resourceLocations.size();
 
         int end = Math.min(start + count, resourceLocations.size());
         List<Resource> paginatedResourceLocations = resourceLocations.subList(start, end);
         Bundle resultBundle;
 
-        if (locations.isEmpty()) {
+        if (resourceLocations.isEmpty()) {
             resultBundle =
                     Utils.createEmptyBundle(
                             request.getRequestURL() + "?" + request.getQueryString());
