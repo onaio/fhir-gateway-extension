@@ -234,7 +234,7 @@ As documented on the Info Gateway modules
 run is:
 
 ```console
-$ java -jar exec/target/opensrp-gateway-plugin-exec.jar --server.port=8081
+$ java -jar exec/target/opensrp-gateway-plugin-exec.jar --server.port=8081 --server.max-http-header-size=40KB
 ```
 
 After a successful build, the built-in _Tomcat container_ will automatically
