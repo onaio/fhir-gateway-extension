@@ -229,18 +229,50 @@ environment variables
 
 ### Run project
 
+#### Using Java Command
+
 As documented on the Info Gateway modules
 [section here](https://github.com/google/fhir-gateway#modules), the command to
 run is:
 
 ```console
-$ java -jar exec/target/opensrp-gateway-plugin-exec.jar --server.port=8081 --server.max-http-header-size=40KB
+$ java -jar exec/target/opensrp-gateway-plugin-exec.jar --server.port=8080 --server.max-http-header-size=40KB
 ```
 
 After a successful build, the built-in _Tomcat container_ will automatically
 deploy your _Spring Boot application_. You can access your application in a web
 browser by navigating to http://localhost:8080 (default) or the specified port
 in your application's configuration.
+
+#### Using Docker
+
+To run the project using Docker, follow these steps:
+
+1. Build the Docker image:
+
+Navigate to the directory containing the Dockerfile and execute the following
+command:
+
+```console
+docker build -t opensrp-gateway-plugin .
+```
+
+2. Run the Docker container:
+
+Once the image is built, you can run the container with the following command:
+
+```console
+docker run -p 8080:8080 opensrp-gateway-plugin
+```
+
+This command maps port 8080 on your host to port 8080 in the Docker container.
+Adjust the port as necessary to match your configuration.
+
+3. Access the Application:
+
+After the container is running, you can access your application in a web browser
+by navigating to http://localhost:8080 (or the specified port if you changed
+it).
 
 ### Tests
 
