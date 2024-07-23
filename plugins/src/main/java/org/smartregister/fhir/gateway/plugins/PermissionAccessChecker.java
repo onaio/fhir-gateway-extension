@@ -36,6 +36,7 @@ import com.google.fhir.gateway.interfaces.RequestDetailsReader;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.api.RequestTypeEnum;
+import ca.uhn.fhir.rest.api.SearchStyleEnum;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 
@@ -206,6 +207,7 @@ public class PermissionAccessChecker implements AccessChecker {
                 client.search()
                         .forResource(Composition.class)
                         .where(Composition.IDENTIFIER.exactly().identifier(applicationId))
+                        .usingStyle(SearchStyleEnum.POST)
                         .returnBundle(Bundle.class)
                         .execute();
 

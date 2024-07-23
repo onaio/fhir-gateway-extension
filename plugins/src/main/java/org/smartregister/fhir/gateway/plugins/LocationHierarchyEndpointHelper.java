@@ -29,6 +29,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.fhir.gateway.ExceptionUtil;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.rest.api.SearchStyleEnum;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.IQuery;
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
@@ -134,7 +135,8 @@ public class LocationHierarchyEndpointHelper {
                                             adminLevelArray));
         }
 
-        Bundle childLocationBundle = query.returnBundle(Bundle.class).execute();
+        Bundle childLocationBundle =
+                query.usingStyle(SearchStyleEnum.POST).returnBundle(Bundle.class).execute();
 
         List<Location> allLocations = new ArrayList<>();
         if (parentLocation != null) {
@@ -262,6 +264,7 @@ public class LocationHierarchyEndpointHelper {
                 client.search()
                         .forResource(Composition.class)
                         .where(Composition.IDENTIFIER.exactly().identifier(applicationId))
+                        .usingStyle(SearchStyleEnum.POST)
                         .returnBundle(Bundle.class)
                         .execute();
 
