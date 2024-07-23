@@ -21,6 +21,7 @@ import org.smartregister.model.practitioner.PractitionerDetails;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
+import ca.uhn.fhir.rest.api.SearchStyleEnum;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.ICriterion;
 
@@ -43,6 +44,7 @@ public class PractitionerDetailsEndpointHelperTest {
                 client.search()
                         .forResource(eq(Practitioner.class))
                         .where(any(ICriterion.class))
+                        .usingStyle(SearchStyleEnum.POST)
                         .returnBundle(any())
                         .execute();
 
@@ -61,6 +63,7 @@ public class PractitionerDetailsEndpointHelperTest {
                 client.search()
                         .forResource(eq(Practitioner.class))
                         .where(any(ICriterion.class))
+                        .usingStyle(SearchStyleEnum.POST)
                         .returnBundle(any())
                         .execute();
         when(whenPractitionerSearch).thenReturn(getPractitionerBundle());
