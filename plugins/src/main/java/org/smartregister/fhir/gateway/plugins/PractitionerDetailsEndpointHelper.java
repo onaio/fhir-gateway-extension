@@ -32,6 +32,7 @@ import org.smartregister.model.practitioner.FhirPractitionerDetails;
 import org.smartregister.model.practitioner.PractitionerDetails;
 import org.springframework.lang.Nullable;
 
+import ca.uhn.fhir.rest.api.SearchStyleEnum;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
 
@@ -200,6 +201,7 @@ public class PractitionerDetailsEndpointHelper {
                         .where(
                                 OrganizationAffiliation.LOCATION.hasAnyOfIds(
                                         attributedLocationsList))
+                        .usingStyle(SearchStyleEnum.POST)
                         .returnBundle(Bundle.class)
                         .execute();
 
@@ -351,6 +353,7 @@ public class PractitionerDetailsEndpointHelper {
                         Group.CODE
                                 .exactly()
                                 .systemAndCode(HTTP_SNOMED_INFO_SCT, PRACTITIONER_GROUP_CODE))
+                .usingStyle(SearchStyleEnum.POST)
                 .returnBundle(Bundle.class)
                 .execute();
     }
@@ -379,6 +382,7 @@ public class PractitionerDetailsEndpointHelper {
                         .search()
                         .forResource(Practitioner.class)
                         .where(Practitioner.IDENTIFIER.exactly().identifier(identifier))
+                        .usingStyle(SearchStyleEnum.POST)
                         .returnBundle(Bundle.class)
                         .execute();
 
@@ -407,6 +411,7 @@ public class PractitionerDetailsEndpointHelper {
                                                                                 .FORWARD_SLASH
                                                                         + it)
                                                 .collect(Collectors.toList())))
+                        .usingStyle(SearchStyleEnum.POST)
                         .returnBundle(Bundle.class)
                         .execute();
 
@@ -425,6 +430,7 @@ public class PractitionerDetailsEndpointHelper {
                                 Enumerations.ResourceType.PRACTITIONER.toCode()
                                         + org.smartregister.utils.Constants.FORWARD_SLASH
                                         + practitionerId))
+                .usingStyle(SearchStyleEnum.POST)
                 .returnBundle(Bundle.class)
                 .execute();
     }
@@ -434,6 +440,7 @@ public class PractitionerDetailsEndpointHelper {
                 .search()
                 .forResource(PractitionerRole.class)
                 .where(PractitionerRole.PRACTITIONER.hasId(practitionerId))
+                .usingStyle(SearchStyleEnum.POST)
                 .returnBundle(Bundle.class)
                 .execute();
     }
@@ -452,6 +459,7 @@ public class PractitionerDetailsEndpointHelper {
                         .where(
                                 new ReferenceClientParam(BaseResource.SP_RES_ID)
                                         .hasAnyOfIds(organizationIds))
+                        .usingStyle(SearchStyleEnum.POST)
                         .returnBundle(Bundle.class)
                         .execute();
     }
@@ -468,6 +476,7 @@ public class PractitionerDetailsEndpointHelper {
                         .where(
                                 new ReferenceClientParam(BaseResource.SP_RES_ID)
                                         .hasAnyOfIds(locationIds))
+                        .usingStyle(SearchStyleEnum.POST)
                         .returnBundle(Bundle.class)
                         .execute();
 
@@ -495,6 +504,7 @@ public class PractitionerDetailsEndpointHelper {
                         .where(
                                 OrganizationAffiliation.PRIMARY_ORGANIZATION.hasAnyOfIds(
                                         organizationIds))
+                        .usingStyle(SearchStyleEnum.POST)
                         .returnBundle(Bundle.class)
                         .execute();
     }
