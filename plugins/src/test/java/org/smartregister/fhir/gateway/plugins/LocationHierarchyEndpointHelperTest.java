@@ -30,6 +30,7 @@ import org.smartregister.model.location.LocationHierarchy;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
 
+import ca.uhn.fhir.rest.api.SearchStyleEnum;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.ICriterion;
 import ca.uhn.fhir.rest.gclient.IQuery;
@@ -258,6 +259,7 @@ public class LocationHierarchyEndpointHelperTest {
         Mockito.doReturn(queryMock).when(untypedQueryMock).forResource(Location.class);
         Mockito.doReturn(queryMock).when(queryMock).where(any(ICriterion.class));
         Mockito.doReturn(queryMock).when(queryMock).and(any(ICriterion.class));
+        Mockito.doReturn(queryMock).when(queryMock).usingStyle(SearchStyleEnum.POST);
         Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
 
         Mockito.doReturn(firstBundleMock, secondBundleMock).when(queryMock).execute();
