@@ -285,6 +285,20 @@ public class LocationHierarchyEndpointHelperTest {
         verify(queryMock, times(2)).execute();
     }
 
+    @Test
+    public void testFilterLocationsByAdminLevelsBasic() {
+        List<Location> locations = createLocationList(5, true);
+        List<String> adminLevels = List.of("1", "3");
+
+        List<Location> filteredLocations =
+                locationHierarchyEndpointHelper.filterLocationsByAdminLevels(
+                        locations, adminLevels);
+
+        Assert.assertEquals(2, filteredLocations.size());
+        Assert.assertEquals("1", filteredLocations.get(0).getId());
+        Assert.assertEquals("3", filteredLocations.get(1).getId());
+    }
+
     private Bundle getLocationBundle() {
         Bundle bundleLocation = new Bundle();
         bundleLocation.setId("Location/1234");
