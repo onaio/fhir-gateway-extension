@@ -24,6 +24,7 @@ public class Constants {
     public static final String MIN_ADMIN_LEVEL = "administrativeLevelMin";
     public static final String MAX_ADMIN_LEVEL = "administrativeLevelMax";
     public static final int DEFAULT_MAX_ADMIN_LEVEL = 10;
+    public static final int DEFAULT_MIN_ADMIN_LEVEL = 0;
     public static final String PAGINATION_PAGE_SIZE = "_count";
     public static final String PAGINATION_PAGE_NUMBER = "_page";
     public static final int PAGINATION_DEFAULT_PAGE_SIZE = 20;
