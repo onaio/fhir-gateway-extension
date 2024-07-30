@@ -16,6 +16,8 @@ import javax.servlet.http.HttpServletRequest;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Binary;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.CodeableConcept;
+import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.Resource;
@@ -52,39 +54,56 @@ public class LocationHierarchyEndpointHelper {
         return r4FHIRClient;
     }
 
-    public LocationHierarchy getLocationHierarchy(String locationId, List<String> adminLevels) {
+    public LocationHierarchy getLocationHierarchy(
+            String locationId,
+            List<String> preFetchAdminLevels,
+            List<String> postFetchAdminLevels) {
         LocationHierarchy locationHierarchy;
 
         if (CacheHelper.INSTANCE.skipCache()) {
-            locationHierarchy = getLocationHierarchyCore(locationId, adminLevels);
+            locationHierarchy =
+                    getLocationHierarchyCore(locationId, preFetchAdminLevels, postFetchAdminLevels);
         } else {
             locationHierarchy =
                     (LocationHierarchy)
                             CacheHelper.INSTANCE.resourceCache.get(
                                     locationId,
-                                    key -> getLocationHierarchyCore(locationId, adminLevels));
+                                    key ->
+                                            getLocationHierarchyCore(
+                                                    locationId,
+                                                    preFetchAdminLevels,
+                                                    postFetchAdminLevels));
         }
         return locationHierarchy;
     }
 
     public List<LocationHierarchy> getLocationHierarchies(
-            List<String> locationIds, List<String> adminLevels) {
+            List<String> locationIds,
+            List<String> preFetchAdminLevels,
+            List<String> postFetchAdminLevels) {
         List<LocationHierarchy> locationHierarchies = new ArrayList<>();
         for (String locationId : locationIds) {
-            locationHierarchies.add(getLocationHierarchy(locationId, adminLevels));
+            locationHierarchies.add(
+                    getLocationHierarchy(locationId, preFetchAdminLevels, postFetchAdminLevels));
         }
         return locationHierarchies;
     }
 
-    public LocationHierarchy getLocationHierarchyCore(String locationId, List<String> adminLevels) {
+    public LocationHierarchy getLocationHierarchyCore(
+            String locationId,
+            List<String> preFetchAdminLevels,
+            List<String> postFetchAdminLevels) {
         Location location = getLocationById(locationId);
 
         LocationHierarchyTree locationHierarchyTree = new LocationHierarchyTree();
         LocationHierarchy locationHierarchy = new LocationHierarchy();
         if (location != null) {
             logger.info("Building Location Hierarchy of Location Id : " + locationId);
+
             locationHierarchyTree.buildTreeFromList(
-                    getDescendants(locationId, location, adminLevels));
+                    filterLocationsByAdminLevels(
+                            getDescendants(locationId, location, preFetchAdminLevels),
+                            postFetchAdminLevels));
             StringType locationIdString = new StringType().setId(locationId).getIdElement();
             locationHierarchy.setLocationId(locationIdString);
             locationHierarchy.setId(LOCATION_RESOURCE + locationId);
@@ -97,19 +116,22 @@ public class LocationHierarchyEndpointHelper {
         return locationHierarchy;
     }
 
-    private List<Location> getLocationHierarchyLocations(
-            String locationId, Location parentLocation, List<String> adminLevels) {
+    public List<Location> getLocationHierarchyLocations(
+            String locationId,
+            Location parentLocation,
+            List<String> preFetchAdminLevels,
+            List<String> postFetchAdminLevels) {
         List<Location> descendants;
 
         if (CacheHelper.INSTANCE.skipCache()) {
-            descendants = getDescendants(locationId, parentLocation, adminLevels);
+            descendants = getDescendants(locationId, parentLocation, preFetchAdminLevels);
         } else {
             descendants =
                     CacheHelper.INSTANCE.locationListCache.get(
                             locationId,
-                            key -> getDescendants(locationId, parentLocation, adminLevels));
+                            key -> getDescendants(locationId, parentLocation, preFetchAdminLevels));
         }
-        return descendants;
+        return filterLocationsByAdminLevels(descendants, postFetchAdminLevels);
     }
 
     public List<Location> getDescendants(
@@ -171,14 +193,18 @@ public class LocationHierarchyEndpointHelper {
     public Bundle handleIdentifierRequest(HttpServletRequest request, String identifier) {
         String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
         String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
-        List<String> adminLevels =
+        List<String> preFetchAdminLevels =
+                generateAdminLevels(
+                        String.valueOf(Constants.DEFAULT_MIN_ADMIN_LEVEL), administrativeLevelMax);
+        List<String> postFetchAdminLevels =
                 generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         String mode = request.getParameter(Constants.MODE);
         if (Constants.LIST.equals(mode)) {
             List<String> locationIds = Collections.singletonList(identifier);
             return getPaginatedLocations(request, locationIds);
         } else {
-            LocationHierarchy locationHierarchy = getLocationHierarchy(identifier, adminLevels);
+            LocationHierarchy locationHierarchy =
+                    getLocationHierarchy(identifier, preFetchAdminLevels, postFetchAdminLevels);
             return Utils.createBundle(Collections.singletonList(locationHierarchy));
         }
     }
@@ -191,7 +217,10 @@ public class LocationHierarchyEndpointHelper {
         String syncLocationsParam = request.getParameter(Constants.SYNC_LOCATIONS);
         String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
         String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
-        List<String> adminLevels =
+        List<String> preFetchAdminLevels =
+                generateAdminLevels(
+                        String.valueOf(Constants.DEFAULT_MIN_ADMIN_LEVEL), administrativeLevelMax);
+        List<String> postFetchAdminLevels =
                 generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         List<String> selectedSyncLocations = extractSyncLocations(syncLocationsParam);
         String practitionerId = verifiedJwt.getSubject();
@@ -223,7 +252,8 @@ public class LocationHierarchyEndpointHelper {
                     && userRoles.contains(Constants.ROLE_ALL_LOCATIONS)
                     && !selectedSyncLocations.isEmpty()) {
                 List<LocationHierarchy> locationHierarchies =
-                        getLocationHierarchies(selectedSyncLocations, adminLevels);
+                        getLocationHierarchies(
+                                selectedSyncLocations, preFetchAdminLevels, postFetchAdminLevels);
                 List<Resource> resourceList =
                         locationHierarchies.stream()
                                 .map(locationHierarchy -> (Resource) locationHierarchy)
@@ -294,7 +324,10 @@ public class LocationHierarchyEndpointHelper {
         String pageNumber = request.getParameter(Constants.PAGINATION_PAGE_NUMBER);
         String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
         String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
-        List<String> adminLevels =
+        List<String> preFetchAdminLevels =
+                generateAdminLevels(
+                        String.valueOf(Constants.DEFAULT_MIN_ADMIN_LEVEL), administrativeLevelMax);
+        List<String> postFetchAdminLevels =
                 generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         Map<String, String[]> parameters = new HashMap<>(request.getParameterMap());
 
@@ -313,7 +346,8 @@ public class LocationHierarchyEndpointHelper {
         for (String identifier : locationIds) {
             Location parentLocation = getLocationById(identifier);
             List<Location> locations =
-                    getLocationHierarchyLocations(identifier, parentLocation, adminLevels);
+                    getLocationHierarchyLocations(
+                            identifier, parentLocation, preFetchAdminLevels, postFetchAdminLevels);
             resourceLocations.addAll(locations);
         }
         int totalEntries = resourceLocations.size();
@@ -373,5 +407,23 @@ public class LocationHierarchyEndpointHelper {
         }
 
         return adminLevels;
+    }
+
+    public List<Location> filterLocationsByAdminLevels(
+            List<Location> locations, List<String> postFetchAdminLevels) {
+        List<Location> allLocations = new ArrayList<>();
+        for (Location location : locations) {
+            for (CodeableConcept codeableConcept : location.getType()) {
+                List<Coding> codings = codeableConcept.getCoding();
+                for (Coding coding : codings) {
+                    if (coding.getSystem().equals(Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL)) {
+                        if (postFetchAdminLevels.contains(coding.getCode())) {
+                            allLocations.add(location);
+                        }
+                    }
+                }
+            }
+        }
+        return allLocations;
     }
 }
