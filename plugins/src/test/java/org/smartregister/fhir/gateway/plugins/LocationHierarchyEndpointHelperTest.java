@@ -54,7 +54,7 @@ public class LocationHierarchyEndpointHelperTest {
                 .when(client)
                 .fetchResourceFromUrl(any(), any());
         LocationHierarchy locationHierarchy =
-                locationHierarchyEndpointHelper.getLocationHierarchy("non-existent", null);
+                locationHierarchyEndpointHelper.getLocationHierarchy("non-existent", null, null);
         assertEquals(
                 org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND,
                 locationHierarchy.getId());
@@ -69,7 +69,7 @@ public class LocationHierarchyEndpointHelperTest {
                 .when(client)
                 .fetchResourceFromUrl(Location.class, "Location/12345");
         LocationHierarchy locationHierarchy =
-                locationHierarchyEndpointHelper.getLocationHierarchy("12345", null);
+                locationHierarchyEndpointHelper.getLocationHierarchy("12345", null, null);
         assertEquals("Location Resource : 12345", locationHierarchy.getId());
     }
 
@@ -100,9 +100,12 @@ public class LocationHierarchyEndpointHelperTest {
         Mockito.doCallRealMethod()
                 .when(mockLocationHierarchyEndpointHelper)
                 .getPaginatedLocations(request, locationIds);
+        Mockito.doCallRealMethod()
+                .when(mockLocationHierarchyEndpointHelper)
+                .filterLocationsByAdminLevels(locations, adminLevels);
         Mockito.doReturn(locations)
                 .when(mockLocationHierarchyEndpointHelper)
-                .getDescendants("12345", null, adminLevels);
+                .getLocationHierarchyLocations("12345", null, adminLevels, adminLevels);
 
         Bundle resultBundle =
                 mockLocationHierarchyEndpointHelper.getPaginatedLocations(request, locationIds);
@@ -144,6 +147,7 @@ public class LocationHierarchyEndpointHelperTest {
                 .getRequestURL();
 
         Map<String, String[]> parameters = new HashMap<>();
+
         parameters.put(Constants.MODE, new String[] {"list"});
         parameters.put(Constants.SYNC_LOCATIONS, new String[] {"1,2,3,4"});
         LocationHierarchyEndpointHelper mockLocationHierarchyEndpointHelper =
@@ -152,6 +156,7 @@ public class LocationHierarchyEndpointHelperTest {
                 mock(PractitionerDetailsEndpointHelper.class);
         DecodedJWT mockDecodedJWT = mock(DecodedJWT.class);
         MockedStatic<JwtUtils> mockJwtUtils = Mockito.mockStatic(JwtUtils.class);
+        List<String> adminLevels = new ArrayList<>();
 
         List<Location> locations = createLocationList(4, false);
         List<String> locationIds = List.of("1", "2", "3", "4");
@@ -168,9 +173,13 @@ public class LocationHierarchyEndpointHelperTest {
                 .when(mockLocationHierarchyEndpointHelper)
                 .handleNonIdentifierRequest(
                         request, mockPractitionerDetailsEndpointHelper, mockDecodedJWT);
+        Mockito.doCallRealMethod()
+                .when(mockLocationHierarchyEndpointHelper)
+                .filterLocationsByAdminLevels(locations, adminLevels);
         Mockito.doReturn(locations)
                 .when(mockLocationHierarchyEndpointHelper)
-                .getDescendants(Mockito.anyString(), Mockito.any(), Mockito.any());
+                .getLocationHierarchyLocations(
+                        Mockito.anyString(), Mockito.any(), Mockito.any(), Mockito.any());
         Mockito.doReturn(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
                 .when(mockLocationHierarchyEndpointHelper)
                 .getSyncStrategyByAppId(Mockito.any());
@@ -232,7 +241,7 @@ public class LocationHierarchyEndpointHelperTest {
     }
 
     @Test
-    public void testGetDecendantsWithAdminLevelFiltersReturnsLocationsWithinAdminLevel() {
+    public void testGetDescendantsWithAdminLevelFiltersReturnsLocationsWithinAdminLevel() {
         String locationId = "12345";
         Location parentLocation = new Location();
         parentLocation.setId(locationId);
@@ -274,6 +283,20 @@ public class LocationHierarchyEndpointHelperTest {
         Assert.assertEquals("54321", descendants.get(1).getId());
 
         verify(queryMock, times(2)).execute();
+    }
+
+    @Test
+    public void testFilterLocationsByAdminLevelsBasic() {
+        List<Location> locations = createLocationList(5, true);
+        List<String> adminLevels = List.of("1", "3");
+
+        List<Location> filteredLocations =
+                locationHierarchyEndpointHelper.filterLocationsByAdminLevels(
+                        locations, adminLevels);
+
+        Assert.assertEquals(2, filteredLocations.size());
+        Assert.assertEquals("1", filteredLocations.get(0).getId());
+        Assert.assertEquals("3", filteredLocations.get(1).getId());
     }
 
     private Bundle getLocationBundle() {
