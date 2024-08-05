@@ -411,6 +411,9 @@ public class LocationHierarchyEndpointHelper {
 
     public List<Location> filterLocationsByAdminLevels(
             List<Location> locations, List<String> postFetchAdminLevels) {
+        if (postFetchAdminLevels == null) {
+            return locations;
+        }
         List<Location> allLocations = new ArrayList<>();
         for (Location location : locations) {
             for (CodeableConcept codeableConcept : location.getType()) {
