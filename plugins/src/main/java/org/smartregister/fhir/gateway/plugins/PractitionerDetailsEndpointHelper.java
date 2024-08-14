@@ -569,18 +569,19 @@ public class PractitionerDetailsEndpointHelper {
     }
 
     public static List<LocationHierarchy> getLocationsHierarchy(List<String> locationsIdentifiers) {
-        List<LocationHierarchy> locationHierarchyList = new ArrayList<>();
         LocationHierarchyEndpointHelper locationHierarchyEndpointHelper =
                 new LocationHierarchyEndpointHelper(r4FHIRClient);
-        LocationHierarchy locationHierarchy;
-        for (String locationsIdentifier : locationsIdentifiers) {
-            locationHierarchy =
-                    locationHierarchyEndpointHelper.getLocationHierarchy(
-                            locationsIdentifier, null, null);
-            if (!org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND.equals(
-                    locationHierarchy.getId())) locationHierarchyList.add(locationHierarchy);
-        }
-        return locationHierarchyList;
+
+        return locationsIdentifiers.parallelStream()
+                .map(
+                        locationsIdentifier ->
+                                locationHierarchyEndpointHelper.getLocationHierarchy(
+                                        locationsIdentifier, null, null))
+                .filter(
+                        locationHierarchy ->
+                                !org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND
+                                        .equals(locationHierarchy.getId()))
+                .collect(Collectors.toList());
     }
 
     public static String createSearchTagValues(Map.Entry<String, String[]> entry) {
