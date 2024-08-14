@@ -81,12 +81,12 @@ public class LocationHierarchyEndpointHelper {
             List<String> locationIds,
             List<String> preFetchAdminLevels,
             List<String> postFetchAdminLevels) {
-        List<LocationHierarchy> locationHierarchies = new ArrayList<>();
-        for (String locationId : locationIds) {
-            locationHierarchies.add(
-                    getLocationHierarchy(locationId, preFetchAdminLevels, postFetchAdminLevels));
-        }
-        return locationHierarchies;
+        return locationIds.parallelStream()
+                .map(
+                        locationId ->
+                                getLocationHierarchy(
+                                        locationId, preFetchAdminLevels, postFetchAdminLevels))
+                .collect(Collectors.toList());
     }
 
     public LocationHierarchy getLocationHierarchyCore(
@@ -98,7 +98,7 @@ public class LocationHierarchyEndpointHelper {
         LocationHierarchyTree locationHierarchyTree = new LocationHierarchyTree();
         LocationHierarchy locationHierarchy = new LocationHierarchy();
         if (location != null) {
-            logger.info("Building Location Hierarchy of Location Id : " + locationId);
+            logger.info("Building Location Hierarchy of Location Id : {}", locationId);
 
             locationHierarchyTree.buildTreeFromList(
                     filterLocationsByAdminLevels(
@@ -110,7 +110,7 @@ public class LocationHierarchyEndpointHelper {
 
             locationHierarchy.setLocationHierarchyTree(locationHierarchyTree);
         } else {
-            logger.error("LocationHierarchy with identifier: " + locationId + " not found");
+            logger.error("LocationHierarchy with identifier: {} not found", locationId);
             locationHierarchy.setId(LOCATION_RESOURCE_NOT_FOUND);
         }
         return locationHierarchy;
@@ -160,19 +160,25 @@ public class LocationHierarchyEndpointHelper {
         Bundle childLocationBundle =
                 query.usingStyle(SearchStyleEnum.POST).returnBundle(Bundle.class).execute();
 
-        List<Location> allLocations = new ArrayList<>();
+        List<Location> allLocations = Collections.synchronizedList(new ArrayList<>());
         if (parentLocation != null) {
             allLocations.add(parentLocation);
         }
 
         if (childLocationBundle != null) {
-            for (Bundle.BundleEntryComponent childLocation : childLocationBundle.getEntry()) {
-                Location childLocationEntity = (Location) childLocation.getResource();
-                allLocations.add(childLocationEntity);
-                allLocations.addAll(
-                        getDescendants(
-                                childLocationEntity.getIdElement().getIdPart(), null, adminLevels));
-            }
+
+            childLocationBundle.getEntry().parallelStream()
+                    .forEach(
+                            childLocation -> {
+                                Location childLocationEntity =
+                                        (Location) childLocation.getResource();
+                                allLocations.add(childLocationEntity);
+                                allLocations.addAll(
+                                        getDescendants(
+                                                childLocationEntity.getIdElement().getIdPart(),
+                                                null,
+                                                adminLevels));
+                            });
         }
 
         return allLocations;
