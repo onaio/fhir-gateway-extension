@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Identifier;
@@ -110,12 +111,12 @@ public class PractitionerDetailsEndpointHelperTest {
                 (LocationHierarchy) parser.parseResource(locationHierarchyNoParentChildren);
 
         List<LocationHierarchy> hierarchies = Arrays.asList(locationHierarchy);
-        List<String> attributedLocationIds =
+        Set<String> attributedLocationIds =
                 PractitionerDetailsEndpointHelper.getAttributedLocations(hierarchies);
         Assert.assertNotNull(attributedLocationIds);
         Assert.assertFalse(attributedLocationIds.isEmpty());
         Assert.assertEquals(1, attributedLocationIds.size());
-        Assert.assertEquals("12345", attributedLocationIds.get(0));
+        Assert.assertEquals("12345", attributedLocationIds.iterator().next());
     }
 
     private Bundle getPractitionerBundle() {
