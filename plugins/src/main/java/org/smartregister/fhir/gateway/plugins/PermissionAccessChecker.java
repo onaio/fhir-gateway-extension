@@ -2,6 +2,7 @@ package org.smartregister.fhir.gateway.plugins;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -287,7 +288,7 @@ public class PermissionAccessChecker implements AccessChecker {
             PractitionerDetails practitionerDetails,
             RequestDetailsReader requestDetailsReader) {
         Map<String, List<String>> resultMap;
-        List<String> syncStrategyIds;
+        Set<String> syncStrategyIds;
 
         if (StringUtils.isNotBlank(syncStrategy)) {
             if (Constants.SyncStrategy.CARE_TEAM.equalsIgnoreCase(syncStrategy)) {
@@ -301,7 +302,7 @@ public class PermissionAccessChecker implements AccessChecker {
                         careTeams.stream()
                                 .filter(careTeam -> careTeam.getIdElement() != null)
                                 .map(careTeam -> careTeam.getIdElement().getIdPart())
-                                .collect(Collectors.toList());
+                                .collect(Collectors.toSet());
 
             } else if (Constants.SyncStrategy.ORGANIZATION.equalsIgnoreCase(syncStrategy)) {
                 List<Organization> organizations =
@@ -316,7 +317,7 @@ public class PermissionAccessChecker implements AccessChecker {
                         organizations.stream()
                                 .filter(organization -> organization.getIdElement() != null)
                                 .map(organization -> organization.getIdElement().getIdPart())
-                                .collect(Collectors.toList());
+                                .collect(Collectors.toSet());
 
             } else if (Constants.SyncStrategy.LOCATION.equalsIgnoreCase(syncStrategy)) {
                 syncStrategyIds =
@@ -326,7 +327,7 @@ public class PermissionAccessChecker implements AccessChecker {
                                         practitionerDetails
                                                 .getFhirPractitionerDetails()
                                                 .getLocationHierarchyList())
-                                : new ArrayList<>();
+                                : new HashSet<>();
 
             } else if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(
                     syncStrategy)) {
@@ -355,14 +356,14 @@ public class PermissionAccessChecker implements AccessChecker {
                                             practitionerDetails
                                                     .getFhirPractitionerDetails()
                                                     .getLocationHierarchyList())
-                                    : new ArrayList<>();
+                                    : new HashSet<>();
                 }
 
             } else
                 throw new IllegalStateException(
                         "'" + syncStrategy + "' sync strategy NOT supported!!");
 
-            resultMap = Map.of(syncStrategy, syncStrategyIds);
+            resultMap = Map.of(syncStrategy, new ArrayList<>(syncStrategyIds));
 
         } else
             throw new IllegalStateException(
