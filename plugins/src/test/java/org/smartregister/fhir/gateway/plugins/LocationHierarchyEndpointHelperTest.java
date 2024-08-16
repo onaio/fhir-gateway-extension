@@ -141,7 +141,9 @@ public class LocationHierarchyEndpointHelperTest {
     public void testHandleNonIdentifierRequestListModePaginatesLocations() {
         HttpServletRequest request = mock(HttpServletRequest.class);
         Mockito.doReturn("list").when(request).getParameter(Constants.MODE);
-        Mockito.doReturn("1,2,3,4").when(request).getParameter(Constants.SYNC_LOCATIONS);
+        Mockito.doReturn("1,2,3,4")
+                .when(request)
+                .getParameter(Constants.SYNC_LOCATIONS_SEARCH_PARAM);
         Mockito.doReturn(new StringBuffer("http://test:8080/LocationHierarchy"))
                 .when(request)
                 .getRequestURL();
@@ -149,7 +151,7 @@ public class LocationHierarchyEndpointHelperTest {
         Map<String, String[]> parameters = new HashMap<>();
 
         parameters.put(Constants.MODE, new String[] {"list"});
-        parameters.put(Constants.SYNC_LOCATIONS, new String[] {"1,2,3,4"});
+        parameters.put(Constants.SYNC_LOCATIONS_SEARCH_PARAM, new String[] {"1,2,3,4"});
         LocationHierarchyEndpointHelper mockLocationHierarchyEndpointHelper =
                 mock(LocationHierarchyEndpointHelper.class);
         PractitionerDetailsEndpointHelper mockPractitionerDetailsEndpointHelper =

@@ -220,7 +220,7 @@ public class LocationHierarchyEndpointHelper {
             PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper,
             DecodedJWT verifiedJwt) {
         String mode = request.getParameter(Constants.MODE);
-        String syncLocationsParam = request.getParameter(Constants.SYNC_LOCATIONS);
+        String syncLocationsParam = request.getParameter(Constants.SYNC_LOCATIONS_SEARCH_PARAM);
         String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
         String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
         List<String> preFetchAdminLevels =

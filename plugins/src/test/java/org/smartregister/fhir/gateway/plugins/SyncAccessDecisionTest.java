@@ -315,7 +315,7 @@ public class SyncAccessDecisionTest {
         Map<String, String[]> parameters = new HashMap<>();
 
         // empty string
-        parameters.put(Constants.SYNC_LOCATIONS, locations);
+        parameters.put(Constants.SYNC_LOCATIONS_SEARCH_PARAM, locations);
 
         RequestDetails requestDetails = new ServletRequestDetails();
         requestDetails.setRequestType(RequestTypeEnum.GET);

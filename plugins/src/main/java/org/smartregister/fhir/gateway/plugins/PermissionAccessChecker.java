@@ -334,7 +334,7 @@ public class PermissionAccessChecker implements AccessChecker {
 
                 Map<String, String[]> parameters =
                         new HashMap<>(requestDetailsReader.getParameters());
-                String[] syncLocations = parameters.get(Constants.SYNC_LOCATIONS);
+                String[] syncLocations = parameters.get(Constants.SYNC_LOCATIONS_SEARCH_PARAM);
 
                 if (this.userRoles.contains(Constants.ROLE_ALL_LOCATIONS)
                         && syncLocations != null) {
