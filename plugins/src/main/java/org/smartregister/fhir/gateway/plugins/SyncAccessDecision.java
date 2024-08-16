@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -124,10 +125,18 @@ public class SyncAccessDecision implements AccessDecision {
 
             List<String> syncFilterParameterValues;
             if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equals(syncStrategy)) {
+
+                int endIndex =
+                        Math.min(
+                                REL_LOCATION_CHUNKSIZE,
+                                syncStrategyIdsMap
+                                        .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                                        .size());
+
                 List<String> syncStrategyIdSubList =
                         this.syncStrategyIdsMap
                                 .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
-                                .subList(0, REL_LOCATION_CHUNKSIZE);
+                                .subList(0, endIndex);
 
                 syncFilterParameterValues =
                         addSyncFilters(
@@ -293,9 +302,18 @@ public class SyncAccessDecision implements AccessDecision {
 
             resultContent = new BasicResponseHandler().handleResponse(response);
 
-            Bundle responseResource = (Bundle) this.fhirR4JsonParser.parseResource(resultContent);
-            responseResource.getEntry().addAll(allResults);
-            responseResource.setTotal(allResults.size());
+            IBaseResource responseResource = this.fhirR4JsonParser.parseResource(resultContent);
+
+            if (responseResource instanceof Bundle) {
+                ((Bundle) responseResource).getEntry().addAll(allResults);
+                ((Bundle) responseResource).setTotal(((Bundle) responseResource).getEntry().size());
+
+                Bundle.BundleLinkComponent selfLinkComponent = new Bundle.BundleLinkComponent();
+                selfLinkComponent.setRelation(Bundle.LINK_SELF);
+                selfLinkComponent.setUrl(request.getCompleteUrl());
+
+                ((Bundle) responseResource).setLink(Collections.singletonList(selfLinkComponent));
+            }
 
             return this.fhirR4JsonParser.encodeResourceToString(responseResource);
         }
