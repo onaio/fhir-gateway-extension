@@ -49,7 +49,7 @@ public class SyncAccessDecision implements AccessDecision {
     private static final Logger logger = LoggerFactory.getLogger(SyncAccessDecision.class);
     private final String syncStrategy;
     private final boolean accessGranted;
-    private Map<String, List<String>> syncStrategyIdsMap;
+    private final Map<String, List<String>> syncStrategyIdsMap;
     private final List<String> roles;
     private IgnoredResourcesConfig config;
     private final String keycloakUUID;
@@ -57,6 +57,7 @@ public class SyncAccessDecision implements AccessDecision {
     private FhirContext fhirR4Context;
     private final IParser fhirR4JsonParser;
     private IGenericClient fhirR4Client;
+    private static final int REL_LOCATION_CHUNKSIZE = 20;
 
     private final PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
 
@@ -120,8 +121,26 @@ public class SyncAccessDecision implements AccessDecision {
                         forbiddenOperationException.getMessage(),
                         forbiddenOperationException);
             }
-            List<String> syncFilterParameterValues =
-                    addSyncFilters(getSyncTags(this.syncStrategy, this.syncStrategyIdsMap));
+
+            List<String> syncFilterParameterValues;
+            if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equals(syncStrategy)) {
+                List<String> syncStrategyIdSubList =
+                        this.syncStrategyIdsMap
+                                .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                                .subList(0, REL_LOCATION_CHUNKSIZE);
+
+                syncFilterParameterValues =
+                        addSyncFilters(
+                                getSyncTags(
+                                        this.syncStrategy,
+                                        Map.of(
+                                                Constants.SyncStrategy.RELATED_ENTITY_LOCATION,
+                                                syncStrategyIdSubList)));
+            } else {
+                syncFilterParameterValues =
+                        addSyncFilters(getSyncTags(this.syncStrategy, this.syncStrategyIdsMap));
+            }
+
             requestMutation =
                     RequestMutation.builder()
                             .queryParams(
@@ -212,6 +231,75 @@ public class SyncAccessDecision implements AccessDecision {
                 resultContent = this.fhirR4JsonParser.encodeResourceToString(resultContentBundle);
         }
 
+        if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equals(syncStrategy)) {
+
+            fhirR4Client
+                    .getFhirContext()
+                    .getRestfulClientFactory()
+                    .setConnectionRequestTimeout(300000);
+            fhirR4Client.getFhirContext().getRestfulClientFactory().setSocketTimeout(300000);
+
+            int subListSize = 100;
+            List<Bundle.BundleEntryComponent> allResults = new ArrayList<>();
+
+            String requestPath =
+                    request.getRequestPath()
+                            + "?"
+                            + getRequestParametersString(request.getParameters());
+
+            for (int startIndex = REL_LOCATION_CHUNKSIZE;
+                    startIndex
+                            < syncStrategyIdsMap
+                                    .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                                    .size();
+                    startIndex += subListSize) {
+
+                int endIndex =
+                        Math.min(
+                                startIndex + subListSize,
+                                syncStrategyIdsMap
+                                        .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                                        .size());
+
+                List<String> entries =
+                        syncStrategyIdsMap
+                                .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                                .subList(startIndex, endIndex);
+
+                Bundle requestBundle = new Bundle();
+                requestBundle.setType(Bundle.BundleType.BATCH);
+                for (String entry : entries) {
+                    requestBundle.addEntry(
+                            createBundleEntryComponent(
+                                    Bundle.HTTPVerb.GET,
+                                    requestPath
+                                            + "&_tag="
+                                            + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
+                                            + "%7C"
+                                            + entry,
+                                    null));
+                }
+
+                Bundle res = fhirR4Client.transaction().withBundle(requestBundle).execute();
+
+                List<Bundle.BundleEntryComponent> sub =
+                        res.getEntry().parallelStream()
+                                .map(it -> (Bundle) it.getResource())
+                                .flatMap(it -> it.getEntry().stream())
+                                .collect(Collectors.toList());
+
+                allResults.addAll(sub);
+            }
+
+            resultContent = new BasicResponseHandler().handleResponse(response);
+
+            Bundle responseResource = (Bundle) this.fhirR4JsonParser.parseResource(resultContent);
+            responseResource.getEntry().addAll(allResults);
+            responseResource.setTotal(allResults.size());
+
+            return this.fhirR4JsonParser.encodeResourceToString(responseResource);
+        }
+
         if (includeAttributedPractitioners(request.getRequestPath())) {
             Bundle practitionerDetailsBundle =
                     this.practitionerDetailsEndpointHelper
@@ -220,6 +308,26 @@ public class SyncAccessDecision implements AccessDecision {
         }
 
         return resultContent;
+    }
+
+    private String getRequestParametersString(Map<String, String[]> parameters) {
+
+        StringBuilder queryString = new StringBuilder();
+
+        for (Map.Entry<String, String[]> entry : parameters.entrySet()) {
+            String key = entry.getKey();
+            String[] values = entry.getValue();
+
+            if (!Constants.SYNC_LOCATIONS_SEARCH_PARAM.equals(key)
+                    && !Constants.TAG_SEARCH_PARAM.equals(key)) {
+
+                for (String value : values) {
+                    queryString.append(key).append("=").append(value).append("&");
+                }
+            }
+        }
+
+        return queryString.toString();
     }
 
     private boolean includeAttributedPractitioners(String requestPath) {
