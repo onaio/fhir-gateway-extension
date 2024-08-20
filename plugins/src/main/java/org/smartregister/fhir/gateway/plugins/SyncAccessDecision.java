@@ -220,105 +220,29 @@ public class SyncAccessDecision implements AccessDecision {
             resultContent = new BasicResponseHandler().handleResponse(response);
             IBaseResource responseResource = this.fhirR4JsonParser.parseResource(resultContent);
 
-            switch (gatewayMode) {
-                case SyncAccessDecisionConstants.LIST_ENTRIES:
-                    resultContentBundle = postProcessModeListEntries(responseResource, request);
-                    break;
+            if (gatewayMode.equals(SyncAccessDecisionConstants.LIST_ENTRIES)) {
+                resultContentBundle = postProcessModeListEntries(responseResource, request);
+            } else {
+                String exceptionMessage =
+                        "The FHIR Gateway Mode header is configured with an un-recognized value"
+                                + " of \'"
+                                + gatewayMode
+                                + '\'';
+                OperationOutcome operationOutcome = createOperationOutcome(exceptionMessage);
 
-                default:
-                    String exceptionMessage =
-                            "The FHIR Gateway Mode header is configured with an un-recognized value"
-                                    + " of \'"
-                                    + gatewayMode
-                                    + '\'';
-                    OperationOutcome operationOutcome = createOperationOutcome(exceptionMessage);
-
-                    resultContentBundle = operationOutcome;
+                resultContentBundle = operationOutcome;
             }
 
-            if (resultContentBundle != null)
-                resultContent = this.fhirR4JsonParser.encodeResourceToString(resultContentBundle);
-        }
+            resultContent = this.fhirR4JsonParser.encodeResourceToString(resultContentBundle);
 
-        if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equals(syncStrategy)) {
+        } else if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equals(syncStrategy)) {
 
-            fhirR4Client
-                    .getFhirContext()
-                    .getRestfulClientFactory()
-                    .setConnectionRequestTimeout(300000);
-            fhirR4Client.getFhirContext().getRestfulClientFactory().setSocketTimeout(300000);
+            IBaseResource responseResource =
+                    processRelatedEntityLocationSyncStrategy(request, response);
 
-            int subListSize = 100;
-            List<Bundle.BundleEntryComponent> allResults = new ArrayList<>();
+            resultContent = this.fhirR4JsonParser.encodeResourceToString(responseResource);
 
-            String requestPath =
-                    request.getRequestPath()
-                            + "?"
-                            + getRequestParametersString(request.getParameters());
-
-            for (int startIndex = REL_LOCATION_CHUNKSIZE;
-                    startIndex
-                            < syncStrategyIdsMap
-                                    .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
-                                    .size();
-                    startIndex += subListSize) {
-
-                int endIndex =
-                        Math.min(
-                                startIndex + subListSize,
-                                syncStrategyIdsMap
-                                        .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
-                                        .size());
-
-                List<String> entries =
-                        syncStrategyIdsMap
-                                .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
-                                .subList(startIndex, endIndex);
-
-                Bundle requestBundle = new Bundle();
-                requestBundle.setType(Bundle.BundleType.BATCH);
-                for (String entry : entries) {
-                    requestBundle.addEntry(
-                            createBundleEntryComponent(
-                                    Bundle.HTTPVerb.GET,
-                                    requestPath
-                                            + "&_tag="
-                                            + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
-                                            + "%7C"
-                                            + entry,
-                                    null));
-                }
-
-                Bundle res = fhirR4Client.transaction().withBundle(requestBundle).execute();
-
-                List<Bundle.BundleEntryComponent> sub =
-                        res.getEntry().parallelStream()
-                                .map(it -> (Bundle) it.getResource())
-                                .flatMap(it -> it.getEntry().stream())
-                                .collect(Collectors.toList());
-
-                allResults.addAll(sub);
-            }
-
-            resultContent = new BasicResponseHandler().handleResponse(response);
-
-            IBaseResource responseResource = this.fhirR4JsonParser.parseResource(resultContent);
-
-            if (responseResource instanceof Bundle) {
-                ((Bundle) responseResource).getEntry().addAll(allResults);
-                ((Bundle) responseResource).setTotal(((Bundle) responseResource).getEntry().size());
-
-                Bundle.BundleLinkComponent selfLinkComponent = new Bundle.BundleLinkComponent();
-                selfLinkComponent.setRelation(Bundle.LINK_SELF);
-                selfLinkComponent.setUrl(request.getCompleteUrl());
-
-                ((Bundle) responseResource).setLink(Collections.singletonList(selfLinkComponent));
-            }
-
-            return this.fhirR4JsonParser.encodeResourceToString(responseResource);
-        }
-
-        if (includeAttributedPractitioners(request.getRequestPath())) {
+        } else if (includeAttributedPractitioners(request.getRequestPath())) {
             Bundle practitionerDetailsBundle =
                     this.practitionerDetailsEndpointHelper
                             .getSupervisorPractitionerDetailsByKeycloakId(keycloakUUID);
@@ -326,6 +250,81 @@ public class SyncAccessDecision implements AccessDecision {
         }
 
         return resultContent;
+    }
+
+    private IBaseResource processRelatedEntityLocationSyncStrategy(
+            RequestDetailsReader request, HttpResponse response) throws IOException {
+        String resultContent;
+        fhirR4Client.getFhirContext().getRestfulClientFactory().setConnectionRequestTimeout(300000);
+        fhirR4Client.getFhirContext().getRestfulClientFactory().setSocketTimeout(300000);
+
+        int subListSize = 100;
+        List<Bundle.BundleEntryComponent> allResults = new ArrayList<>();
+
+        String requestPath =
+                request.getRequestPath()
+                        + "?"
+                        + getRequestParametersString(request.getParameters());
+
+        for (int startIndex = REL_LOCATION_CHUNKSIZE;
+                startIndex
+                        < syncStrategyIdsMap
+                                .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                                .size();
+                startIndex += subListSize) {
+
+            int endIndex =
+                    Math.min(
+                            startIndex + subListSize,
+                            syncStrategyIdsMap
+                                    .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                                    .size());
+
+            List<String> entries =
+                    syncStrategyIdsMap
+                            .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                            .subList(startIndex, endIndex);
+
+            Bundle requestBundle = new Bundle();
+            requestBundle.setType(Bundle.BundleType.BATCH);
+            for (String entry : entries) {
+                requestBundle.addEntry(
+                        createBundleEntryComponent(
+                                Bundle.HTTPVerb.GET,
+                                requestPath
+                                        + "&_tag="
+                                        + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
+                                        + "%7C"
+                                        + entry,
+                                null));
+            }
+
+            Bundle res = fhirR4Client.transaction().withBundle(requestBundle).execute();
+
+            List<Bundle.BundleEntryComponent> sub =
+                    res.getEntry().parallelStream()
+                            .map(it -> (Bundle) it.getResource())
+                            .flatMap(it -> it.getEntry().stream())
+                            .collect(Collectors.toList());
+
+            allResults.addAll(sub);
+        }
+
+        resultContent = new BasicResponseHandler().handleResponse(response);
+
+        IBaseResource responseResource = this.fhirR4JsonParser.parseResource(resultContent);
+
+        if (responseResource instanceof Bundle) {
+            ((Bundle) responseResource).getEntry().addAll(allResults);
+            ((Bundle) responseResource).setTotal(((Bundle) responseResource).getEntry().size());
+
+            Bundle.BundleLinkComponent selfLinkComponent = new Bundle.BundleLinkComponent();
+            selfLinkComponent.setRelation(Bundle.LINK_SELF);
+            selfLinkComponent.setUrl(request.getCompleteUrl());
+
+            ((Bundle) responseResource).setLink(Collections.singletonList(selfLinkComponent));
+        }
+        return responseResource;
     }
 
     private String getRequestParametersString(Map<String, String[]> parameters) {
