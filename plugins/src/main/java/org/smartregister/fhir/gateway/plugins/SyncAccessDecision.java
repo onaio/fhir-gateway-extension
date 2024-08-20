@@ -228,9 +228,8 @@ public class SyncAccessDecision implements AccessDecision {
                                 + " of \'"
                                 + gatewayMode
                                 + '\'';
-                OperationOutcome operationOutcome = createOperationOutcome(exceptionMessage);
 
-                resultContentBundle = operationOutcome;
+                resultContentBundle = createOperationOutcome(exceptionMessage);
             }
 
             resultContent = this.fhirR4JsonParser.encodeResourceToString(resultContentBundle);
