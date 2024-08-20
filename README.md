@@ -298,21 +298,7 @@ deprecated in favor of the `mode` query parameter.
 
 ### Custom Query Parameters
 
-#### Mode
-
-##### List Resource
-
-When fetching `List` resources, the endpoint returns a list of references which
-can then be used to query for the actual resources. With this query parameter
-value configured the response is instead a Bundle that contains all the actual
-(referenced) resources. To activate this mode, supply a `mode` query parameter
-and give it a value of `list-entries`
-
-Example:
-
-```
-/List?mode=list-entries
-```
+#### Mode 
 
 #### Pagination
 
