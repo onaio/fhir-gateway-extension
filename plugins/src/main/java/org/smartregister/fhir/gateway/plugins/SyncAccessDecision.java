@@ -58,7 +58,6 @@ public class SyncAccessDecision implements AccessDecision {
     private FhirContext fhirR4Context;
     private final IParser fhirR4JsonParser;
     private IGenericClient fhirR4Client;
-    private static final int REL_LOCATION_CHUNKSIZE = 20;
 
     private final PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
 
@@ -128,7 +127,7 @@ public class SyncAccessDecision implements AccessDecision {
 
                 int endIndex =
                         Math.min(
-                                REL_LOCATION_CHUNKSIZE,
+                                SyncAccessDecisionConstants.REL_LOCATION_INITIAL_CHUNK_SIZE,
                                 syncStrategyIdsMap
                                         .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
                                         .size());
@@ -257,7 +256,6 @@ public class SyncAccessDecision implements AccessDecision {
         fhirR4Client.getFhirContext().getRestfulClientFactory().setConnectionRequestTimeout(300000);
         fhirR4Client.getFhirContext().getRestfulClientFactory().setSocketTimeout(300000);
 
-        int subListSize = 100;
         List<Bundle.BundleEntryComponent> allResults = new ArrayList<>();
 
         String requestPath =
@@ -265,16 +263,16 @@ public class SyncAccessDecision implements AccessDecision {
                         + "?"
                         + getRequestParametersString(request.getParameters());
 
-        for (int startIndex = REL_LOCATION_CHUNKSIZE;
+        for (int startIndex = SyncAccessDecisionConstants.REL_LOCATION_INITIAL_CHUNK_SIZE;
                 startIndex
                         < syncStrategyIdsMap
                                 .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
                                 .size();
-                startIndex += subListSize) {
+                startIndex += SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE) {
 
             int endIndex =
                     Math.min(
-                            startIndex + subListSize,
+                            startIndex + SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE,
                             syncStrategyIdsMap
                                     .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
                                     .size());
@@ -689,5 +687,9 @@ public class SyncAccessDecision implements AccessDecision {
         public static final String LIST_ENTRIES = "list-entries";
         public static final String ROLE_SUPERVISOR = "SUPERVISOR";
         public static final String ENDPOINT_PRACTITIONER_DETAILS = "PractitionerDetail";
+        public static final int REL_LOCATION_CHUNK_SIZE =
+                100; // Magic Number Alert - Do not change value for maximum stability
+        private static final int REL_LOCATION_INITIAL_CHUNK_SIZE =
+                20; // Magic Number Alert - Do not change value for maximum stability
     }
 }
