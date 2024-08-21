@@ -298,7 +298,7 @@ deprecated in favor of the `mode` query parameter.
 
 ### Custom Query Parameters
 
-#### Mode 
+#### Mode
 
 #### Pagination
 
