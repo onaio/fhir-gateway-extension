@@ -298,13 +298,13 @@ public class SyncAccessDecision implements AccessDecision {
 
             Bundle res = fhirR4Client.transaction().withBundle(requestBundle).execute();
 
-            List<Bundle.BundleEntryComponent> sub =
+            List<Bundle.BundleEntryComponent> entryComponentList =
                     res.getEntry().parallelStream()
                             .map(it -> (Bundle) it.getResource())
                             .flatMap(it -> it.getEntry().stream())
                             .collect(Collectors.toList());
 
-            allResults.addAll(sub);
+            allResults.addAll(entryComponentList);
         }
 
         resultContent = new BasicResponseHandler().handleResponse(response);
