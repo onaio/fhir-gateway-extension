@@ -57,15 +57,16 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
                 resultContent = fhirR4JsonParser.encodeResourceToString(resultBundle);
             }
             response.setContentType("application/json");
-            response.getOutputStream().print(resultContent);
+            writeUTF8StringToStream(response.getOutputStream(), resultContent);
             response.setStatus(HttpStatus.SC_OK);
         } catch (AuthenticationException authenticationException) {
             response.setContentType("application/json");
-            response.getOutputStream().print(authenticationException.getMessage());
+            writeUTF8StringToStream(
+                    response.getOutputStream(), authenticationException.getMessage());
             response.setStatus(authenticationException.getStatusCode());
         } catch (Exception exception) {
             response.setContentType("application/json");
-            response.getOutputStream().print(exception.getMessage());
+            writeUTF8StringToStream(response.getOutputStream(), exception.getMessage());
             response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
         }
     }
