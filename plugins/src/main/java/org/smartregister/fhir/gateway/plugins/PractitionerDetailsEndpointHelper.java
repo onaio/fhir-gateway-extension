@@ -108,7 +108,7 @@ public class PractitionerDetailsEndpointHelper {
 
         List<LocationHierarchy> locationHierarchies =
                 getLocationsHierarchy(supervisorCareTeamOrganizationLocationIds);
-        List<String> attributedLocationsList = getAttributedLocations(locationHierarchies);
+        Set<String> attributedLocationsList = getAttributedLocations(locationHierarchies);
         List<String> attributedOrganizationIds =
                 getOrganizationIdsByLocationIds(attributedLocationsList);
 
@@ -158,7 +158,7 @@ public class PractitionerDetailsEndpointHelper {
     }
 
     @NotNull
-    public static List<String> getAttributedLocations(List<LocationHierarchy> locationHierarchies) {
+    public static Set<String> getAttributedLocations(List<LocationHierarchy> locationHierarchies) {
         List<ParentChildrenMap> parentChildrenList =
                 locationHierarchies.stream()
                         .flatMap(
@@ -186,10 +186,10 @@ public class PractitionerDetailsEndpointHelper {
                                 .map(
                                         locationHierarchy ->
                                                 locationHierarchy.getLocationId().getValue()))
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
     }
 
-    private List<String> getOrganizationIdsByLocationIds(List<String> attributedLocationsList) {
+    private List<String> getOrganizationIdsByLocationIds(Set<String> attributedLocationsList) {
         if (attributedLocationsList == null || attributedLocationsList.isEmpty()) {
             return new ArrayList<>();
         }
@@ -371,7 +371,7 @@ public class PractitionerDetailsEndpointHelper {
     private Set<String> getOrganizationIdsByPractitionerRoles(
             List<PractitionerRole> practitionerRoles) {
         return practitionerRoles.stream()
-                .filter(practitionerRole -> practitionerRole.hasOrganization())
+                .filter(PractitionerRole::hasOrganization)
                 .map(it -> getReferenceIDPart(it.getOrganization().getReference()))
                 .collect(Collectors.toSet());
     }
@@ -569,18 +569,19 @@ public class PractitionerDetailsEndpointHelper {
     }
 
     public static List<LocationHierarchy> getLocationsHierarchy(List<String> locationsIdentifiers) {
-        List<LocationHierarchy> locationHierarchyList = new ArrayList<>();
         LocationHierarchyEndpointHelper locationHierarchyEndpointHelper =
                 new LocationHierarchyEndpointHelper(r4FHIRClient);
-        LocationHierarchy locationHierarchy;
-        for (String locationsIdentifier : locationsIdentifiers) {
-            locationHierarchy =
-                    locationHierarchyEndpointHelper.getLocationHierarchy(
-                            locationsIdentifier, null, null);
-            if (!org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND.equals(
-                    locationHierarchy.getId())) locationHierarchyList.add(locationHierarchy);
-        }
-        return locationHierarchyList;
+
+        return locationsIdentifiers.parallelStream()
+                .map(
+                        locationsIdentifier ->
+                                locationHierarchyEndpointHelper.getLocationHierarchy(
+                                        locationsIdentifier, null, null))
+                .filter(
+                        locationHierarchy ->
+                                !org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND
+                                        .equals(locationHierarchy.getId()))
+                .collect(Collectors.toList());
     }
 
     public static String createSearchTagValues(Map.Entry<String, String[]> entry) {

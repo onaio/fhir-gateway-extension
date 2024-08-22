@@ -8,9 +8,13 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpResponse;
@@ -44,15 +48,15 @@ import ca.uhn.fhir.rest.server.servlet.ServletRequestDetails;
 @RunWith(MockitoJUnitRunner.class)
 public class SyncAccessDecisionTest {
 
-    private List<String> locationIds = new ArrayList<>();
+    private final List<String> locationIds = new ArrayList<>();
 
-    private List<String> careTeamIds = new ArrayList<>();
+    private final List<String> careTeamIds = new ArrayList<>();
 
-    private List<String> organisationIds = new ArrayList<>();
+    private final List<String> organisationIds = new ArrayList<>();
 
-    private List<String> userRoles = new ArrayList<>();
+    private final List<String> userRoles = new ArrayList<>();
 
-    private List<String> relatedEntityLocationIds = new ArrayList<>();
+    private final List<String> relatedEntityLocationIds = new ArrayList<>();
 
     private SyncAccessDecision testInstance;
 
@@ -199,7 +203,7 @@ public class SyncAccessDecisionTest {
         try (MockedStatic<PractitionerDetailsEndpointHelper> mockPractitionerDetailsEndpointHelper =
                 Mockito.mockStatic(PractitionerDetailsEndpointHelper.class)) {
             userRoles.add(Constants.ROLE_ANDROID_CLIENT);
-            List<String> selectedRelatedEntityLocationIds = new ArrayList<>();
+            Set<String> selectedRelatedEntityLocationIds = new HashSet<>();
             String srelocationid1 = "srelocationid1";
             String srelocationid2 = "srelocationid2";
 
@@ -240,17 +244,23 @@ public class SyncAccessDecisionTest {
             RequestMutation mutatedRequest =
                     testInstance.getRequestMutation(new TestRequestDetailsToReader(requestDetails));
 
-            Assert.assertTrue(
-                    mutatedRequest
-                            .getQueryParams()
-                            .get(Constants.TAG_SEARCH_PARAM)
-                            .get(0)
-                            .contains(
-                                    StringUtils.join(
-                                            selectedRelatedEntityLocationIds,
-                                            Constants.PARAM_VALUES_SEPARATOR
-                                                    + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
-                                                    + Constants.CODE_URL_VALUE_SEPARATOR)));
+            List<String> list = new ArrayList<>(selectedRelatedEntityLocationIds);
+            Collections.reverse(list);
+
+            String expected = "";
+            for (String item : list) {
+                expected +=
+                        Constants.DEFAULT_RELATED_ENTITY_TAG_URL
+                                + Constants.CODE_URL_VALUE_SEPARATOR
+                                + item
+                                + Constants.PARAM_VALUES_SEPARATOR;
+            }
+
+            Assert.assertEquals(
+                    expected.substring(0, expected.length() - 1),
+                    mutatedRequest.getQueryParams().get(Constants.TAG_SEARCH_PARAM).get(0));
+
+            Collections.reverse(relatedEntityLocationIds);
             Assert.assertFalse(
                     mutatedRequest
                             .getQueryParams()
@@ -265,12 +275,19 @@ public class SyncAccessDecisionTest {
         }
     }
 
+    private String searchTagHelper(String tag, Set<String> values) {
+        return values.stream()
+                .sorted(Collections.reverseOrder())
+                .map(it -> tag + it)
+                .collect(Collectors.joining(","));
+    }
+
     @Test
-    public void requestMutationWhenLocationUuidAreEmptyShouldNotError() throws IOException {
+    public void requestMutationWhenLocationUuidAreEmptyShouldNotError() {
         try (MockedStatic<PractitionerDetailsEndpointHelper> mockPractitionerDetailsEndpointHelper =
                 Mockito.mockStatic(PractitionerDetailsEndpointHelper.class)) {
             userRoles.add(Constants.ROLE_ANDROID_CLIENT);
-            List<String> selectedRelatedEntityLocationIds = new ArrayList<>();
+            Set<String> selectedRelatedEntityLocationIds = new HashSet<>();
             String srelocationid1 = "";
             String srelocationid2 = " ";
 
@@ -315,7 +332,7 @@ public class SyncAccessDecisionTest {
         Map<String, String[]> parameters = new HashMap<>();
 
         // empty string
-        parameters.put(Constants.SYNC_LOCATIONS, locations);
+        parameters.put(Constants.SYNC_LOCATIONS_SEARCH_PARAM, locations);
 
         RequestDetails requestDetails = new ServletRequestDetails();
         requestDetails.setRequestType(RequestTypeEnum.GET);
@@ -371,8 +388,7 @@ public class SyncAccessDecisionTest {
     }
 
     @Test
-    public void preProcessShouldAddOrganisationIdFiltersWhenUserIsAssignedToOrganisationsOnly()
-            throws IOException {
+    public void preProcessShouldAddOrganisationIdFiltersWhenUserIsAssignedToOrganisationsOnly() {
         userRoles.add(Constants.ROLE_ANDROID_CLIENT);
         organisationIds.add("organizationid1");
         organisationIds.add("organizationid2");
