@@ -1,5 +1,6 @@
 package org.smartregister.fhir.gateway.plugins;
 
+import static ca.uhn.fhir.rest.api.Constants.PARAM_SUMMARY;
 import static org.smartregister.fhir.gateway.plugins.EnvUtil.getEnvironmentVar;
 
 import java.io.FileReader;
@@ -257,6 +258,7 @@ public class SyncAccessDecision implements AccessDecision {
         fhirR4Client.getFhirContext().getRestfulClientFactory().setSocketTimeout(300000);
 
         List<Bundle.BundleEntryComponent> allResults = new ArrayList<>();
+        int totalResultMatches = 0;
 
         String requestPath =
                 request.getRequestPath()
@@ -298,13 +300,14 @@ public class SyncAccessDecision implements AccessDecision {
 
             Bundle res = fhirR4Client.transaction().withBundle(requestBundle).execute();
 
-            List<Bundle.BundleEntryComponent> sub =
+            List<Bundle.BundleEntryComponent> entryComponentList =
                     res.getEntry().parallelStream()
                             .map(it -> (Bundle) it.getResource())
                             .flatMap(it -> it.getEntry().stream())
                             .collect(Collectors.toList());
 
-            allResults.addAll(sub);
+            allResults.addAll(entryComponentList);
+            totalResultMatches += entryComponentList.size();
         }
 
         resultContent = new BasicResponseHandler().handleResponse(response);
@@ -312,14 +315,20 @@ public class SyncAccessDecision implements AccessDecision {
         IBaseResource responseResource = this.fhirR4JsonParser.parseResource(resultContent);
 
         if (responseResource instanceof Bundle) {
-            ((Bundle) responseResource).getEntry().addAll(allResults);
-            ((Bundle) responseResource).setTotal(((Bundle) responseResource).getEntry().size());
+            if (request.getParameters().containsKey(PARAM_SUMMARY)) {
+                ((Bundle) responseResource)
+                        .setTotal(((Bundle) responseResource).getTotal() + totalResultMatches);
+            } else {
 
-            Bundle.BundleLinkComponent selfLinkComponent = new Bundle.BundleLinkComponent();
-            selfLinkComponent.setRelation(Bundle.LINK_SELF);
-            selfLinkComponent.setUrl(request.getCompleteUrl());
+                ((Bundle) responseResource).getEntry().addAll(allResults);
+                ((Bundle) responseResource).setTotal(((Bundle) responseResource).getEntry().size());
 
-            ((Bundle) responseResource).setLink(Collections.singletonList(selfLinkComponent));
+                Bundle.BundleLinkComponent selfLinkComponent = new Bundle.BundleLinkComponent();
+                selfLinkComponent.setRelation(Bundle.LINK_SELF);
+                selfLinkComponent.setUrl(request.getCompleteUrl());
+
+                ((Bundle) responseResource).setLink(Collections.singletonList(selfLinkComponent));
+            }
         }
         return responseResource;
     }

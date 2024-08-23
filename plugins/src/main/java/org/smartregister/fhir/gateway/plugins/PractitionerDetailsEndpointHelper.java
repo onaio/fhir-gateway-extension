@@ -569,14 +569,11 @@ public class PractitionerDetailsEndpointHelper {
     }
 
     public static List<LocationHierarchy> getLocationsHierarchy(List<String> locationsIdentifiers) {
-        LocationHierarchyEndpointHelper locationHierarchyEndpointHelper =
-                new LocationHierarchyEndpointHelper(r4FHIRClient);
-
         return locationsIdentifiers.parallelStream()
                 .map(
                         locationsIdentifier ->
-                                locationHierarchyEndpointHelper.getLocationHierarchy(
-                                        locationsIdentifier, null, null))
+                                new LocationHierarchyEndpointHelper(r4FHIRClient)
+                                        .getLocationHierarchy(locationsIdentifier, null, null))
                 .filter(
                         locationHierarchy ->
                                 !org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND
