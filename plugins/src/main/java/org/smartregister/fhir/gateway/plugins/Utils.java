@@ -1,5 +1,6 @@
 package org.smartregister.fhir.gateway.plugins;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
@@ -168,20 +169,25 @@ public class Utils {
     }
 
     public static String findSyncStrategy(Binary binary) {
-
         byte[] bytes =
                 binary != null && binary.getDataElement() != null
                         ? Base64.getDecoder().decode(binary.getDataElement().getValueAsString())
                         : null;
+        return findSyncStrategy(bytes);
+    }
+
+    public static String findSyncStrategy(String binaryData) {
+        byte[] bytes = binaryData.getBytes(StandardCharsets.UTF_8);
+        return findSyncStrategy(bytes);
+    }
+
+    public static String findSyncStrategy(byte[] binaryDataBytes) {
         String syncStrategy = org.smartregister.utils.Constants.EMPTY_STRING;
-        if (bytes != null) {
-            String json = new String(bytes);
-            JsonObject jsonObject = new Gson().fromJson(json, JsonObject.class);
-            JsonArray jsonArray =
-                    jsonObject.getAsJsonArray(Constants.AppConfigJsonKey.SYNC_STRATEGY);
-            if (jsonArray != null && !jsonArray.isEmpty())
-                syncStrategy = jsonArray.get(0).getAsString();
-        }
+        String json = new String(binaryDataBytes);
+        JsonObject jsonObject = new Gson().fromJson(json, JsonObject.class);
+        JsonArray jsonArray = jsonObject.getAsJsonArray(Constants.AppConfigJsonKey.SYNC_STRATEGY);
+        if (jsonArray != null && !jsonArray.isEmpty())
+            syncStrategy = jsonArray.get(0).getAsString();
 
         return syncStrategy;
     }
