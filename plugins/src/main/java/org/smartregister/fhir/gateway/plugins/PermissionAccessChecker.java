@@ -12,7 +12,6 @@ import javax.inject.Named;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.hl7.fhir.r4.model.Binary;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CareTeam;
 import org.hl7.fhir.r4.model.Composition;
@@ -22,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartregister.fhir.gateway.plugins.interfaces.ResourceFinder;
 import org.smartregister.model.practitioner.PractitionerDetails;
+import org.springframework.web.client.RestTemplate;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.annotations.VisibleForTesting;
@@ -49,6 +49,7 @@ public class PermissionAccessChecker implements AccessChecker {
     private final String applicationId;
     private final FhirContext fhirContext;
     private final DecodedJWT jwt;
+    private final RestTemplate restTemplate = new RestTemplateUtil().getRestTemplate();
 
     private PermissionAccessChecker(
             FhirContext fhirContext,
@@ -249,10 +250,18 @@ public class PermissionAccessChecker implements AccessChecker {
         PractitionerDetails practitionerDetails = compositionPractitionerDetailsPair.getRight();
 
         String binaryResourceReference = Utils.getBinaryResourceReference(composition);
-        Binary binary =
-                Utils.readApplicationConfigBinaryResource(binaryResourceReference, fhirContext);
+        String response = fetchBinary(binaryResourceReference);
 
-        return Pair.of(Utils.findSyncStrategy(binary), practitionerDetails);
+        //  Binary binary = Utils.readApplicationConfigBinaryResource(binaryResourceReference,
+        // fhirContext);
+
+        return Pair.of(Utils.findSyncStrategy(response), practitionerDetails);
+    }
+
+    private String fetchBinary(String binaryResourceIdentifier) {
+        final String requestURL =
+                System.getenv(Constants.PROXY_TO_ENV) + '/' + binaryResourceIdentifier;
+        return restTemplate.getForObject(requestURL, String.class);
     }
 
     private Map<String, List<String>> getSyncStrategyIds(
