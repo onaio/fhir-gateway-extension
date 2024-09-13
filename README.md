@@ -398,7 +398,7 @@ Example:
 
 ##### Inventory Filters
 
-The `LocationHierarchy` endpoint supports filtering by inventory status,
+The `LocationHierarchy` endpoint supports filtering by inventory availability,
 allowing users to specify whether they want to retrieve only locations that have
 associated inventories. This filter can be particularly useful for narrowing
 down the results to locations that are actively involved in inventory
