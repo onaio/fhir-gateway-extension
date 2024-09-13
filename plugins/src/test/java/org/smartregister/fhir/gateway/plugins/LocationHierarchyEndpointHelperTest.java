@@ -19,6 +19,7 @@ import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Identifier;
+import org.hl7.fhir.r4.model.ListResource;
 import org.hl7.fhir.r4.model.Location;
 import org.junit.Assert;
 import org.junit.Before;
@@ -54,7 +55,8 @@ public class LocationHierarchyEndpointHelperTest {
                 .when(client)
                 .fetchResourceFromUrl(any(), any());
         LocationHierarchy locationHierarchy =
-                locationHierarchyEndpointHelper.getLocationHierarchy("non-existent", null, null);
+                locationHierarchyEndpointHelper.getLocationHierarchy(
+                        "non-existent", null, null, false);
         assertEquals(
                 org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND,
                 locationHierarchy.getId());
@@ -69,7 +71,7 @@ public class LocationHierarchyEndpointHelperTest {
                 .when(client)
                 .fetchResourceFromUrl(Location.class, "Location/12345");
         LocationHierarchy locationHierarchy =
-                locationHierarchyEndpointHelper.getLocationHierarchy("12345", null, null);
+                locationHierarchyEndpointHelper.getLocationHierarchy("12345", null, null, false);
         assertEquals("Location Resource : 12345", locationHierarchy.getId());
     }
 
@@ -105,7 +107,7 @@ public class LocationHierarchyEndpointHelperTest {
                 .filterLocationsByAdminLevels(locations, adminLevels);
         Mockito.doReturn(locations)
                 .when(mockLocationHierarchyEndpointHelper)
-                .getLocationHierarchyLocations("12345", null, adminLevels, adminLevels);
+                .getLocationHierarchyLocations("12345", null, adminLevels, adminLevels, false);
 
         Bundle resultBundle =
                 mockLocationHierarchyEndpointHelper.getPaginatedLocations(request, locationIds);
@@ -181,7 +183,11 @@ public class LocationHierarchyEndpointHelperTest {
         Mockito.doReturn(locations)
                 .when(mockLocationHierarchyEndpointHelper)
                 .getLocationHierarchyLocations(
-                        Mockito.anyString(), Mockito.any(), Mockito.any(), Mockito.any());
+                        Mockito.anyString(),
+                        Mockito.any(),
+                        Mockito.any(),
+                        Mockito.any(),
+                        Mockito.any());
         Mockito.doReturn(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
                 .when(mockLocationHierarchyEndpointHelper)
                 .getSyncStrategyByAppId(Mockito.any());
@@ -314,6 +320,56 @@ public class LocationHierarchyEndpointHelperTest {
         Assert.assertEquals("2", filteredLocations.get(2).getId());
         Assert.assertEquals("3", filteredLocations.get(3).getId());
         Assert.assertEquals("4", filteredLocations.get(4).getId());
+    }
+
+    @Test
+    public void testFilterLocationsByInventoryWithInventory() {
+        IUntypedQuery<IBaseBundle> untypedQueryMock = mock(IUntypedQuery.class);
+        IQuery<IBaseBundle> queryMock = mock(IQuery.class);
+
+        Bundle bundleWithInventory = new Bundle();
+        List<Bundle.BundleEntryComponent> entriesWithInventory = new ArrayList<>();
+
+        ListResource resource1 = new ListResource();
+        resource1.setId("1");
+        entriesWithInventory.add(new Bundle.BundleEntryComponent().setResource(resource1));
+        bundleWithInventory.setEntry(entriesWithInventory);
+
+        Mockito.doReturn(untypedQueryMock).when(client).search();
+        Mockito.doReturn(queryMock).when(untypedQueryMock).forResource(ListResource.class);
+        Mockito.doReturn(queryMock).when(queryMock).where(any(ICriterion.class));
+        Mockito.doReturn(queryMock).when(queryMock).usingStyle(SearchStyleEnum.POST);
+        Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
+        Mockito.doReturn(bundleWithInventory).when(queryMock).execute();
+
+        List<Location> locations = createLocationList(5, true);
+        List<Location> filteredLocations =
+                locationHierarchyEndpointHelper.filterLocationsByInventory(locations);
+
+        Assert.assertNotNull(filteredLocations);
+        Assert.assertEquals(5, filteredLocations.size());
+    }
+
+    @Test
+    public void testFilterLocationsByInventoryNoInventory() {
+        IUntypedQuery<IBaseBundle> untypedQueryMock = mock(IUntypedQuery.class);
+        IQuery<IBaseBundle> queryMock = mock(IQuery.class);
+
+        Bundle bundleWithInventory = new Bundle();
+
+        Mockito.doReturn(untypedQueryMock).when(client).search();
+        Mockito.doReturn(queryMock).when(untypedQueryMock).forResource(ListResource.class);
+        Mockito.doReturn(queryMock).when(queryMock).where(any(ICriterion.class));
+        Mockito.doReturn(queryMock).when(queryMock).usingStyle(SearchStyleEnum.POST);
+        Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
+        Mockito.doReturn(bundleWithInventory).when(queryMock).execute();
+
+        List<Location> locations = createLocationList(5, true);
+        List<Location> filteredLocations =
+                locationHierarchyEndpointHelper.filterLocationsByInventory(locations);
+
+        Assert.assertNotNull(filteredLocations);
+        Assert.assertEquals(0, filteredLocations.size());
     }
 
     private Bundle getLocationBundle() {

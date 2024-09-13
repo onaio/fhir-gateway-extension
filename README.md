@@ -396,6 +396,31 @@ Example:
 [GET] /LocationHierarchy?_id=<some-location-id>&administrativeLevelMin=2&administrativeLevelMax=4&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
 ```
 
+##### Inventory Filters
+
+The `LocationHierarchy` endpoint supports filtering by inventory availability,
+allowing users to specify whether they want to retrieve only locations that have
+associated inventories. This filter can be particularly useful for narrowing
+down the results to locations that are actively involved in inventory
+management.
+
+The following search parameter is available:
+
+- `filterInventory`: A boolean parameter that specifies whether the response
+  should be filtered by locations with inventories.
+  - `filterInventory=true`: Only locations with inventories will be included in
+    the response.
+  - `filterInventory=false` (or not set): Locations with or without inventories
+    will be returned. This effectively disables inventory-based filtering. The
+    response will include all locations, regardless of their inventory status.
+    Both locations with and without inventories will be returned.
+
+Example:
+
+```
+[GET] /LocationHierarchy?_id=<some-location-id>&filterInventory=true&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
+```
+
 #### Important Note:
 
 Developers, please update your client applications accordingly to accommodate
