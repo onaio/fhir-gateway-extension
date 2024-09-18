@@ -88,7 +88,7 @@ public class PractitionerDetailsEndpointHelper {
         return bundle;
     }
 
-    private Bundle getAttributedPractitionerDetailsByPractitioner(Practitioner practitioner) {
+    public Bundle getAttributedPractitionerDetailsByPractitioner(Practitioner practitioner) {
         Bundle responseBundle = new Bundle();
         List<Practitioner> attributedPractitioners = new ArrayList<>();
         PractitionerDetails practitionerDetails =
@@ -189,7 +189,7 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toSet());
     }
 
-    private List<String> getOrganizationIdsByLocationIds(Set<String> attributedLocationsList) {
+    public List<String> getOrganizationIdsByLocationIds(Set<String> attributedLocationsList) {
         if (attributedLocationsList == null || attributedLocationsList.isEmpty()) {
             return new ArrayList<>();
         }
@@ -376,7 +376,7 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toSet());
     }
 
-    private Practitioner getPractitionerByIdentifier(String identifier) {
+    public Practitioner getPractitionerByIdentifier(String identifier) {
         Bundle resultBundle =
                 getFhirClientForR4()
                         .search()
@@ -391,7 +391,7 @@ public class PractitionerDetailsEndpointHelper {
                 : null;
     }
 
-    private List<CareTeam> getCareTeamsByOrganizationIds(List<String> organizationIds) {
+    public List<CareTeam> getCareTeamsByOrganizationIds(List<String> organizationIds) {
         if (organizationIds.isEmpty()) return new ArrayList<>();
 
         Bundle bundle =
@@ -485,8 +485,8 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toList());
     }
 
-    private List<OrganizationAffiliation> getOrganizationAffiliationsByOrganizationIds(
-            Set<String> organizationIds) {
+    public List<OrganizationAffiliation> getOrganizationAffiliationsByOrganizationIds(
+        Set<String> organizationIds) {
         if (organizationIds == null || organizationIds.isEmpty()) {
             return new ArrayList<>();
         }
@@ -509,8 +509,8 @@ public class PractitionerDetailsEndpointHelper {
                         .execute();
     }
 
-    private List<String> getLocationIdsByOrganizationAffiliations(
-            List<OrganizationAffiliation> organizationAffiliations) {
+    List<String> getLocationIdsByOrganizationAffiliations(
+        List<OrganizationAffiliation> organizationAffiliations) {
 
         return organizationAffiliations.stream()
                 .map(
@@ -523,7 +523,7 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toList());
     }
 
-    private Set<String> getManagingOrganizationsOfCareTeamIds(List<CareTeam> careTeamsList) {
+    public Set<String> getManagingOrganizationsOfCareTeamIds(List<CareTeam> careTeamsList) {
         return careTeamsList.stream()
                 .filter(CareTeam::hasManagingOrganization)
                 .flatMap(it -> it.getManagingOrganization().stream())

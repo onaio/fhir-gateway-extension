@@ -11,13 +11,16 @@ import java.util.List;
 import java.util.Set;
 
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.CareTeam;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.mockito.internal.stubbing.defaultanswers.ReturnsDeepStubs;
 import org.smartregister.model.location.LocationHierarchy;
+import org.smartregister.model.practitioner.FhirPractitionerDetails;
 import org.smartregister.model.practitioner.PractitionerDetails;
 
 import ca.uhn.fhir.context.FhirContext;
@@ -119,10 +122,54 @@ public class PractitionerDetailsEndpointHelperTest {
         Assert.assertEquals("12345", attributedLocationIds.iterator().next());
     }
 
+    @Test
+    public void testGetSupervisorPractitionerDetailsByKeycloakIdWithInvalidIDReturnsEmptyBundle() {
+        Bundle bundlePractitioner = new Bundle();
+        Object whenObj =
+                client.search()
+                        .forResource(eq(Practitioner.class))
+                        .where(any(ICriterion.class))
+                        .usingStyle(SearchStyleEnum.POST)
+                        .returnBundle(any())
+                        .execute();
+
+        when(whenObj).thenReturn(bundlePractitioner);
+        Bundle supervisorBundle =
+                practitionerDetailsEndpointHelper.getSupervisorPractitionerDetailsByKeycloakId("222");
+        assertEquals(0, supervisorBundle.getEntry().size());
+    }
+
+    @Test
+    public void testGetSupervisorPractitionerDetailsByKeycloakIdWithValidIDReturnsBundle() {
+        Bundle bundlePractitioner = getPractitionerBundle();
+        Practitioner practitioner = getPractitioner();
+        PractitionerDetailsEndpointHelper mockPractitionerDetailsEndpointHelper =
+            mock(PractitionerDetailsEndpointHelper.class);
+        Mockito.doReturn(practitioner)
+            .when(mockPractitionerDetailsEndpointHelper)
+            .getPractitionerByIdentifier(
+                "keycloak-uuid-1234-1234");
+        Mockito.doReturn(bundlePractitioner)
+            .when(mockPractitionerDetailsEndpointHelper)
+            .getAttributedPractitionerDetailsByPractitioner(practitioner);
+        Mockito.doCallRealMethod().when(mockPractitionerDetailsEndpointHelper).getSupervisorPractitionerDetailsByKeycloakId("keycloak-uuid-1234-1234");
+        Bundle resultBundle = mockPractitionerDetailsEndpointHelper.getSupervisorPractitionerDetailsByKeycloakId("keycloak-uuid-1234-1234");
+        Assert.assertNotNull(resultBundle);
+        assertEquals(1, resultBundle.getEntry().size());
+        assertEquals("Practitioner/1234", resultBundle.getEntry().get(0).getResource().getId());
+    }
+
     private Bundle getPractitionerBundle() {
         Bundle bundlePractitioner = new Bundle();
         bundlePractitioner.setId("Practitioner/1234");
         Bundle.BundleEntryComponent bundleEntryComponent = new Bundle.BundleEntryComponent();
+        Practitioner practitioner = getPractitioner();
+        bundleEntryComponent.setResource(practitioner);
+        bundlePractitioner.addEntry(bundleEntryComponent);
+        return bundlePractitioner;
+    }
+
+    private Practitioner getPractitioner() {
         Practitioner practitioner = new Practitioner();
         practitioner.setId("Practitioner/1234");
         Identifier identifier = new Identifier();
@@ -131,8 +178,8 @@ public class PractitionerDetailsEndpointHelperTest {
         List<Identifier> identifiers = new ArrayList<Identifier>();
         identifiers.add(identifier);
         practitioner.setIdentifier(identifiers);
-        bundleEntryComponent.setResource(practitioner);
-        bundlePractitioner.addEntry(bundleEntryComponent);
-        return bundlePractitioner;
+        return practitioner;
     }
+
+
 }
