@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -159,6 +160,8 @@ public class PractitionerDetailsEndpointHelperTest {
         assertEquals("Practitioner/1234", resultBundle.getEntry().get(0).getResource().getId());
     }
 
+
+
     private Bundle getPractitionerBundle() {
         Bundle bundlePractitioner = new Bundle();
         bundlePractitioner.setId("Practitioner/1234");
@@ -181,5 +184,32 @@ public class PractitionerDetailsEndpointHelperTest {
         return practitioner;
     }
 
+    private PractitionerDetails getPractitionerDetails() {
+        PractitionerDetails practitionerDetails = new PractitionerDetails();
+        practitionerDetails.setId("PractitionerDetails/1234");
+        FhirPractitionerDetails fhirPractitionerDetails = getFhirPractitionerDetails();
+        practitionerDetails.setFhirPractitionerDetails(fhirPractitionerDetails);
+        Identifier identifier = new Identifier();
+        identifier.setSystem("Secondary");
+        identifier.setValue("keycloak-uuid-1234-1234");
+        List<Identifier> identifiers = new ArrayList<>();
+        identifiers.add(identifier);
+        practitionerDetails.setIdentifier(identifiers);
+        return practitionerDetails;
+    }
 
+    private FhirPractitionerDetails getFhirPractitionerDetails() {
+        FhirPractitionerDetails fhirPractitionerDetails = new FhirPractitionerDetails();
+        fhirPractitionerDetails.setId("FhirPractitionerDetails/1234");
+        CareTeam careTeam = getCareTeam();
+        List<CareTeam> careTeams = Collections.singletonList(careTeam);
+        fhirPractitionerDetails.setCareTeams(careTeams);
+        return fhirPractitionerDetails;
+    }
+
+    private CareTeam getCareTeam() {
+        CareTeam careTeam = new CareTeam();
+        careTeam.setId("CareTeam/1234");
+        return careTeam;
+    }
 }
