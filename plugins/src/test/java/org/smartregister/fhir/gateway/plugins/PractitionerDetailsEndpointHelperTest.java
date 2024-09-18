@@ -8,16 +8,20 @@ import static org.mockito.Mockito.when;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CareTeam;
 import org.hl7.fhir.r4.model.Identifier;
+import org.hl7.fhir.r4.model.OrganizationAffiliation;
 import org.hl7.fhir.r4.model.Practitioner;
+import org.hl7.fhir.r4.model.Reference;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.internal.stubbing.defaultanswers.ReturnsDeepStubs;
 import org.smartregister.model.location.LocationHierarchy;
@@ -160,7 +164,61 @@ public class PractitionerDetailsEndpointHelperTest {
         assertEquals("Practitioner/1234", resultBundle.getEntry().get(0).getResource().getId());
     }
 
+    @Test
+    public void testGetAttributedPractitionerDetailsByPractitionerWithPractitionerReturnsAttributedPractitioner() {
+        Practitioner practitioner = getPractitioner();
+        CareTeam careTeam = getCareTeam();
+        LocationHierarchy locationHierarchy = new LocationHierarchy();
+        List<CareTeam> careTeams = new ArrayList<>();
+        careTeams.add(careTeam);
+        List<LocationHierarchy> locationHierarchies = new ArrayList<>();
+        locationHierarchies.add(locationHierarchy);
+        String id = "1234";
+        Set<String> ids = new HashSet<>();
+        ids.add(id);
+        List<String> stringIds = new ArrayList<>();
+        stringIds.add(id);
+        List<OrganizationAffiliation> organizationAffiliations = new ArrayList<>();
+        organizationAffiliations.add(getOrganizationAffiliation());
+        PractitionerDetails practitionerDetails = getPractitionerDetails();
+        PractitionerDetailsEndpointHelper mockPractitionerDetailsEndpointHelper =
+            mock(PractitionerDetailsEndpointHelper.class);
 
+        Mockito.doReturn(practitionerDetails)
+            .when(mockPractitionerDetailsEndpointHelper)
+            .getPractitionerDetailsByPractitioner(practitioner);
+        Mockito.doReturn(ids)
+            .when(mockPractitionerDetailsEndpointHelper)
+            .getManagingOrganizationsOfCareTeamIds(careTeams);
+        Mockito.doReturn(organizationAffiliations)
+            .when(mockPractitionerDetailsEndpointHelper)
+            .getOrganizationAffiliationsByOrganizationIds(ids);
+        Mockito.doReturn(stringIds)
+            .when(mockPractitionerDetailsEndpointHelper)
+            .getLocationIdsByOrganizationAffiliations(organizationAffiliations);
+
+        MockedStatic<PractitionerDetailsEndpointHelper> mockStaticPractitionerDetailsEndpointHelper = Mockito.mockStatic(PractitionerDetailsEndpointHelper.class);
+        mockStaticPractitionerDetailsEndpointHelper
+            .when(() -> PractitionerDetailsEndpointHelper.getLocationsHierarchy(stringIds))
+                .thenReturn(locationHierarchies);
+        mockStaticPractitionerDetailsEndpointHelper
+            .when(() -> PractitionerDetailsEndpointHelper.getAttributedLocations(locationHierarchies))
+            .thenReturn(ids);
+
+        Mockito.doReturn(stringIds)
+            .when(mockPractitionerDetailsEndpointHelper)
+            .getOrganizationIdsByLocationIds(ids);
+
+        Mockito.doReturn(careTeams)
+            .when(mockPractitionerDetailsEndpointHelper)
+            .getCareTeamsByOrganizationIds(Mockito.any());
+        Mockito.doCallRealMethod().when(mockPractitionerDetailsEndpointHelper).getAttributedPractitionerDetailsByPractitioner(practitioner);
+
+        Bundle resultBundle = mockPractitionerDetailsEndpointHelper.getAttributedPractitionerDetailsByPractitioner(practitioner);
+        Assert.assertNotNull(resultBundle);
+        Assert.assertEquals(1, resultBundle.getTotal());
+        Assert.assertEquals(1, resultBundle.getEntry().size());
+    }
 
     private Bundle getPractitionerBundle() {
         Bundle bundlePractitioner = new Bundle();
@@ -207,9 +265,18 @@ public class PractitionerDetailsEndpointHelperTest {
         return fhirPractitionerDetails;
     }
 
+    private OrganizationAffiliation getOrganizationAffiliation() {
+        OrganizationAffiliation organizationAffiliation = new OrganizationAffiliation();
+        organizationAffiliation.setId("OrganizationAffiliation/1234");
+        return organizationAffiliation;
+    }
+
     private CareTeam getCareTeam() {
         CareTeam careTeam = new CareTeam();
         careTeam.setId("CareTeam/1234");
+        CareTeam.CareTeamParticipantComponent participant = new CareTeam.CareTeamParticipantComponent();
+        participant.setMember(new Reference("Practitioner/1234"));
+        careTeam.addParticipant(participant);
         return careTeam;
     }
 }

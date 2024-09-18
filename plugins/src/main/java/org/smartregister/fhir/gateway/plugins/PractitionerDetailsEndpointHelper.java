@@ -509,7 +509,7 @@ public class PractitionerDetailsEndpointHelper {
                         .execute();
     }
 
-    List<String> getLocationIdsByOrganizationAffiliations(
+    public List<String> getLocationIdsByOrganizationAffiliations(
         List<OrganizationAffiliation> organizationAffiliations) {
 
         return organizationAffiliations.stream()
