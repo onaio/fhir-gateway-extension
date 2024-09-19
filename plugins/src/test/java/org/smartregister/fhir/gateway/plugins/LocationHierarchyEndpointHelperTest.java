@@ -342,7 +342,7 @@ public class LocationHierarchyEndpointHelperTest {
         Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
         Mockito.doReturn(bundleWithInventory).when(queryMock).execute();
 
-        List<Location> locations = createLocationList(5, true);
+        List<Location> locations = createTestLocationList(5, true);
         List<Location> filteredLocations =
                 locationHierarchyEndpointHelper.filterLocationsByInventory(locations);
 
@@ -364,7 +364,7 @@ public class LocationHierarchyEndpointHelperTest {
         Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
         Mockito.doReturn(bundleWithInventory).when(queryMock).execute();
 
-        List<Location> locations = createLocationList(5, true);
+        List<Location> locations = createTestLocationList(5, true);
         List<Location> filteredLocations =
                 locationHierarchyEndpointHelper.filterLocationsByInventory(locations);
 

@@ -50,7 +50,6 @@ public class PractitionerDetailsEndpointHelperTest {
 
     @Test
     public void testGetPractitonerDetailsByKeycloakIdNotFound() {
-
         Bundle bundlePractitioner = new Bundle();
         Object whenObj =
                 client.search()
