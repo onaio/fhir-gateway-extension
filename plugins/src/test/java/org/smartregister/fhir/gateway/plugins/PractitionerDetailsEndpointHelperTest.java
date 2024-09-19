@@ -376,7 +376,48 @@ public class PractitionerDetailsEndpointHelperTest {
         Assert.assertEquals("Location/2", result.get(1).getId());
     }
 
+    @Test
+    public void testGetOrganizationAffiliationsByOrganizationIdsWithNullOrganizationIds() {
+        Set<String> organizationIds = null;
+        List<OrganizationAffiliation> result = practitionerDetailsEndpointHelper.getOrganizationAffiliationsByOrganizationIds(organizationIds);
+        Assert.assertNotNull(result);
+        Assert.assertTrue(result.isEmpty());
+    }
 
+    @Test
+    public void testGetOrganizationAffiliationsByOrganizationIdsWithEmptyOrganizationIds() {
+        Set<String> organizationIds = Collections.emptySet();
+        List<OrganizationAffiliation> result = practitionerDetailsEndpointHelper.getOrganizationAffiliationsByOrganizationIds(organizationIds);
+        Assert.assertNotNull(result);
+        Assert.assertTrue(result.isEmpty());
+    }
+
+    @Test
+    public void testGetOrganizationAffiliationsByOrganizationIdsWithValidOrganizationIds() {
+        Set<String> organizationIds = new HashSet<>(Arrays.asList("1", "2"));
+        OrganizationAffiliation affiliation1 = new OrganizationAffiliation();
+        affiliation1.setId("OrganizationAffiliation/1");
+        OrganizationAffiliation affiliation2 = new OrganizationAffiliation();
+        affiliation2.setId("OrganizationAffiliation/2");
+
+        Bundle bundle = new Bundle();
+        bundle.addEntry(new Bundle.BundleEntryComponent().setResource(affiliation1));
+        bundle.addEntry(new Bundle.BundleEntryComponent().setResource(affiliation2));
+
+        Object whenSearch = client.search()
+            .forResource(OrganizationAffiliation.class)
+            .where(any(ICriterion.class))
+            .usingStyle(SearchStyleEnum.POST)
+            .returnBundle(Bundle.class)
+            .execute();
+
+        when(whenSearch).thenReturn(bundle);
+        List<OrganizationAffiliation> result = practitionerDetailsEndpointHelper.getOrganizationAffiliationsByOrganizationIds(organizationIds);
+        Assert.assertNotNull(result);
+        Assert.assertEquals(2, result.size());
+        Assert.assertEquals("OrganizationAffiliation/1", result.get(0).getId());
+        Assert.assertEquals("OrganizationAffiliation/2", result.get(1).getId());
+    }
 
     private Bundle getPractitionerBundle() {
         Bundle bundlePractitioner = new Bundle();
