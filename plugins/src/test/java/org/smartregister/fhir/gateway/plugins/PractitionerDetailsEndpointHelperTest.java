@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.smartregister.fhir.gateway.plugins.PractitionerDetailsEndpointHelper.EMPTY_BUNDLE;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,11 +16,13 @@ import java.util.stream.Collectors;
 
 import ca.uhn.fhir.rest.gclient.IQuery;
 import ca.uhn.fhir.rest.gclient.IUntypedQuery;
+import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CareTeam;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Location;
+import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.OrganizationAffiliation;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.Reference;
@@ -233,7 +236,7 @@ public class PractitionerDetailsEndpointHelperTest {
     }
 
     @Test
-    public void testGetOrganizationIdsByLocationIds() {
+    public void testGetOrganizationIdsByLocationIdsWithLocationIdsReturnsOrganizationIds() {
         Bundle mockOrganizationAffiliationBundle = new Bundle();
         OrganizationAffiliation orgAffiliation1 = new OrganizationAffiliation();
         orgAffiliation1.setOrganization(new Reference("Organization/1234"));
@@ -269,7 +272,7 @@ public class PractitionerDetailsEndpointHelperTest {
     }
 
     @Test
-    public void testGetCareTeamsByOrganizationIdsReturnsCorrectCareTeams() {
+    public void testGetCareTeamsByOrganizationIdsWithOrganizationIdsReturnsCorrectCareTeams() {
         List<String> organizationIds = Arrays.asList("1", "2", "3");
         CareTeam careTeam1 = new CareTeam();
         careTeam1.setId("CareTeam/1");
@@ -299,6 +302,43 @@ public class PractitionerDetailsEndpointHelperTest {
         Assert.assertTrue(result.stream().anyMatch(ct -> ct.getId().equals("CareTeam/2")));
         Assert.assertTrue(result.stream().anyMatch(ct -> ct.getId().equals("CareTeam/3")));
     }
+
+    @Test
+    public void testGetOrganizationsByIdWithEmptyOrganizationIds() {
+        Set<String> organizationIds = Collections.emptySet();
+        Bundle result = practitionerDetailsEndpointHelper.getOrganizationsById(organizationIds);
+        Assert.assertSame(EMPTY_BUNDLE, result);
+    }
+
+    @Test
+    public void testGetOrganizationsByIdWithValidOrganizationIds() {
+        Set<String> organizationIds = new HashSet<>(Arrays.asList("1", "2"));
+
+        Organization org1 = new Organization();
+        org1.setId("Organization/1");
+
+        Organization org2 = new Organization();
+        org2.setId("Organization/2");
+
+        Bundle bundle = new Bundle();
+        bundle.addEntry(new Bundle.BundleEntryComponent().setResource(org1));
+        bundle.addEntry(new Bundle.BundleEntryComponent().setResource(org2));
+
+        Object whenSearch = client.search()
+            .forResource(Organization.class)
+            .where(any(ICriterion.class))
+            .usingStyle(SearchStyleEnum.POST)
+            .returnBundle(Bundle.class)
+            .execute();
+
+        when(whenSearch).thenReturn(bundle);
+        Bundle result = practitionerDetailsEndpointHelper.getOrganizationsById(organizationIds);
+        Assert.assertNotNull(result);
+        Assert.assertEquals(2, result.getEntry().size());
+        Assert.assertEquals("Organization/1", result.getEntry().get(0).getResource().getId());
+        Assert.assertEquals("Organization/2", result.getEntry().get(1).getResource().getId());
+    }
+
 
     private Bundle getPractitionerBundle() {
         Bundle bundlePractitioner = new Bundle();

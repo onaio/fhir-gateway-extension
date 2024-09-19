@@ -450,7 +450,7 @@ public class PractitionerDetailsEndpointHelper {
                 reference.lastIndexOf(org.smartregister.utils.Constants.FORWARD_SLASH) + 1);
     }
 
-    private Bundle getOrganizationsById(Set<String> organizationIds) {
+    public Bundle getOrganizationsById(Set<String> organizationIds) {
         return organizationIds.isEmpty()
                 ? EMPTY_BUNDLE
                 : getFhirClientForR4()
