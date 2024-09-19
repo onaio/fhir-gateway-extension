@@ -419,6 +419,36 @@ public class PractitionerDetailsEndpointHelperTest {
         Assert.assertEquals("OrganizationAffiliation/2", result.get(1).getId());
     }
 
+    @Test
+    public void testGetOrganizationAffiliationsByOrganizationIdsBundleWithEmptyOrganizationIds() {
+        Set<String> organizationIds = Collections.emptySet();
+        Bundle result = practitionerDetailsEndpointHelper.getOrganizationAffiliationsByOrganizationIdsBundle(organizationIds);
+        Assert.assertSame(EMPTY_BUNDLE, result);
+    }
+
+    @Test
+    public void testGetOrganizationAffiliationsByOrganizationIdsBundleWithValidOrganizationIds() {
+        Set<String> organizationIds = new HashSet<>(Arrays.asList("1", "2"));
+        OrganizationAffiliation affiliation1 = new OrganizationAffiliation();
+        affiliation1.setId("OrganizationAffiliation/1");
+
+        Bundle bundle = new Bundle();
+        bundle.addEntry(new Bundle.BundleEntryComponent().setResource(affiliation1));
+        Object whenSearch = client.search()
+            .forResource(OrganizationAffiliation.class)
+            .where(any(ICriterion.class))
+            .usingStyle(SearchStyleEnum.POST)
+            .returnBundle(Bundle.class)
+            .execute();
+
+        when(whenSearch).thenReturn(bundle);
+        Bundle result = practitionerDetailsEndpointHelper.getOrganizationAffiliationsByOrganizationIdsBundle(organizationIds);
+        Assert.assertNotNull(result);
+        Assert.assertEquals(1, result.getEntry().size());
+        Assert.assertEquals("OrganizationAffiliation/1", result.getEntry().get(0).getResource().getId());
+    }
+
+
     private Bundle getPractitionerBundle() {
         Bundle bundlePractitioner = new Bundle();
         bundlePractitioner.setId("Practitioner/1234");
