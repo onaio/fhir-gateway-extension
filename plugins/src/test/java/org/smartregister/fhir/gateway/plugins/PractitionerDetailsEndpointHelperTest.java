@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import ca.uhn.fhir.rest.gclient.IQuery;
 import ca.uhn.fhir.rest.gclient.IUntypedQuery;
@@ -235,10 +236,10 @@ public class PractitionerDetailsEndpointHelperTest {
     public void testGetOrganizationIdsByLocationIds() {
         Bundle mockOrganizationAffiliationBundle = new Bundle();
         OrganizationAffiliation orgAffiliation1 = new OrganizationAffiliation();
-        orgAffiliation1.setOrganization(new Reference("Organization/Org123"));
+        orgAffiliation1.setOrganization(new Reference("Organization/1234"));
 
         OrganizationAffiliation orgAffiliation2 = new OrganizationAffiliation();
-        orgAffiliation2.setOrganization(new Reference("Organization/Org456"));
+        orgAffiliation2.setOrganization(new Reference("Organization/5678"));
 
         Bundle.BundleEntryComponent entry1 = new Bundle.BundleEntryComponent();
         entry1.setResource(orgAffiliation1);
@@ -263,10 +264,41 @@ public class PractitionerDetailsEndpointHelperTest {
 
         Assert.assertNotNull(organizationIds);
         Assert.assertEquals(2, organizationIds.size());
-        Assert.assertTrue(organizationIds.contains("Org123"));
-        Assert.assertTrue(organizationIds.contains("Org456"));
+        Assert.assertTrue(organizationIds.contains("1234"));
+        Assert.assertTrue(organizationIds.contains("5678"));
     }
 
+    @Test
+    public void testGetCareTeamsByOrganizationIdsReturnsCorrectCareTeams() {
+        List<String> organizationIds = Arrays.asList("1", "2", "3");
+        CareTeam careTeam1 = new CareTeam();
+        careTeam1.setId("CareTeam/1");
+        careTeam1.setManagingOrganization(Arrays.asList(new Reference("Organization/1")));
+        CareTeam careTeam2 = new CareTeam();
+        careTeam2.setId("CareTeam/2");
+        careTeam2.setManagingOrganization(Arrays.asList(new Reference("Organization/2")));
+        CareTeam careTeam3 = new CareTeam();
+        careTeam3.setId("CareTeam/3");
+        careTeam3.setManagingOrganization(Arrays.asList(new Reference("Organization/3")));
+        Bundle bundle = new Bundle();
+        bundle.addEntry(new Bundle.BundleEntryComponent().setResource(careTeam1));
+        bundle.addEntry(new Bundle.BundleEntryComponent().setResource(careTeam2));
+        bundle.addEntry(new Bundle.BundleEntryComponent().setResource(careTeam3));
+
+        Object whenCareTeamSearch = client.search()
+            .forResource(CareTeam.class)
+            .where(any(ICriterion.class))
+            .usingStyle(SearchStyleEnum.POST)
+            .returnBundle(Bundle.class)
+            .execute();
+
+        when(whenCareTeamSearch).thenReturn(bundle);
+        List<CareTeam> result = practitionerDetailsEndpointHelper.getCareTeamsByOrganizationIds(organizationIds);
+        Assert.assertEquals(3, result.size());
+        Assert.assertTrue(result.stream().anyMatch(ct -> ct.getId().equals("CareTeam/1")));
+        Assert.assertTrue(result.stream().anyMatch(ct -> ct.getId().equals("CareTeam/2")));
+        Assert.assertTrue(result.stream().anyMatch(ct -> ct.getId().equals("CareTeam/3")));
+    }
 
     private Bundle getPractitionerBundle() {
         Bundle bundlePractitioner = new Bundle();
