@@ -12,9 +12,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import ca.uhn.fhir.rest.gclient.IQuery;
+import ca.uhn.fhir.rest.gclient.IUntypedQuery;
+import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CareTeam;
 import org.hl7.fhir.r4.model.Identifier;
+import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.OrganizationAffiliation;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.Reference;
@@ -219,6 +223,50 @@ public class PractitionerDetailsEndpointHelperTest {
         Assert.assertEquals(1, resultBundle.getTotal());
         Assert.assertEquals(1, resultBundle.getEntry().size());
     }
+
+    @Test
+    public void testGetOrganizationIdsByLocationIdsWithEmptyLocationsReturnsEmptyArray() {
+        Set<String> emptyLocationIds = new HashSet<>();
+        List<String> organizationIds = practitionerDetailsEndpointHelper.getOrganizationIdsByLocationIds(emptyLocationIds);
+        Assert.assertTrue(organizationIds.isEmpty());
+    }
+
+    @Test
+    public void testGetOrganizationIdsByLocationIds() {
+        Bundle mockOrganizationAffiliationBundle = new Bundle();
+        OrganizationAffiliation orgAffiliation1 = new OrganizationAffiliation();
+        orgAffiliation1.setOrganization(new Reference("Organization/Org123"));
+
+        OrganizationAffiliation orgAffiliation2 = new OrganizationAffiliation();
+        orgAffiliation2.setOrganization(new Reference("Organization/Org456"));
+
+        Bundle.BundleEntryComponent entry1 = new Bundle.BundleEntryComponent();
+        entry1.setResource(orgAffiliation1);
+        Bundle.BundleEntryComponent entry2 = new Bundle.BundleEntryComponent();
+        entry2.setResource(orgAffiliation2);
+
+        mockOrganizationAffiliationBundle.addEntry(entry1);
+        mockOrganizationAffiliationBundle.addEntry(entry2);
+
+        Object whenOrganizationAffiliationSearch =
+            client.search()
+                .forResource(eq(OrganizationAffiliation.class))
+                .where(any(ICriterion.class))
+                .usingStyle(SearchStyleEnum.POST)
+                .returnBundle(Bundle.class)
+                .execute();
+
+        when(whenOrganizationAffiliationSearch).thenReturn(mockOrganizationAffiliationBundle);
+        Set<String> locationIds = new HashSet<>(Arrays.asList("Location1", "Location2"));
+
+        List<String> organizationIds = practitionerDetailsEndpointHelper.getOrganizationIdsByLocationIds(locationIds);
+
+        Assert.assertNotNull(organizationIds);
+        Assert.assertEquals(2, organizationIds.size());
+        Assert.assertTrue(organizationIds.contains("Org123"));
+        Assert.assertTrue(organizationIds.contains("Org456"));
+    }
+
 
     private Bundle getPractitionerBundle() {
         Bundle bundlePractitioner = new Bundle();
