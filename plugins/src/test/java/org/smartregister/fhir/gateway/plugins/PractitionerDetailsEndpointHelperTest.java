@@ -143,7 +143,8 @@ public class PractitionerDetailsEndpointHelperTest {
 
         when(whenObj).thenReturn(bundlePractitioner);
         Bundle supervisorBundle =
-                practitionerDetailsEndpointHelper.getSupervisorPractitionerDetailsByKeycloakId("222");
+                practitionerDetailsEndpointHelper.getSupervisorPractitionerDetailsByKeycloakId(
+                        "222");
         assertEquals(0, supervisorBundle.getEntry().size());
     }
 
@@ -152,23 +153,27 @@ public class PractitionerDetailsEndpointHelperTest {
         Bundle bundlePractitioner = getPractitionerBundle();
         Practitioner practitioner = getPractitioner();
         PractitionerDetailsEndpointHelper mockPractitionerDetailsEndpointHelper =
-            mock(PractitionerDetailsEndpointHelper.class);
+                mock(PractitionerDetailsEndpointHelper.class);
         Mockito.doReturn(practitioner)
-            .when(mockPractitionerDetailsEndpointHelper)
-            .getPractitionerByIdentifier(
-                "keycloak-uuid-1234-1234");
+                .when(mockPractitionerDetailsEndpointHelper)
+                .getPractitionerByIdentifier("keycloak-uuid-1234-1234");
         Mockito.doReturn(bundlePractitioner)
-            .when(mockPractitionerDetailsEndpointHelper)
-            .getAttributedPractitionerDetailsByPractitioner(practitioner);
-        Mockito.doCallRealMethod().when(mockPractitionerDetailsEndpointHelper).getSupervisorPractitionerDetailsByKeycloakId("keycloak-uuid-1234-1234");
-        Bundle resultBundle = mockPractitionerDetailsEndpointHelper.getSupervisorPractitionerDetailsByKeycloakId("keycloak-uuid-1234-1234");
+                .when(mockPractitionerDetailsEndpointHelper)
+                .getAttributedPractitionerDetailsByPractitioner(practitioner);
+        Mockito.doCallRealMethod()
+                .when(mockPractitionerDetailsEndpointHelper)
+                .getSupervisorPractitionerDetailsByKeycloakId("keycloak-uuid-1234-1234");
+        Bundle resultBundle =
+                mockPractitionerDetailsEndpointHelper.getSupervisorPractitionerDetailsByKeycloakId(
+                        "keycloak-uuid-1234-1234");
         Assert.assertNotNull(resultBundle);
         assertEquals(1, resultBundle.getEntry().size());
         assertEquals("Practitioner/1234", resultBundle.getEntry().get(0).getResource().getId());
     }
 
     @Test
-    public void testGetAttributedPractitionerDetailsByPractitionerWithPractitionerReturnsAttributedPractitioner() {
+    public void
+            testGetAttributedPractitionerDetailsByPractitionerWithPractitionerReturnsAttributedPractitioner() {
         Practitioner practitioner = getPractitioner();
         CareTeam careTeam = getCareTeam();
         LocationHierarchy locationHierarchy = new LocationHierarchy();
@@ -185,39 +190,48 @@ public class PractitionerDetailsEndpointHelperTest {
         organizationAffiliations.add(getOrganizationAffiliation());
         PractitionerDetails practitionerDetails = getPractitionerDetails();
         PractitionerDetailsEndpointHelper mockPractitionerDetailsEndpointHelper =
-            mock(PractitionerDetailsEndpointHelper.class);
+                mock(PractitionerDetailsEndpointHelper.class);
 
         Mockito.doReturn(practitionerDetails)
-            .when(mockPractitionerDetailsEndpointHelper)
-            .getPractitionerDetailsByPractitioner(practitioner);
+                .when(mockPractitionerDetailsEndpointHelper)
+                .getPractitionerDetailsByPractitioner(practitioner);
         Mockito.doReturn(ids)
-            .when(mockPractitionerDetailsEndpointHelper)
-            .getManagingOrganizationsOfCareTeamIds(careTeams);
+                .when(mockPractitionerDetailsEndpointHelper)
+                .getManagingOrganizationsOfCareTeamIds(careTeams);
         Mockito.doReturn(organizationAffiliations)
-            .when(mockPractitionerDetailsEndpointHelper)
-            .getOrganizationAffiliationsByOrganizationIds(ids);
+                .when(mockPractitionerDetailsEndpointHelper)
+                .getOrganizationAffiliationsByOrganizationIds(ids);
         Mockito.doReturn(stringIds)
-            .when(mockPractitionerDetailsEndpointHelper)
-            .getLocationIdsByOrganizationAffiliations(organizationAffiliations);
+                .when(mockPractitionerDetailsEndpointHelper)
+                .getLocationIdsByOrganizationAffiliations(organizationAffiliations);
 
-        MockedStatic<PractitionerDetailsEndpointHelper> mockStaticPractitionerDetailsEndpointHelper = Mockito.mockStatic(PractitionerDetailsEndpointHelper.class);
+        MockedStatic<PractitionerDetailsEndpointHelper>
+                mockStaticPractitionerDetailsEndpointHelper =
+                        Mockito.mockStatic(PractitionerDetailsEndpointHelper.class);
         mockStaticPractitionerDetailsEndpointHelper
-            .when(() -> PractitionerDetailsEndpointHelper.getLocationsHierarchy(stringIds))
+                .when(() -> PractitionerDetailsEndpointHelper.getLocationsHierarchy(stringIds))
                 .thenReturn(locationHierarchies);
         mockStaticPractitionerDetailsEndpointHelper
-            .when(() -> PractitionerDetailsEndpointHelper.getAttributedLocations(locationHierarchies))
-            .thenReturn(ids);
+                .when(
+                        () ->
+                                PractitionerDetailsEndpointHelper.getAttributedLocations(
+                                        locationHierarchies))
+                .thenReturn(ids);
 
         Mockito.doReturn(stringIds)
-            .when(mockPractitionerDetailsEndpointHelper)
-            .getOrganizationIdsByLocationIds(ids);
+                .when(mockPractitionerDetailsEndpointHelper)
+                .getOrganizationIdsByLocationIds(ids);
 
         Mockito.doReturn(careTeams)
-            .when(mockPractitionerDetailsEndpointHelper)
-            .getCareTeamsByOrganizationIds(Mockito.any());
-        Mockito.doCallRealMethod().when(mockPractitionerDetailsEndpointHelper).getAttributedPractitionerDetailsByPractitioner(practitioner);
+                .when(mockPractitionerDetailsEndpointHelper)
+                .getCareTeamsByOrganizationIds(Mockito.any());
+        Mockito.doCallRealMethod()
+                .when(mockPractitionerDetailsEndpointHelper)
+                .getAttributedPractitionerDetailsByPractitioner(practitioner);
 
-        Bundle resultBundle = mockPractitionerDetailsEndpointHelper.getAttributedPractitionerDetailsByPractitioner(practitioner);
+        Bundle resultBundle =
+                mockPractitionerDetailsEndpointHelper
+                        .getAttributedPractitionerDetailsByPractitioner(practitioner);
         Assert.assertNotNull(resultBundle);
         Assert.assertEquals(1, resultBundle.getTotal());
         Assert.assertEquals(1, resultBundle.getEntry().size());
@@ -226,7 +240,8 @@ public class PractitionerDetailsEndpointHelperTest {
     @Test
     public void testGetOrganizationIdsByLocationIdsWithEmptyLocationsReturnsEmptyArray() {
         Set<String> emptyLocationIds = new HashSet<>();
-        List<String> organizationIds = practitionerDetailsEndpointHelper.getOrganizationIdsByLocationIds(emptyLocationIds);
+        List<String> organizationIds =
+                practitionerDetailsEndpointHelper.getOrganizationIdsByLocationIds(emptyLocationIds);
         Assert.assertTrue(organizationIds.isEmpty());
     }
 
@@ -248,17 +263,18 @@ public class PractitionerDetailsEndpointHelperTest {
         mockOrganizationAffiliationBundle.addEntry(entry2);
 
         Object whenOrganizationAffiliationSearch =
-            client.search()
-                .forResource(eq(OrganizationAffiliation.class))
-                .where(any(ICriterion.class))
-                .usingStyle(SearchStyleEnum.POST)
-                .returnBundle(Bundle.class)
-                .execute();
+                client.search()
+                        .forResource(eq(OrganizationAffiliation.class))
+                        .where(any(ICriterion.class))
+                        .usingStyle(SearchStyleEnum.POST)
+                        .returnBundle(Bundle.class)
+                        .execute();
 
         when(whenOrganizationAffiliationSearch).thenReturn(mockOrganizationAffiliationBundle);
         Set<String> locationIds = new HashSet<>(Arrays.asList("Location1", "Location2"));
 
-        List<String> organizationIds = practitionerDetailsEndpointHelper.getOrganizationIdsByLocationIds(locationIds);
+        List<String> organizationIds =
+                practitionerDetailsEndpointHelper.getOrganizationIdsByLocationIds(locationIds);
 
         Assert.assertNotNull(organizationIds);
         Assert.assertEquals(2, organizationIds.size());
@@ -283,15 +299,17 @@ public class PractitionerDetailsEndpointHelperTest {
         bundle.addEntry(new Bundle.BundleEntryComponent().setResource(careTeam2));
         bundle.addEntry(new Bundle.BundleEntryComponent().setResource(careTeam3));
 
-        Object whenCareTeamSearch = client.search()
-            .forResource(CareTeam.class)
-            .where(any(ICriterion.class))
-            .usingStyle(SearchStyleEnum.POST)
-            .returnBundle(Bundle.class)
-            .execute();
+        Object whenCareTeamSearch =
+                client.search()
+                        .forResource(CareTeam.class)
+                        .where(any(ICriterion.class))
+                        .usingStyle(SearchStyleEnum.POST)
+                        .returnBundle(Bundle.class)
+                        .execute();
 
         when(whenCareTeamSearch).thenReturn(bundle);
-        List<CareTeam> result = practitionerDetailsEndpointHelper.getCareTeamsByOrganizationIds(organizationIds);
+        List<CareTeam> result =
+                practitionerDetailsEndpointHelper.getCareTeamsByOrganizationIds(organizationIds);
         Assert.assertEquals(3, result.size());
         Assert.assertTrue(result.stream().anyMatch(ct -> ct.getId().equals("CareTeam/1")));
         Assert.assertTrue(result.stream().anyMatch(ct -> ct.getId().equals("CareTeam/2")));
@@ -319,12 +337,13 @@ public class PractitionerDetailsEndpointHelperTest {
         bundle.addEntry(new Bundle.BundleEntryComponent().setResource(org1));
         bundle.addEntry(new Bundle.BundleEntryComponent().setResource(org2));
 
-        Object whenSearch = client.search()
-            .forResource(Organization.class)
-            .where(any(ICriterion.class))
-            .usingStyle(SearchStyleEnum.POST)
-            .returnBundle(Bundle.class)
-            .execute();
+        Object whenSearch =
+                client.search()
+                        .forResource(Organization.class)
+                        .where(any(ICriterion.class))
+                        .usingStyle(SearchStyleEnum.POST)
+                        .returnBundle(Bundle.class)
+                        .execute();
 
         when(whenSearch).thenReturn(bundle);
         Bundle result = practitionerDetailsEndpointHelper.getOrganizationsById(organizationIds);
@@ -361,12 +380,13 @@ public class PractitionerDetailsEndpointHelperTest {
         bundle.addEntry(new Bundle.BundleEntryComponent().setResource(location1));
         bundle.addEntry(new Bundle.BundleEntryComponent().setResource(location2));
 
-        Object whenSearch = client.search()
-            .forResource(Location.class)
-            .where(any(ICriterion.class))
-            .usingStyle(SearchStyleEnum.POST)
-            .returnBundle(Bundle.class)
-            .execute();
+        Object whenSearch =
+                client.search()
+                        .forResource(Location.class)
+                        .where(any(ICriterion.class))
+                        .usingStyle(SearchStyleEnum.POST)
+                        .returnBundle(Bundle.class)
+                        .execute();
 
         when(whenSearch).thenReturn(bundle);
         List<Location> result = practitionerDetailsEndpointHelper.getLocationsByIds(locationIds);
@@ -377,23 +397,30 @@ public class PractitionerDetailsEndpointHelperTest {
     }
 
     @Test
-    public void testGetOrganizationAffiliationsByOrganizationIdsWithNullOrganizationIdsReturnsEmptyResult() {
+    public void
+            testGetOrganizationAffiliationsByOrganizationIdsWithNullOrganizationIdsReturnsEmptyResult() {
         Set<String> organizationIds = null;
-        List<OrganizationAffiliation> result = practitionerDetailsEndpointHelper.getOrganizationAffiliationsByOrganizationIds(organizationIds);
+        List<OrganizationAffiliation> result =
+                practitionerDetailsEndpointHelper.getOrganizationAffiliationsByOrganizationIds(
+                        organizationIds);
         Assert.assertNotNull(result);
         Assert.assertTrue(result.isEmpty());
     }
 
     @Test
-    public void testGetOrganizationAffiliationsByOrganizationIdsWithEmptyOrganizationIdsReturnsEmptyResult() {
+    public void
+            testGetOrganizationAffiliationsByOrganizationIdsWithEmptyOrganizationIdsReturnsEmptyResult() {
         Set<String> organizationIds = Collections.emptySet();
-        List<OrganizationAffiliation> result = practitionerDetailsEndpointHelper.getOrganizationAffiliationsByOrganizationIds(organizationIds);
+        List<OrganizationAffiliation> result =
+                practitionerDetailsEndpointHelper.getOrganizationAffiliationsByOrganizationIds(
+                        organizationIds);
         Assert.assertNotNull(result);
         Assert.assertTrue(result.isEmpty());
     }
 
     @Test
-    public void testGetOrganizationAffiliationsByOrganizationIdsWithValidOrganizationIdsReturnsOrganizationAffiliations() {
+    public void
+            testGetOrganizationAffiliationsByOrganizationIdsWithValidOrganizationIdsReturnsOrganizationAffiliations() {
         Set<String> organizationIds = new HashSet<>(Arrays.asList("1", "2"));
         OrganizationAffiliation affiliation1 = new OrganizationAffiliation();
         affiliation1.setId("OrganizationAffiliation/1");
@@ -404,15 +431,18 @@ public class PractitionerDetailsEndpointHelperTest {
         bundle.addEntry(new Bundle.BundleEntryComponent().setResource(affiliation1));
         bundle.addEntry(new Bundle.BundleEntryComponent().setResource(affiliation2));
 
-        Object whenSearch = client.search()
-            .forResource(OrganizationAffiliation.class)
-            .where(any(ICriterion.class))
-            .usingStyle(SearchStyleEnum.POST)
-            .returnBundle(Bundle.class)
-            .execute();
+        Object whenSearch =
+                client.search()
+                        .forResource(OrganizationAffiliation.class)
+                        .where(any(ICriterion.class))
+                        .usingStyle(SearchStyleEnum.POST)
+                        .returnBundle(Bundle.class)
+                        .execute();
 
         when(whenSearch).thenReturn(bundle);
-        List<OrganizationAffiliation> result = practitionerDetailsEndpointHelper.getOrganizationAffiliationsByOrganizationIds(organizationIds);
+        List<OrganizationAffiliation> result =
+                practitionerDetailsEndpointHelper.getOrganizationAffiliationsByOrganizationIds(
+                        organizationIds);
         Assert.assertNotNull(result);
         Assert.assertEquals(2, result.size());
         Assert.assertEquals("OrganizationAffiliation/1", result.get(0).getId());
@@ -420,50 +450,64 @@ public class PractitionerDetailsEndpointHelperTest {
     }
 
     @Test
-    public void testGetOrganizationAffiliationsByOrganizationIdsBundleWithEmptyOrganizationIdsReturnsEmptyBundle() {
+    public void
+            testGetOrganizationAffiliationsByOrganizationIdsBundleWithEmptyOrganizationIdsReturnsEmptyBundle() {
         Set<String> organizationIds = Collections.emptySet();
-        Bundle result = practitionerDetailsEndpointHelper.getOrganizationAffiliationsByOrganizationIdsBundle(organizationIds);
+        Bundle result =
+                practitionerDetailsEndpointHelper
+                        .getOrganizationAffiliationsByOrganizationIdsBundle(organizationIds);
         Assert.assertSame(EMPTY_BUNDLE, result);
     }
 
     @Test
-    public void testGetOrganizationAffiliationsByOrganizationIdsBundleWithValidOrganizationIdsReturnsOrganizationAffiliations() {
+    public void
+            testGetOrganizationAffiliationsByOrganizationIdsBundleWithValidOrganizationIdsReturnsOrganizationAffiliations() {
         Set<String> organizationIds = new HashSet<>(Arrays.asList("1", "2"));
         OrganizationAffiliation affiliation1 = new OrganizationAffiliation();
         affiliation1.setId("OrganizationAffiliation/1");
 
         Bundle bundle = new Bundle();
         bundle.addEntry(new Bundle.BundleEntryComponent().setResource(affiliation1));
-        Object whenSearch = client.search()
-            .forResource(OrganizationAffiliation.class)
-            .where(any(ICriterion.class))
-            .usingStyle(SearchStyleEnum.POST)
-            .returnBundle(Bundle.class)
-            .execute();
+        Object whenSearch =
+                client.search()
+                        .forResource(OrganizationAffiliation.class)
+                        .where(any(ICriterion.class))
+                        .usingStyle(SearchStyleEnum.POST)
+                        .returnBundle(Bundle.class)
+                        .execute();
 
         when(whenSearch).thenReturn(bundle);
-        Bundle result = practitionerDetailsEndpointHelper.getOrganizationAffiliationsByOrganizationIdsBundle(organizationIds);
+        Bundle result =
+                practitionerDetailsEndpointHelper
+                        .getOrganizationAffiliationsByOrganizationIdsBundle(organizationIds);
         Assert.assertNotNull(result);
         Assert.assertEquals(1, result.getEntry().size());
-        Assert.assertEquals("OrganizationAffiliation/1", result.getEntry().get(0).getResource().getId());
+        Assert.assertEquals(
+                "OrganizationAffiliation/1", result.getEntry().get(0).getResource().getId());
     }
 
     @Test
-    public void testGetLocationIdsByOrganizationAffiliationsWithEmptyAffiliationsReturnsEmptyResult() {
+    public void
+            testGetLocationIdsByOrganizationAffiliationsWithEmptyAffiliationsReturnsEmptyResult() {
         List<OrganizationAffiliation> affiliations = Collections.emptyList();
-        List<String> result = practitionerDetailsEndpointHelper.getLocationIdsByOrganizationAffiliations(affiliations);
+        List<String> result =
+                practitionerDetailsEndpointHelper.getLocationIdsByOrganizationAffiliations(
+                        affiliations);
         Assert.assertNotNull(result);
         Assert.assertTrue(result.isEmpty());
     }
 
     @Test
-    public void testGetLocationIdsByOrganizationAffiliationsWithValidAffiliationsReturnsLocationIds() {
+    public void
+            testGetLocationIdsByOrganizationAffiliationsWithValidAffiliationsReturnsLocationIds() {
         OrganizationAffiliation affiliation1 = new OrganizationAffiliation();
         affiliation1.addLocation(new Reference("Location/1"));
         OrganizationAffiliation affiliation2 = new OrganizationAffiliation();
         affiliation2.addLocation(new Reference("Location/2"));
         List<OrganizationAffiliation> affiliations = Arrays.asList(affiliation1, affiliation2);
-        List<String> result = practitionerDetailsEndpointHelper.getLocationIdsByOrganizationAffiliations(affiliations);
+        List<String> result =
+                practitionerDetailsEndpointHelper.getLocationIdsByOrganizationAffiliations(
+                        affiliations);
 
         Assert.assertNotNull(result);
         Assert.assertEquals(2, result.size());
@@ -525,7 +569,8 @@ public class PractitionerDetailsEndpointHelperTest {
     private CareTeam getCareTeam() {
         CareTeam careTeam = new CareTeam();
         careTeam.setId("CareTeam/1234");
-        CareTeam.CareTeamParticipantComponent participant = new CareTeam.CareTeamParticipantComponent();
+        CareTeam.CareTeamParticipantComponent participant =
+                new CareTeam.CareTeamParticipantComponent();
         participant.setMember(new Reference("Practitioner/1234"));
         careTeam.addParticipant(participant);
         return careTeam;
