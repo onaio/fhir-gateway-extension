@@ -486,7 +486,7 @@ public class PractitionerDetailsEndpointHelper {
     }
 
     public List<OrganizationAffiliation> getOrganizationAffiliationsByOrganizationIds(
-        Set<String> organizationIds) {
+            Set<String> organizationIds) {
         if (organizationIds == null || organizationIds.isEmpty()) {
             return new ArrayList<>();
         }
@@ -510,7 +510,7 @@ public class PractitionerDetailsEndpointHelper {
     }
 
     public List<String> getLocationIdsByOrganizationAffiliations(
-        List<OrganizationAffiliation> organizationAffiliations) {
+            List<OrganizationAffiliation> organizationAffiliations) {
 
         return organizationAffiliations.stream()
                 .map(
