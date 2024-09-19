@@ -12,12 +12,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
-import ca.uhn.fhir.rest.gclient.IQuery;
-import ca.uhn.fhir.rest.gclient.IUntypedQuery;
-import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
-import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CareTeam;
 import org.hl7.fhir.r4.model.Identifier;
@@ -304,14 +299,14 @@ public class PractitionerDetailsEndpointHelperTest {
     }
 
     @Test
-    public void testGetOrganizationsByIdWithEmptyOrganizationIds() {
+    public void testGetOrganizationsByIdWithEmptyOrganizationIdsReturnsEmptyBundle() {
         Set<String> organizationIds = Collections.emptySet();
         Bundle result = practitionerDetailsEndpointHelper.getOrganizationsById(organizationIds);
         Assert.assertSame(EMPTY_BUNDLE, result);
     }
 
     @Test
-    public void testGetOrganizationsByIdWithValidOrganizationIds() {
+    public void testGetOrganizationsByIdWithValidOrganizationIdsReturnsOrganizations() {
         Set<String> organizationIds = new HashSet<>(Arrays.asList("1", "2"));
 
         Organization org1 = new Organization();
@@ -338,6 +333,49 @@ public class PractitionerDetailsEndpointHelperTest {
         Assert.assertEquals("Organization/1", result.getEntry().get(0).getResource().getId());
         Assert.assertEquals("Organization/2", result.getEntry().get(1).getResource().getId());
     }
+
+    @Test
+    public void testGetLocationsByIdsWithNullLocationIdsReturnsEmptyResult() {
+        List<String> locationIds = null;
+        List<Location> result = practitionerDetailsEndpointHelper.getLocationsByIds(locationIds);
+        Assert.assertNotNull(result);
+        Assert.assertTrue(result.isEmpty());
+    }
+
+    @Test
+    public void testGetLocationsByIdsWithEmptyLocationIdsReturnsEmptyResult() {
+        List<String> locationIds = new ArrayList<>();
+        List<Location> result = practitionerDetailsEndpointHelper.getLocationsByIds(locationIds);
+        Assert.assertNotNull(result);
+        Assert.assertTrue(result.isEmpty());
+    }
+
+    @Test
+    public void testGetLocationsByIdsWithValidLocationIdsReturnsLocations() {
+        List<String> locationIds = Arrays.asList("1", "2");
+        Location location1 = new Location();
+        location1.setId("Location/1");
+        Location location2 = new Location();
+        location2.setId("Location/2");
+        Bundle bundle = new Bundle();
+        bundle.addEntry(new Bundle.BundleEntryComponent().setResource(location1));
+        bundle.addEntry(new Bundle.BundleEntryComponent().setResource(location2));
+
+        Object whenSearch = client.search()
+            .forResource(Location.class)
+            .where(any(ICriterion.class))
+            .usingStyle(SearchStyleEnum.POST)
+            .returnBundle(Bundle.class)
+            .execute();
+
+        when(whenSearch).thenReturn(bundle);
+        List<Location> result = practitionerDetailsEndpointHelper.getLocationsByIds(locationIds);
+        Assert.assertNotNull(result);
+        Assert.assertEquals(2, result.size());
+        Assert.assertEquals("Location/1", result.get(0).getId());
+        Assert.assertEquals("Location/2", result.get(1).getId());
+    }
+
 
 
     private Bundle getPractitionerBundle() {
