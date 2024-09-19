@@ -377,7 +377,7 @@ public class PractitionerDetailsEndpointHelperTest {
     }
 
     @Test
-    public void testGetOrganizationAffiliationsByOrganizationIdsWithNullOrganizationIds() {
+    public void testGetOrganizationAffiliationsByOrganizationIdsWithNullOrganizationIdsReturnsEmptyResult() {
         Set<String> organizationIds = null;
         List<OrganizationAffiliation> result = practitionerDetailsEndpointHelper.getOrganizationAffiliationsByOrganizationIds(organizationIds);
         Assert.assertNotNull(result);
@@ -385,7 +385,7 @@ public class PractitionerDetailsEndpointHelperTest {
     }
 
     @Test
-    public void testGetOrganizationAffiliationsByOrganizationIdsWithEmptyOrganizationIds() {
+    public void testGetOrganizationAffiliationsByOrganizationIdsWithEmptyOrganizationIdsReturnsEmptyResult() {
         Set<String> organizationIds = Collections.emptySet();
         List<OrganizationAffiliation> result = practitionerDetailsEndpointHelper.getOrganizationAffiliationsByOrganizationIds(organizationIds);
         Assert.assertNotNull(result);
@@ -393,7 +393,7 @@ public class PractitionerDetailsEndpointHelperTest {
     }
 
     @Test
-    public void testGetOrganizationAffiliationsByOrganizationIdsWithValidOrganizationIds() {
+    public void testGetOrganizationAffiliationsByOrganizationIdsWithValidOrganizationIdsReturnsOrganizationAffiliations() {
         Set<String> organizationIds = new HashSet<>(Arrays.asList("1", "2"));
         OrganizationAffiliation affiliation1 = new OrganizationAffiliation();
         affiliation1.setId("OrganizationAffiliation/1");
@@ -420,14 +420,14 @@ public class PractitionerDetailsEndpointHelperTest {
     }
 
     @Test
-    public void testGetOrganizationAffiliationsByOrganizationIdsBundleWithEmptyOrganizationIds() {
+    public void testGetOrganizationAffiliationsByOrganizationIdsBundleWithEmptyOrganizationIdsReturnsEmptyBundle() {
         Set<String> organizationIds = Collections.emptySet();
         Bundle result = practitionerDetailsEndpointHelper.getOrganizationAffiliationsByOrganizationIdsBundle(organizationIds);
         Assert.assertSame(EMPTY_BUNDLE, result);
     }
 
     @Test
-    public void testGetOrganizationAffiliationsByOrganizationIdsBundleWithValidOrganizationIds() {
+    public void testGetOrganizationAffiliationsByOrganizationIdsBundleWithValidOrganizationIdsReturnsOrganizationAffiliations() {
         Set<String> organizationIds = new HashSet<>(Arrays.asList("1", "2"));
         OrganizationAffiliation affiliation1 = new OrganizationAffiliation();
         affiliation1.setId("OrganizationAffiliation/1");
@@ -448,6 +448,28 @@ public class PractitionerDetailsEndpointHelperTest {
         Assert.assertEquals("OrganizationAffiliation/1", result.getEntry().get(0).getResource().getId());
     }
 
+    @Test
+    public void testGetLocationIdsByOrganizationAffiliationsWithEmptyAffiliationsReturnsEmptyResult() {
+        List<OrganizationAffiliation> affiliations = Collections.emptyList();
+        List<String> result = practitionerDetailsEndpointHelper.getLocationIdsByOrganizationAffiliations(affiliations);
+        Assert.assertNotNull(result);
+        Assert.assertTrue(result.isEmpty());
+    }
+
+    @Test
+    public void testGetLocationIdsByOrganizationAffiliationsWithValidAffiliationsReturnsLocationIds() {
+        OrganizationAffiliation affiliation1 = new OrganizationAffiliation();
+        affiliation1.addLocation(new Reference("Location/1"));
+        OrganizationAffiliation affiliation2 = new OrganizationAffiliation();
+        affiliation2.addLocation(new Reference("Location/2"));
+        List<OrganizationAffiliation> affiliations = Arrays.asList(affiliation1, affiliation2);
+        List<String> result = practitionerDetailsEndpointHelper.getLocationIdsByOrganizationAffiliations(affiliations);
+
+        Assert.assertNotNull(result);
+        Assert.assertEquals(2, result.size());
+        Assert.assertEquals("1", result.get(0));
+        Assert.assertEquals("2", result.get(1));
+    }
 
     private Bundle getPractitionerBundle() {
         Bundle bundlePractitioner = new Bundle();
