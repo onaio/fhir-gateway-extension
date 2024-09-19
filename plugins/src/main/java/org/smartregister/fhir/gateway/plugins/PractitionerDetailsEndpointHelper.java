@@ -464,7 +464,7 @@ public class PractitionerDetailsEndpointHelper {
                         .execute();
     }
 
-    private @Nullable List<Location> getLocationsByIds(List<String> locationIds) {
+    public @Nullable List<Location> getLocationsByIds(List<String> locationIds) {
         if (locationIds == null || locationIds.isEmpty()) {
             return new ArrayList<>();
         }
