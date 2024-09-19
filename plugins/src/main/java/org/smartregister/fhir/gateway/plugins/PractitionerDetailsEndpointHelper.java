@@ -495,7 +495,7 @@ public class PractitionerDetailsEndpointHelper {
         return mapBundleToOrganizationAffiliation(organizationAffiliationsBundle);
     }
 
-    private Bundle getOrganizationAffiliationsByOrganizationIdsBundle(Set<String> organizationIds) {
+    public Bundle getOrganizationAffiliationsByOrganizationIdsBundle(Set<String> organizationIds) {
         return organizationIds.isEmpty()
                 ? EMPTY_BUNDLE
                 : getFhirClientForR4()
