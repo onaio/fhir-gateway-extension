@@ -30,7 +30,7 @@ public final class ResourceFinderImp implements ResourceFinder {
         this.fhirContext = fhirContext;
     }
 
-    private IBaseResource createResourceFromRequest(RequestDetailsReader request) {
+    public IBaseResource createResourceFromRequest(RequestDetailsReader request) {
         byte[] requestContentBytes = request.loadRequestContents();
         Charset charset = request.getCharset();
         if (charset == null) {
