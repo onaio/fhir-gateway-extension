@@ -5,6 +5,7 @@ import java.util.Base64;
 
 import org.hl7.fhir.r4.model.Base64BinaryType;
 import org.hl7.fhir.r4.model.Binary;
+import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Reference;
@@ -15,6 +16,19 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 public class UtilsTest {
+
+    @Test
+    public void testCreateEmptyBundle() {
+        String requestURL = "http://example.com/fhir/Bundle";
+        Bundle result = Utils.createEmptyBundle(requestURL);
+        Assert.assertNotNull(result);
+        Assert.assertNotNull(result.getId());
+        Assert.assertEquals(0, result.getTotal());
+        Assert.assertEquals(Bundle.BundleType.SEARCHSET, result.getType());
+        Assert.assertEquals(1, result.getLink().size());
+        Assert.assertEquals(Bundle.LINK_SELF, result.getLink().get(0).getRelation());
+        Assert.assertEquals(requestURL, result.getLink().get(0).getUrl());
+    }
 
     @Test
     public void testGetBinaryResourceReferenceWithNullComposition() {
@@ -141,7 +155,6 @@ public class UtilsTest {
         binary.setDataElement(new Base64BinaryType(encodedJson));
 
         String result = Utils.findSyncStrategy(binary);
-
         Assert.assertEquals("PUSH", result);
     }
 }
