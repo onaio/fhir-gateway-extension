@@ -10,12 +10,28 @@ import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Reference;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
+import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.rest.client.api.IGenericClient;
+
 public class UtilsTest {
+
+    private FhirContext fhirContextMock;
+
+    @Before
+    public void setUp() {
+        fhirContextMock = Mockito.mock(FhirContext.class);
+        IGenericClient clientMock = Mockito.mock(IGenericClient.class);
+
+        Mockito.when(fhirContextMock.newRestfulGenericClient(Mockito.anyString()))
+                .thenReturn(clientMock);
+    }
 
     @Test
     public void testCreateEmptyBundle() {
@@ -156,5 +172,11 @@ public class UtilsTest {
 
         String result = Utils.findSyncStrategy(binary);
         Assert.assertEquals("PUSH", result);
+    }
+
+    @Test
+    public void testReadApplicationConfigBinaryResourceWithEmptyResourceId() {
+        Binary result = Utils.readApplicationConfigBinaryResource("", fhirContextMock);
+        Assert.assertNull(result);
     }
 }
