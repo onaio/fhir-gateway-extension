@@ -32,6 +32,8 @@ import org.smartregister.model.practitioner.FhirPractitionerDetails;
 import org.smartregister.model.practitioner.PractitionerDetails;
 import org.springframework.lang.Nullable;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import ca.uhn.fhir.rest.api.SearchStyleEnum;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
@@ -88,7 +90,8 @@ public class PractitionerDetailsEndpointHelper {
         return bundle;
     }
 
-    public Bundle getAttributedPractitionerDetailsByPractitioner(Practitioner practitioner) {
+    @VisibleForTesting
+    protected Bundle getAttributedPractitionerDetailsByPractitioner(Practitioner practitioner) {
         Bundle responseBundle = new Bundle();
         List<Practitioner> attributedPractitioners = new ArrayList<>();
         PractitionerDetails practitionerDetails =
@@ -189,7 +192,8 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toSet());
     }
 
-    public List<String> getOrganizationIdsByLocationIds(Set<String> attributedLocationsList) {
+    @VisibleForTesting
+    protected List<String> getOrganizationIdsByLocationIds(Set<String> attributedLocationsList) {
         if (attributedLocationsList == null || attributedLocationsList.isEmpty()) {
             return new ArrayList<>();
         }
@@ -376,7 +380,8 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toSet());
     }
 
-    public Practitioner getPractitionerByIdentifier(String identifier) {
+    @VisibleForTesting
+    protected Practitioner getPractitionerByIdentifier(String identifier) {
         Bundle resultBundle =
                 getFhirClientForR4()
                         .search()
@@ -391,7 +396,8 @@ public class PractitionerDetailsEndpointHelper {
                 : null;
     }
 
-    public List<CareTeam> getCareTeamsByOrganizationIds(List<String> organizationIds) {
+    @VisibleForTesting
+    protected List<CareTeam> getCareTeamsByOrganizationIds(List<String> organizationIds) {
         if (organizationIds.isEmpty()) return new ArrayList<>();
 
         Bundle bundle =
@@ -450,7 +456,8 @@ public class PractitionerDetailsEndpointHelper {
                 reference.lastIndexOf(org.smartregister.utils.Constants.FORWARD_SLASH) + 1);
     }
 
-    public Bundle getOrganizationsById(Set<String> organizationIds) {
+    @VisibleForTesting
+    protected Bundle getOrganizationsById(Set<String> organizationIds) {
         return organizationIds.isEmpty()
                 ? EMPTY_BUNDLE
                 : getFhirClientForR4()
@@ -464,7 +471,8 @@ public class PractitionerDetailsEndpointHelper {
                         .execute();
     }
 
-    public @Nullable List<Location> getLocationsByIds(List<String> locationIds) {
+    @VisibleForTesting
+    protected @Nullable List<Location> getLocationsByIds(List<String> locationIds) {
         if (locationIds == null || locationIds.isEmpty()) {
             return new ArrayList<>();
         }
@@ -485,7 +493,8 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toList());
     }
 
-    public List<OrganizationAffiliation> getOrganizationAffiliationsByOrganizationIds(
+    @VisibleForTesting
+    protected List<OrganizationAffiliation> getOrganizationAffiliationsByOrganizationIds(
             Set<String> organizationIds) {
         if (organizationIds == null || organizationIds.isEmpty()) {
             return new ArrayList<>();
@@ -495,7 +504,9 @@ public class PractitionerDetailsEndpointHelper {
         return mapBundleToOrganizationAffiliation(organizationAffiliationsBundle);
     }
 
-    public Bundle getOrganizationAffiliationsByOrganizationIdsBundle(Set<String> organizationIds) {
+    @VisibleForTesting
+    protected Bundle getOrganizationAffiliationsByOrganizationIdsBundle(
+            Set<String> organizationIds) {
         return organizationIds.isEmpty()
                 ? EMPTY_BUNDLE
                 : getFhirClientForR4()
@@ -509,7 +520,8 @@ public class PractitionerDetailsEndpointHelper {
                         .execute();
     }
 
-    public List<String> getLocationIdsByOrganizationAffiliations(
+    @VisibleForTesting
+    protected List<String> getLocationIdsByOrganizationAffiliations(
             List<OrganizationAffiliation> organizationAffiliations) {
 
         return organizationAffiliations.stream()
@@ -523,7 +535,8 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toList());
     }
 
-    public Set<String> getManagingOrganizationsOfCareTeamIds(List<CareTeam> careTeamsList) {
+    @VisibleForTesting
+    protected Set<String> getManagingOrganizationsOfCareTeamIds(List<CareTeam> careTeamsList) {
         return careTeamsList.stream()
                 .filter(CareTeam::hasManagingOrganization)
                 .flatMap(it -> it.getManagingOrganization().stream())
