@@ -204,6 +204,7 @@ public class LocationHierarchyEndpointHelperTest {
         Assert.assertTrue(resultBundle.hasLink());
         Assert.assertTrue(resultBundle.hasTotal());
         Assert.assertEquals(16, resultBundle.getEntry().size());
+        mockJwtUtils.close();
     }
 
     @Test

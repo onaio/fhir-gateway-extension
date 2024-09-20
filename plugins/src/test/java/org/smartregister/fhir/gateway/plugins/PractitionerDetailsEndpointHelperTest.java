@@ -234,6 +234,7 @@ public class PractitionerDetailsEndpointHelperTest {
         Assert.assertNotNull(resultBundle);
         Assert.assertEquals(1, resultBundle.getTotal());
         Assert.assertEquals(1, resultBundle.getEntry().size());
+        mockStaticPractitionerDetailsEndpointHelper.close();
     }
 
     @Test
