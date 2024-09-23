@@ -23,7 +23,7 @@ jobs:
           java-version: 11
 
       - name: Run Unit tests and generate report
-        run: mvn -B clean test jacoco:report --file pom.xml
+        run: mvn -B clean test jacoco:report --file pom.xml --file README.md --file LICENSE
       
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
