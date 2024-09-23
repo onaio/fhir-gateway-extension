@@ -95,7 +95,7 @@ public class LocationHierarchyEndpointHelperTest {
 
         LocationHierarchyEndpointHelper mockLocationHierarchyEndpointHelper =
                 mock(LocationHierarchyEndpointHelper.class);
-        List<Location> locations = createLocationList(5, false);
+        List<Location> locations = createTestLocationList(5, false);
         List<String> adminLevels = new ArrayList<>();
 
         List<String> locationIds = Collections.singletonList("12345");
@@ -162,7 +162,7 @@ public class LocationHierarchyEndpointHelperTest {
         MockedStatic<JwtUtils> mockJwtUtils = Mockito.mockStatic(JwtUtils.class);
         List<String> adminLevels = new ArrayList<>();
 
-        List<Location> locations = createLocationList(4, false);
+        List<Location> locations = createTestLocationList(4, false);
         List<String> locationIds = List.of("1", "2", "3", "4");
         List<String> userRoles = Collections.singletonList(Constants.ROLE_ALL_LOCATIONS);
 
@@ -204,6 +204,7 @@ public class LocationHierarchyEndpointHelperTest {
         Assert.assertTrue(resultBundle.hasLink());
         Assert.assertTrue(resultBundle.hasTotal());
         Assert.assertEquals(16, resultBundle.getEntry().size());
+        mockJwtUtils.close();
     }
 
     @Test
@@ -295,7 +296,7 @@ public class LocationHierarchyEndpointHelperTest {
 
     @Test
     public void testFilterLocationsByAdminLevelsBasic() {
-        List<Location> locations = createLocationList(5, true);
+        List<Location> locations = createTestLocationList(5, true);
         List<String> adminLevels = List.of("1", "3");
 
         List<Location> filteredLocations =
@@ -309,7 +310,7 @@ public class LocationHierarchyEndpointHelperTest {
 
     @Test
     public void testFilterLocationsByAdminLevelsWithNullAdminLevelsDoesNotFilter() {
-        List<Location> locations = createLocationList(5, true);
+        List<Location> locations = createTestLocationList(5, true);
 
         List<Location> filteredLocations =
                 locationHierarchyEndpointHelper.filterLocationsByAdminLevels(locations, null);
@@ -342,7 +343,7 @@ public class LocationHierarchyEndpointHelperTest {
         Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
         Mockito.doReturn(bundleWithInventory).when(queryMock).execute();
 
-        List<Location> locations = createLocationList(5, true);
+        List<Location> locations = createTestLocationList(5, true);
         List<Location> filteredLocations =
                 locationHierarchyEndpointHelper.filterLocationsByInventory(locations);
 
@@ -364,7 +365,7 @@ public class LocationHierarchyEndpointHelperTest {
         Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
         Mockito.doReturn(bundleWithInventory).when(queryMock).execute();
 
-        List<Location> locations = createLocationList(5, true);
+        List<Location> locations = createTestLocationList(5, true);
         List<Location> filteredLocations =
                 locationHierarchyEndpointHelper.filterLocationsByInventory(locations);
 
@@ -388,7 +389,7 @@ public class LocationHierarchyEndpointHelperTest {
         return bundleLocation;
     }
 
-    private List<Location> createLocationList(int numLocations, boolean setAdminLevel) {
+    public static List<Location> createTestLocationList(int numLocations, boolean setAdminLevel) {
         List<Location> locations = new ArrayList<>();
         for (int i = 0; i < numLocations; i++) {
             Location location = new Location();

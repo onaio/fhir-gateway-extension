@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartregister.fhir.gateway.plugins.interfaces.ResourceFinder;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.fhir.gateway.ExceptionUtil;
 import com.google.fhir.gateway.interfaces.RequestDetailsReader;
 
@@ -30,7 +31,8 @@ public final class ResourceFinderImp implements ResourceFinder {
         this.fhirContext = fhirContext;
     }
 
-    private IBaseResource createResourceFromRequest(RequestDetailsReader request) {
+    @VisibleForTesting
+    protected IBaseResource createResourceFromRequest(RequestDetailsReader request) {
         byte[] requestContentBytes = request.loadRequestContents();
         Charset charset = request.getCharset();
         if (charset == null) {
