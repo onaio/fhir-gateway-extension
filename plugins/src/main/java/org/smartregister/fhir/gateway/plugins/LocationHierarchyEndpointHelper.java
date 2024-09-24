@@ -443,7 +443,7 @@ public class LocationHierarchyEndpointHelper {
 
     public List<Location> filterLocationsByAdminLevels(
             List<Location> locations, List<String> postFetchAdminLevels) {
-        if (postFetchAdminLevels == null) {
+        if (postFetchAdminLevels == null || postFetchAdminLevels.isEmpty()) {
             return locations;
         }
         List<Location> allLocations = new ArrayList<>();
