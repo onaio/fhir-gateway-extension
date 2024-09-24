@@ -259,15 +259,9 @@ public class LocationHierarchyEndpointHelper {
                 return getPaginatedLocations(request, selectedSyncLocations);
 
             } else {
-                List<Location> locations =
-                        practitionerDetailsEndpointHelper
-                                .getPractitionerDetailsByKeycloakId(practitionerId)
-                                .getFhirPractitionerDetails()
-                                .getLocations();
-                List<String> locationIds = new ArrayList<>();
-                for (Location location : locations) {
-                    locationIds.add(location.getIdElement().getIdPart());
-                }
+                List<String> locationIds =
+                        practitionerDetailsEndpointHelper.getPractitionerLocationIdsByByKeycloakId(
+                                practitionerId);
                 return getPaginatedLocations(request, locationIds);
             }
 
@@ -287,11 +281,15 @@ public class LocationHierarchyEndpointHelper {
                                 .collect(Collectors.toList());
                 return Utils.createBundle(resourceList);
             } else {
+                List<String> locationIds =
+                        practitionerDetailsEndpointHelper.getPractitionerLocationIdsByByKeycloakId(
+                                practitionerId);
                 List<LocationHierarchy> locationHierarchies =
-                        practitionerDetailsEndpointHelper
-                                .getPractitionerDetailsByKeycloakId(practitionerId)
-                                .getFhirPractitionerDetails()
-                                .getLocationHierarchyList();
+                        getLocationHierarchies(
+                                locationIds,
+                                preFetchAdminLevels,
+                                postFetchAdminLevels,
+                                filterInventory);
                 List<Resource> resourceList =
                         locationHierarchies.stream()
                                 .map(locationHierarchy -> (Resource) locationHierarchy)
