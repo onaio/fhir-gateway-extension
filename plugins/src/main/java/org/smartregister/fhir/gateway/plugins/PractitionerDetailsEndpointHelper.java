@@ -251,6 +251,69 @@ public class PractitionerDetailsEndpointHelper {
         return practitionerDetails;
     }
 
+    public List<String> getPractitionerLocationIdsByByKeycloakId(String keycloakUUID) {
+        logger.info("Searching for Practitioner with user id: " + keycloakUUID);
+        Practitioner practitioner = getPractitionerByIdentifier(keycloakUUID);
+        List<String> locationIds = new ArrayList<>();
+
+        if (practitioner != null) {
+            String practitionerId = getPractitionerIdentifier(practitioner);
+            if (CacheHelper.INSTANCE.skipCache()) {
+                locationIds = getPractitionerLocationIdsByByKeycloakIdCore(practitionerId);
+            } else {
+                locationIds =
+                        CacheHelper.INSTANCE.listStringCache.get(
+                                keycloakUUID,
+                                key ->
+                                        getPractitionerLocationIdsByByKeycloakIdCore(
+                                                practitionerId));
+            }
+
+        } else {
+            logger.error("Practitioner with KC identifier : " + keycloakUUID + " not found");
+        }
+        return locationIds;
+    }
+
+    public List<String> getPractitionerLocationIdsByByKeycloakIdCore(String practitionerId) {
+
+        logger.info("Searching for CareTeams with Practitioner Id: " + practitionerId);
+        Bundle careTeams = getCareTeams(practitionerId);
+        List<CareTeam> careTeamsList = mapBundleToCareTeams(careTeams);
+
+        logger.info(
+                "Searching for Organizations tied to CareTeams list of size : "
+                        + careTeamsList.size());
+        Set<String> careTeamManagingOrganizationIds =
+                getManagingOrganizationsOfCareTeamIds(careTeamsList);
+
+        List<PractitionerRole> practitionerRoleList =
+                getPractitionerRolesByPractitionerId(practitionerId);
+        logger.info("Practitioner Roles fetched: " + practitionerRoleList.size());
+
+        Set<String> practitionerOrganizationIds =
+                getOrganizationIdsByPractitionerRoles(practitionerRoleList);
+
+        Set<String> organizationIds =
+                Stream.concat(
+                                careTeamManagingOrganizationIds.stream(),
+                                practitionerOrganizationIds.stream())
+                        .collect(Collectors.toSet());
+
+        logger.info("Searching for locations by organizations: " + organizationIds.size());
+
+        Bundle organizationAffiliationsBundle =
+                getOrganizationAffiliationsByOrganizationIdsBundle(organizationIds);
+
+        List<OrganizationAffiliation> organizationAffiliations =
+                mapBundleToOrganizationAffiliation(organizationAffiliationsBundle);
+
+        List<String> locationIds =
+                getLocationIdsByOrganizationAffiliations(organizationAffiliations);
+
+        return locationIds;
+    }
+
     public PractitionerDetails getPractitionerDetailsByPractitionerCore(
             String practitionerId, Practitioner practitioner) {
 
