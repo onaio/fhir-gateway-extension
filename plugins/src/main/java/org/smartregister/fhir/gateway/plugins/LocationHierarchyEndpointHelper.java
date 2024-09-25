@@ -20,8 +20,6 @@ import javax.servlet.http.HttpServletRequest;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Binary;
 import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.CodeableConcept;
-import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.ListResource;
 import org.hl7.fhir.r4.model.Location;
@@ -455,23 +453,25 @@ public class LocationHierarchyEndpointHelper {
 
     public List<Location> filterLocationsByAdminLevels(
             List<Location> locations, List<String> postFetchAdminLevels) {
+
         if (postFetchAdminLevels == null || postFetchAdminLevels.isEmpty()) {
             return locations;
         }
-        List<Location> allLocations = new ArrayList<>();
-        for (Location location : locations) {
-            for (CodeableConcept codeableConcept : location.getType()) {
-                List<Coding> codings = codeableConcept.getCoding();
-                for (Coding coding : codings) {
-                    if (coding.getSystem().equals(Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL)) {
-                        if (postFetchAdminLevels.contains(coding.getCode())) {
-                            allLocations.add(location);
-                        }
-                    }
-                }
-            }
-        }
-        return allLocations;
+
+        return locations.stream()
+                .filter(
+                        location ->
+                                location.getType().stream()
+                                        .flatMap(
+                                                codeableConcept ->
+                                                        codeableConcept.getCoding().stream())
+                                        .anyMatch(
+                                                coding ->
+                                                        Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL
+                                                                        .equals(coding.getSystem())
+                                                                && postFetchAdminLevels.contains(
+                                                                        coding.getCode())))
+                .collect(Collectors.toList());
     }
 
     public List<Location> filterLocationsByInventory(List<Location> locations) {
