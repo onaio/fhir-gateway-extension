@@ -275,7 +275,8 @@ public class PractitionerDetailsEndpointHelper {
         return locationIds;
     }
 
-    public List<String> getPractitionerLocationIdsByByKeycloakIdCore(String practitionerId) {
+    @VisibleForTesting
+    protected List<String> getPractitionerLocationIdsByByKeycloakIdCore(String practitionerId) {
 
         logger.info("Searching for CareTeams with Practitioner Id: " + practitionerId);
         Bundle careTeams = getCareTeams(practitionerId);
@@ -430,12 +431,14 @@ public class PractitionerDetailsEndpointHelper {
         return t -> seen.add(uniqueKeyExtractor.apply(t));
     }
 
-    private List<PractitionerRole> getPractitionerRolesByPractitionerId(String practitionerId) {
+    @VisibleForTesting
+    protected List<PractitionerRole> getPractitionerRolesByPractitionerId(String practitionerId) {
         Bundle practitionerRoles = getPractitionerRoles(practitionerId);
         return mapBundleToPractitionerRolesWithOrganization(practitionerRoles);
     }
 
-    private Set<String> getOrganizationIdsByPractitionerRoles(
+    @VisibleForTesting
+    protected Set<String> getOrganizationIdsByPractitionerRoles(
             List<PractitionerRole> practitionerRoles) {
         return practitionerRoles.stream()
                 .filter(PractitionerRole::hasOrganization)
@@ -490,7 +493,8 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toList());
     }
 
-    private Bundle getCareTeams(String practitionerId) {
+    @VisibleForTesting
+    protected Bundle getCareTeams(String practitionerId) {
         return getFhirClientForR4()
                 .search()
                 .forResource(CareTeam.class)
@@ -607,7 +611,8 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toSet());
     }
 
-    private List<CareTeam> mapBundleToCareTeams(Bundle careTeams) {
+    @VisibleForTesting
+    protected List<CareTeam> mapBundleToCareTeams(Bundle careTeams) {
         return careTeams != null
                 ? careTeams.getEntry().stream()
                         .map(bundleEntryComponent -> (CareTeam) bundleEntryComponent.getResource())
@@ -632,7 +637,8 @@ public class PractitionerDetailsEndpointHelper {
                 : Collections.emptyList();
     }
 
-    private List<OrganizationAffiliation> mapBundleToOrganizationAffiliation(
+    @VisibleForTesting
+    protected List<OrganizationAffiliation> mapBundleToOrganizationAffiliation(
             Bundle organizationAffiliationBundle) {
         return organizationAffiliationBundle != null
                 ? organizationAffiliationBundle.getEntry().stream()
