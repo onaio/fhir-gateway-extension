@@ -6,8 +6,12 @@ import static org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
@@ -86,7 +90,9 @@ public class LocationHierarchyEndpointHelper {
             List<String> preFetchAdminLevels,
             List<String> postFetchAdminLevels,
             Boolean filterInventory) {
-        return locationIds.parallelStream()
+        Set<String> uniqueLocationIds = new HashSet<>(locationIds);
+
+        return uniqueLocationIds.parallelStream()
                 .map(
                         locationId ->
                                 getLocationHierarchy(
@@ -109,7 +115,7 @@ public class LocationHierarchyEndpointHelper {
         if (location != null) {
             logger.info("Building Location Hierarchy of Location Id : {}", locationId);
 
-            List<Location> descendants = getDescendants(locationId, location, preFetchAdminLevels);
+            List<Location> descendants = getDescendants(locationId, preFetchAdminLevels, location);
             if (filterInventory) {
                 descendants = filterLocationsByInventory(descendants);
             }
@@ -136,12 +142,12 @@ public class LocationHierarchyEndpointHelper {
         List<Location> descendants;
 
         if (CacheHelper.INSTANCE.skipCache()) {
-            descendants = getDescendants(locationId, parentLocation, preFetchAdminLevels);
+            descendants = getDescendants(locationId, preFetchAdminLevels, parentLocation);
         } else {
             descendants =
                     CacheHelper.INSTANCE.locationListCache.get(
                             locationId,
-                            key -> getDescendants(locationId, parentLocation, preFetchAdminLevels));
+                            key -> getDescendants(locationId, preFetchAdminLevels, parentLocation));
         }
         if (filterInventory) {
             descendants = filterLocationsByInventory(descendants);
@@ -150,7 +156,7 @@ public class LocationHierarchyEndpointHelper {
     }
 
     public List<Location> getDescendants(
-            String locationId, Location parentLocation, List<String> adminLevels) {
+            String locationId, List<String> adminLevels, Location parentLocation) {
         IQuery<IBaseBundle> query =
                 getFhirClientForR4()
                         .search()
@@ -172,28 +178,35 @@ public class LocationHierarchyEndpointHelper {
                                             adminLevelArray));
         }
 
-        Bundle childLocationBundle =
-                query.usingStyle(SearchStyleEnum.POST).returnBundle(Bundle.class).execute();
+        Queue<String> locationQueue = new LinkedList<>();
+        locationQueue.add(locationId);
 
         List<Location> allLocations = Collections.synchronizedList(new ArrayList<>());
         if (parentLocation != null) {
             allLocations.add(parentLocation);
         }
 
-        if (childLocationBundle != null) {
+        while (!locationQueue.isEmpty()) {
+            String currentLocationId = locationQueue.poll();
+            Bundle childLocationBundle =
+                    query.where(
+                                    new ReferenceClientParam(Location.SP_PARTOF)
+                                            .hasAnyOfIds(currentLocationId))
+                            .usingStyle(SearchStyleEnum.POST)
+                            .returnBundle(Bundle.class)
+                            .execute();
 
-            childLocationBundle.getEntry().parallelStream()
-                    .forEach(
-                            childLocation -> {
-                                Location childLocationEntity =
-                                        (Location) childLocation.getResource();
-                                allLocations.add(childLocationEntity);
-                                allLocations.addAll(
-                                        getDescendants(
-                                                childLocationEntity.getIdElement().getIdPart(),
-                                                null,
-                                                adminLevels));
-                            });
+            if (childLocationBundle != null) {
+                childLocationBundle.getEntry().parallelStream()
+                        .forEach(
+                                childLocation -> {
+                                    Location childLocationEntity =
+                                            (Location) childLocation.getResource();
+                                    allLocations.add(childLocationEntity);
+                                    locationQueue.add(
+                                            childLocationEntity.getIdElement().getIdPart());
+                                });
+            }
         }
 
         return allLocations;
@@ -356,6 +369,7 @@ public class LocationHierarchyEndpointHelper {
         List<String> postFetchAdminLevels =
                 generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         Map<String, String[]> parameters = new HashMap<>(request.getParameterMap());
+        Set<String> uniqueLocationIds = new HashSet<>(locationIds);
 
         int count =
                 pageSize != null
@@ -368,18 +382,18 @@ public class LocationHierarchyEndpointHelper {
 
         int start = Math.max(0, (page - 1)) * count;
 
-        List<Resource> resourceLocations = new ArrayList<>();
-        for (String identifier : locationIds) {
-            Location parentLocation = getLocationById(identifier);
-            List<Location> locations =
-                    getLocationHierarchyLocations(
-                            identifier,
-                            parentLocation,
-                            preFetchAdminLevels,
-                            postFetchAdminLevels,
-                            filterInventory);
-            resourceLocations.addAll(locations);
-        }
+        List<Resource> resourceLocations =
+                uniqueLocationIds.parallelStream()
+                        .flatMap(
+                                identifier ->
+                                        getLocationHierarchyLocations(
+                                                identifier,
+                                                getLocationById(identifier),
+                                                preFetchAdminLevels,
+                                                postFetchAdminLevels,
+                                                filterInventory)
+                                                .stream())
+                        .collect(Collectors.toList());
         int totalEntries = resourceLocations.size();
 
         int end = Math.min(start + count, resourceLocations.size());

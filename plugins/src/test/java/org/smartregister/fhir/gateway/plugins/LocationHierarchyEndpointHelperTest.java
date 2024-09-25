@@ -279,12 +279,11 @@ public class LocationHierarchyEndpointHelperTest {
         Mockito.doReturn(queryMock).when(queryMock).and(any(ICriterion.class));
         Mockito.doReturn(queryMock).when(queryMock).usingStyle(SearchStyleEnum.POST);
         Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
-
         Mockito.doReturn(firstBundleMock, secondBundleMock).when(queryMock).execute();
 
         List<Location> descendants =
                 locationHierarchyEndpointHelper.getDescendants(
-                        locationId, parentLocation, adminLevels);
+                        locationId, adminLevels, parentLocation);
 
         Assert.assertNotNull(descendants);
         Assert.assertEquals(2, descendants.size());
