@@ -113,7 +113,7 @@ public class LocationHierarchyEndpointHelper {
         if (location != null) {
             logger.info("Building Location Hierarchy of Location Id : {}", locationId);
 
-            List<Location> descendants = getDescendants(locationId, preFetchAdminLevels, location);
+            List<Location> descendants = getDescendants(locationId, location, preFetchAdminLevels);
             if (filterInventory) {
                 descendants = filterLocationsByInventory(descendants);
             }
@@ -140,12 +140,12 @@ public class LocationHierarchyEndpointHelper {
         List<Location> descendants;
 
         if (CacheHelper.INSTANCE.skipCache()) {
-            descendants = getDescendants(locationId, preFetchAdminLevels, parentLocation);
+            descendants = getDescendants(locationId, parentLocation, preFetchAdminLevels);
         } else {
             descendants =
                     CacheHelper.INSTANCE.locationListCache.get(
                             locationId,
-                            key -> getDescendants(locationId, preFetchAdminLevels, parentLocation));
+                            key -> getDescendants(locationId, parentLocation, preFetchAdminLevels));
         }
         if (filterInventory) {
             descendants = filterLocationsByInventory(descendants);
@@ -154,7 +154,7 @@ public class LocationHierarchyEndpointHelper {
     }
 
     public List<Location> getDescendants(
-            String locationId, List<String> adminLevels, Location parentLocation) {
+            String locationId, Location parentLocation, List<String> adminLevels) {
         IQuery<IBaseBundle> query =
                 getFhirClientForR4()
                         .search()
