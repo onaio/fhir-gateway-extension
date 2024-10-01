@@ -283,7 +283,7 @@ public class LocationHierarchyEndpointHelperTest {
 
         List<Location> descendants =
                 locationHierarchyEndpointHelper.getDescendants(
-                        locationId, adminLevels, parentLocation);
+                        locationId, parentLocation, adminLevels);
 
         Assert.assertNotNull(descendants);
         Assert.assertEquals(2, descendants.size());
