@@ -7,10 +7,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -176,35 +174,28 @@ public class LocationHierarchyEndpointHelper {
                                             adminLevelArray));
         }
 
-        Queue<String> locationQueue = new LinkedList<>();
-        locationQueue.add(locationId);
+        Bundle childLocationBundle =
+                query.usingStyle(SearchStyleEnum.POST).returnBundle(Bundle.class).execute();
 
         List<Location> allLocations = Collections.synchronizedList(new ArrayList<>());
         if (parentLocation != null) {
             allLocations.add(parentLocation);
         }
 
-        while (!locationQueue.isEmpty()) {
-            String currentLocationId = locationQueue.poll();
-            Bundle childLocationBundle =
-                    query.where(
-                                    new ReferenceClientParam(Location.SP_PARTOF)
-                                            .hasAnyOfIds(currentLocationId))
-                            .usingStyle(SearchStyleEnum.POST)
-                            .returnBundle(Bundle.class)
-                            .execute();
+        if (childLocationBundle != null) {
 
-            if (childLocationBundle != null) {
-                childLocationBundle.getEntry().parallelStream()
-                        .forEach(
-                                childLocation -> {
-                                    Location childLocationEntity =
-                                            (Location) childLocation.getResource();
-                                    allLocations.add(childLocationEntity);
-                                    locationQueue.add(
-                                            childLocationEntity.getIdElement().getIdPart());
-                                });
-            }
+            childLocationBundle.getEntry().parallelStream()
+                    .forEach(
+                            childLocation -> {
+                                Location childLocationEntity =
+                                        (Location) childLocation.getResource();
+                                allLocations.add(childLocationEntity);
+                                allLocations.addAll(
+                                        getDescendants(
+                                                childLocationEntity.getIdElement().getIdPart(),
+                                                null,
+                                                adminLevels));
+                            });
         }
 
         return allLocations;
