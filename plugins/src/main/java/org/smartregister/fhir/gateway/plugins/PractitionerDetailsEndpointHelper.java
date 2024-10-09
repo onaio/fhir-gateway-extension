@@ -251,6 +251,70 @@ public class PractitionerDetailsEndpointHelper {
         return practitionerDetails;
     }
 
+    public List<String> getPractitionerLocationIdsByByKeycloakId(String keycloakUUID) {
+        logger.info("Searching for Practitioner with user id: " + keycloakUUID);
+        Practitioner practitioner = getPractitionerByIdentifier(keycloakUUID);
+        List<String> locationIds = new ArrayList<>();
+
+        if (practitioner != null) {
+            String practitionerId = getPractitionerIdentifier(practitioner);
+            if (CacheHelper.INSTANCE.skipCache()) {
+                locationIds = getPractitionerLocationIdsByByKeycloakIdCore(practitionerId);
+            } else {
+                locationIds =
+                        CacheHelper.INSTANCE.listStringCache.get(
+                                keycloakUUID,
+                                key ->
+                                        getPractitionerLocationIdsByByKeycloakIdCore(
+                                                practitionerId));
+            }
+
+        } else {
+            logger.error("Practitioner with KC identifier : " + keycloakUUID + " not found");
+        }
+        return locationIds;
+    }
+
+    @VisibleForTesting
+    protected List<String> getPractitionerLocationIdsByByKeycloakIdCore(String practitionerId) {
+
+        logger.info("Searching for CareTeams with Practitioner Id: " + practitionerId);
+        Bundle careTeams = getCareTeams(practitionerId);
+        List<CareTeam> careTeamsList = mapBundleToCareTeams(careTeams);
+
+        logger.info(
+                "Searching for Organizations tied to CareTeams list of size : "
+                        + careTeamsList.size());
+        Set<String> careTeamManagingOrganizationIds =
+                getManagingOrganizationsOfCareTeamIds(careTeamsList);
+
+        List<PractitionerRole> practitionerRoleList =
+                getPractitionerRolesByPractitionerId(practitionerId);
+        logger.info("Practitioner Roles fetched: " + practitionerRoleList.size());
+
+        Set<String> practitionerOrganizationIds =
+                getOrganizationIdsByPractitionerRoles(practitionerRoleList);
+
+        Set<String> organizationIds =
+                Stream.concat(
+                                careTeamManagingOrganizationIds.stream(),
+                                practitionerOrganizationIds.stream())
+                        .collect(Collectors.toSet());
+
+        logger.info("Searching for locations by organizations: " + organizationIds.size());
+
+        Bundle organizationAffiliationsBundle =
+                getOrganizationAffiliationsByOrganizationIdsBundle(organizationIds);
+
+        List<OrganizationAffiliation> organizationAffiliations =
+                mapBundleToOrganizationAffiliation(organizationAffiliationsBundle);
+
+        List<String> locationIds =
+                getLocationIdsByOrganizationAffiliations(organizationAffiliations);
+
+        return locationIds;
+    }
+
     public PractitionerDetails getPractitionerDetailsByPractitionerCore(
             String practitionerId, Practitioner practitioner) {
 
@@ -367,12 +431,14 @@ public class PractitionerDetailsEndpointHelper {
         return t -> seen.add(uniqueKeyExtractor.apply(t));
     }
 
-    private List<PractitionerRole> getPractitionerRolesByPractitionerId(String practitionerId) {
+    @VisibleForTesting
+    protected List<PractitionerRole> getPractitionerRolesByPractitionerId(String practitionerId) {
         Bundle practitionerRoles = getPractitionerRoles(practitionerId);
         return mapBundleToPractitionerRolesWithOrganization(practitionerRoles);
     }
 
-    private Set<String> getOrganizationIdsByPractitionerRoles(
+    @VisibleForTesting
+    protected Set<String> getOrganizationIdsByPractitionerRoles(
             List<PractitionerRole> practitionerRoles) {
         return practitionerRoles.stream()
                 .filter(PractitionerRole::hasOrganization)
@@ -427,7 +493,8 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toList());
     }
 
-    private Bundle getCareTeams(String practitionerId) {
+    @VisibleForTesting
+    protected Bundle getCareTeams(String practitionerId) {
         return getFhirClientForR4()
                 .search()
                 .forResource(CareTeam.class)
@@ -544,7 +611,8 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toSet());
     }
 
-    private List<CareTeam> mapBundleToCareTeams(Bundle careTeams) {
+    @VisibleForTesting
+    protected List<CareTeam> mapBundleToCareTeams(Bundle careTeams) {
         return careTeams != null
                 ? careTeams.getEntry().stream()
                         .map(bundleEntryComponent -> (CareTeam) bundleEntryComponent.getResource())
@@ -569,7 +637,8 @@ public class PractitionerDetailsEndpointHelper {
                 : Collections.emptyList();
     }
 
-    private List<OrganizationAffiliation> mapBundleToOrganizationAffiliation(
+    @VisibleForTesting
+    protected List<OrganizationAffiliation> mapBundleToOrganizationAffiliation(
             Bundle organizationAffiliationBundle) {
         return organizationAffiliationBundle != null
                 ? organizationAffiliationBundle.getEntry().stream()

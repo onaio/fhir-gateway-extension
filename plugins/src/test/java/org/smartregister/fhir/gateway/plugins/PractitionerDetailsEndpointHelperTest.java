@@ -20,6 +20,7 @@ import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.OrganizationAffiliation;
 import org.hl7.fhir.r4.model.Practitioner;
+import org.hl7.fhir.r4.model.PractitionerRole;
 import org.hl7.fhir.r4.model.Reference;
 import org.junit.Assert;
 import org.junit.Before;
@@ -515,6 +516,71 @@ public class PractitionerDetailsEndpointHelperTest {
         Assert.assertEquals("2", result.get(1));
     }
 
+    @Test
+    public void testGetPractitionerLocationIdsByByKeycloakIdCoreReturnsLocationIds() {
+        String practitionerId = "keycloak-uuid-1234-1234";
+        Bundle careTeamBundle = getPractitionerBundle();
+        List<CareTeam> careTeamList = new ArrayList<>();
+        careTeamList.add(getCareTeam());
+        Set<String> careTeamManagingOrganizationIds = new HashSet<>();
+        careTeamManagingOrganizationIds.add("Organization/1234");
+
+        List<PractitionerRole> practitionerRoleList = getPractitionerRoleList();
+        Set<String> practitionerOrganizationIds = new HashSet<>();
+        practitionerOrganizationIds.add("Organization/5678");
+
+        Set<String> combinedOrganizationIds = new HashSet<>();
+        combinedOrganizationIds.addAll(careTeamManagingOrganizationIds);
+        combinedOrganizationIds.addAll(practitionerOrganizationIds);
+
+        Bundle organizationAffiliationsBundle = getOrganizationAffiliationsBundle();
+        List<OrganizationAffiliation> organizationAffiliations = new ArrayList<>();
+
+        organizationAffiliations.add(getOrganizationAffiliation());
+
+        List<String> locationIds = new ArrayList<>();
+        locationIds.add("Location/1234");
+
+        PractitionerDetailsEndpointHelper mockPractitionerDetailsEndpointHelper =
+                mock(PractitionerDetailsEndpointHelper.class);
+
+        Mockito.doReturn(careTeamBundle)
+                .when(mockPractitionerDetailsEndpointHelper)
+                .getCareTeams(practitionerId);
+        Mockito.doReturn(careTeamList)
+                .when(mockPractitionerDetailsEndpointHelper)
+                .mapBundleToCareTeams(careTeamBundle);
+        Mockito.doReturn(careTeamManagingOrganizationIds)
+                .when(mockPractitionerDetailsEndpointHelper)
+                .getManagingOrganizationsOfCareTeamIds(careTeamList);
+        Mockito.doReturn(practitionerRoleList)
+                .when(mockPractitionerDetailsEndpointHelper)
+                .getPractitionerRolesByPractitionerId(practitionerId);
+        Mockito.doReturn(practitionerOrganizationIds)
+                .when(mockPractitionerDetailsEndpointHelper)
+                .getOrganizationIdsByPractitionerRoles(practitionerRoleList);
+        Mockito.doReturn(organizationAffiliationsBundle)
+                .when(mockPractitionerDetailsEndpointHelper)
+                .getOrganizationAffiliationsByOrganizationIdsBundle(combinedOrganizationIds);
+        Mockito.doReturn(organizationAffiliations)
+                .when(mockPractitionerDetailsEndpointHelper)
+                .mapBundleToOrganizationAffiliation(organizationAffiliationsBundle);
+        Mockito.doReturn(locationIds)
+                .when(mockPractitionerDetailsEndpointHelper)
+                .getLocationIdsByOrganizationAffiliations(organizationAffiliations);
+
+        Mockito.doCallRealMethod()
+                .when(mockPractitionerDetailsEndpointHelper)
+                .getPractitionerLocationIdsByByKeycloakIdCore(practitionerId);
+        List<String> resultLocationIds =
+                mockPractitionerDetailsEndpointHelper.getPractitionerLocationIdsByByKeycloakIdCore(
+                        practitionerId);
+
+        Assert.assertNotNull(resultLocationIds);
+        Assert.assertEquals(1, resultLocationIds.size());
+        Assert.assertEquals("Location/1234", resultLocationIds.get(0));
+    }
+
     private Bundle getPractitionerBundle() {
         Bundle bundlePractitioner = new Bundle();
         bundlePractitioner.setId("Practitioner/1234");
@@ -574,5 +640,29 @@ public class PractitionerDetailsEndpointHelperTest {
         participant.setMember(new Reference("Practitioner/1234"));
         careTeam.addParticipant(participant);
         return careTeam;
+    }
+
+    private Bundle getOrganizationAffiliationsBundle() {
+        Bundle bundle = new Bundle();
+        bundle.setId("OrganizationAffiliationsBundle/1234");
+        Bundle.BundleEntryComponent bundleEntryComponent = new Bundle.BundleEntryComponent();
+        OrganizationAffiliation organizationAffiliation = getOrganizationAffiliation();
+        bundleEntryComponent.setResource(organizationAffiliation);
+        bundle.addEntry(bundleEntryComponent);
+        return bundle;
+    }
+
+    private List<PractitionerRole> getPractitionerRoleList() {
+        PractitionerRole practitionerRole = new PractitionerRole();
+        practitionerRole.setId("PractitionerRole/1234");
+        Reference organizationRef = new Reference();
+        organizationRef.setReference("Organization/1234");
+        practitionerRole.setOrganization(organizationRef);
+        Reference practitionerRef = new Reference();
+        practitionerRef.setReference("Practitioner/1234");
+        practitionerRole.setPractitioner(practitionerRef);
+        List<PractitionerRole> practitionerRoles = new ArrayList<>();
+        practitionerRoles.add(practitionerRole);
+        return practitionerRoles;
     }
 }
