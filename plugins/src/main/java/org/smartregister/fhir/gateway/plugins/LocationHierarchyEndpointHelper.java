@@ -6,10 +6,8 @@ import static org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
@@ -86,9 +84,8 @@ public class LocationHierarchyEndpointHelper {
             List<String> preFetchAdminLevels,
             List<String> postFetchAdminLevels,
             Boolean filterInventory) {
-        Set<String> uniqueLocationIds = new HashSet<>(locationIds);
 
-        return uniqueLocationIds.parallelStream()
+        return locationIds.parallelStream()
                 .map(
                         locationId ->
                                 getLocationHierarchy(
@@ -358,7 +355,6 @@ public class LocationHierarchyEndpointHelper {
         List<String> postFetchAdminLevels =
                 generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         Map<String, String[]> parameters = new HashMap<>(request.getParameterMap());
-        Set<String> uniqueLocationIds = new HashSet<>(locationIds);
 
         int count =
                 pageSize != null
@@ -372,7 +368,7 @@ public class LocationHierarchyEndpointHelper {
         int start = Math.max(0, (page - 1)) * count;
 
         List<Resource> resourceLocations =
-                uniqueLocationIds.parallelStream()
+                locationIds.parallelStream()
                         .flatMap(
                                 identifier ->
                                         getLocationHierarchyLocations(
