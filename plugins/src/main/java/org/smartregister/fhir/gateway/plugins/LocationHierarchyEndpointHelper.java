@@ -16,8 +16,6 @@ import javax.servlet.http.HttpServletRequest;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Binary;
 import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.CodeableConcept;
-import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.ListResource;
 import org.hl7.fhir.r4.model.Location;
@@ -86,6 +84,7 @@ public class LocationHierarchyEndpointHelper {
             List<String> preFetchAdminLevels,
             List<String> postFetchAdminLevels,
             Boolean filterInventory) {
+
         return locationIds.parallelStream()
                 .map(
                         locationId ->
@@ -259,15 +258,9 @@ public class LocationHierarchyEndpointHelper {
                 return getPaginatedLocations(request, selectedSyncLocations);
 
             } else {
-                List<Location> locations =
-                        practitionerDetailsEndpointHelper
-                                .getPractitionerDetailsByKeycloakId(practitionerId)
-                                .getFhirPractitionerDetails()
-                                .getLocations();
-                List<String> locationIds = new ArrayList<>();
-                for (Location location : locations) {
-                    locationIds.add(location.getIdElement().getIdPart());
-                }
+                List<String> locationIds =
+                        practitionerDetailsEndpointHelper.getPractitionerLocationIdsByByKeycloakId(
+                                practitionerId);
                 return getPaginatedLocations(request, locationIds);
             }
 
@@ -287,11 +280,15 @@ public class LocationHierarchyEndpointHelper {
                                 .collect(Collectors.toList());
                 return Utils.createBundle(resourceList);
             } else {
+                List<String> locationIds =
+                        practitionerDetailsEndpointHelper.getPractitionerLocationIdsByByKeycloakId(
+                                practitionerId);
                 List<LocationHierarchy> locationHierarchies =
-                        practitionerDetailsEndpointHelper
-                                .getPractitionerDetailsByKeycloakId(practitionerId)
-                                .getFhirPractitionerDetails()
-                                .getLocationHierarchyList();
+                        getLocationHierarchies(
+                                locationIds,
+                                preFetchAdminLevels,
+                                postFetchAdminLevels,
+                                filterInventory);
                 List<Resource> resourceList =
                         locationHierarchies.stream()
                                 .map(locationHierarchy -> (Resource) locationHierarchy)
@@ -370,18 +367,18 @@ public class LocationHierarchyEndpointHelper {
 
         int start = Math.max(0, (page - 1)) * count;
 
-        List<Resource> resourceLocations = new ArrayList<>();
-        for (String identifier : locationIds) {
-            Location parentLocation = getLocationById(identifier);
-            List<Location> locations =
-                    getLocationHierarchyLocations(
-                            identifier,
-                            parentLocation,
-                            preFetchAdminLevels,
-                            postFetchAdminLevels,
-                            filterInventory);
-            resourceLocations.addAll(locations);
-        }
+        List<Resource> resourceLocations =
+                locationIds.parallelStream()
+                        .flatMap(
+                                identifier ->
+                                        getLocationHierarchyLocations(
+                                                identifier,
+                                                getLocationById(identifier),
+                                                preFetchAdminLevels,
+                                                postFetchAdminLevels,
+                                                filterInventory)
+                                                .stream())
+                        .collect(Collectors.toList());
         int totalEntries = resourceLocations.size();
 
         int end = Math.min(start + count, resourceLocations.size());
@@ -443,23 +440,25 @@ public class LocationHierarchyEndpointHelper {
 
     public List<Location> filterLocationsByAdminLevels(
             List<Location> locations, List<String> postFetchAdminLevels) {
-        if (postFetchAdminLevels == null) {
+
+        if (postFetchAdminLevels == null || postFetchAdminLevels.isEmpty()) {
             return locations;
         }
-        List<Location> allLocations = new ArrayList<>();
-        for (Location location : locations) {
-            for (CodeableConcept codeableConcept : location.getType()) {
-                List<Coding> codings = codeableConcept.getCoding();
-                for (Coding coding : codings) {
-                    if (coding.getSystem().equals(Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL)) {
-                        if (postFetchAdminLevels.contains(coding.getCode())) {
-                            allLocations.add(location);
-                        }
-                    }
-                }
-            }
-        }
-        return allLocations;
+
+        return locations.stream()
+                .filter(
+                        location ->
+                                location.getType().stream()
+                                        .flatMap(
+                                                codeableConcept ->
+                                                        codeableConcept.getCoding().stream())
+                                        .anyMatch(
+                                                coding ->
+                                                        Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL
+                                                                        .equals(coding.getSystem())
+                                                                && postFetchAdminLevels.contains(
+                                                                        coding.getCode())))
+                .collect(Collectors.toList());
     }
 
     public List<Location> filterLocationsByInventory(List<Location> locations) {
