@@ -25,7 +25,7 @@ jobs:
       - name: Run Unit tests and generate report
         run: mvn -B clean test jacoco:report --file pom.xml --file README.md --file LICENSE -X -e
         env:
-          PROXY_TO: "https://my.server.org/fhir"
+          PROXY_TO: "https://my.test-server.org/fhir"
       
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
