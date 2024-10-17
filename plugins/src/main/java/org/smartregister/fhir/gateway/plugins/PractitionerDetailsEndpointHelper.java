@@ -29,7 +29,6 @@ import org.smartregister.model.location.LocationHierarchy;
 import org.smartregister.model.location.ParentChildrenMap;
 import org.smartregister.model.practitioner.FhirPractitionerDetails;
 import org.smartregister.model.practitioner.PractitionerDetails;
-import org.springframework.lang.Nullable;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -37,6 +36,7 @@ import ca.uhn.fhir.rest.api.SearchStyleEnum;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
 public class PractitionerDetailsEndpointHelper {
     private static final Logger logger =
