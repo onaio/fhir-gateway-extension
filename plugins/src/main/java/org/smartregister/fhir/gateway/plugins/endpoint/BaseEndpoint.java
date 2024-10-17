@@ -22,7 +22,7 @@ public abstract class BaseEndpoint extends HttpServlet {
     private static final Logger logger = LoggerFactory.getLogger(BaseEndpoint.class);
 
     protected static TokenVerifier tokenVerifier;
-    protected final FhirContext fhirR4Context = FhirContext.forR4();
+    protected final FhirContext fhirR4Context = FhirContext.forR4Cached();
     protected final IParser fhirR4JsonParser = fhirR4Context.newJsonParser().setPrettyPrint(true);
 
     static {
