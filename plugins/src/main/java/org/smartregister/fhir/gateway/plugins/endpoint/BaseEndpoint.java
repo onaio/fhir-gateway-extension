@@ -21,9 +21,17 @@ import jakarta.servlet.http.HttpServletResponse;
 public abstract class BaseEndpoint extends HttpServlet {
     private static final Logger logger = LoggerFactory.getLogger(BaseEndpoint.class);
 
-    protected final TokenVerifier tokenVerifier = TokenVerifier.createFromEnvVars();
+    protected static TokenVerifier tokenVerifier;
     protected final FhirContext fhirR4Context = FhirContext.forR4();
     protected final IParser fhirR4JsonParser = fhirR4Context.newJsonParser().setPrettyPrint(true);
+
+    static {
+        try {
+            tokenVerifier = TokenVerifier.createFromEnvVars();
+        } catch (Exception exception) {
+            logger.error(exception.getMessage());
+        }
+    }
 
     @Override
     protected void doOptions(HttpServletRequest request, HttpServletResponse response) {
