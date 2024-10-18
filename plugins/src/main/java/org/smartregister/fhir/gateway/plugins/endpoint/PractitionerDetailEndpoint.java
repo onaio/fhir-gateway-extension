@@ -5,10 +5,6 @@ import static org.smartregister.fhir.gateway.plugins.Constants.KEYCLOAK_UUID;
 import java.io.IOException;
 import java.util.Collections;
 
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.apache.http.HttpStatus;
 import org.smartregister.fhir.gateway.plugins.Constants;
 import org.smartregister.fhir.gateway.plugins.PractitionerDetailsEndpointHelper;
@@ -17,6 +13,9 @@ import org.smartregister.fhir.gateway.plugins.Utils;
 import org.smartregister.model.practitioner.PractitionerDetails;
 
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @WebServlet("/PractitionerDetail")
 public class PractitionerDetailEndpoint extends BaseEndpoint {
