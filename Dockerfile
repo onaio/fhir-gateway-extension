@@ -23,4 +23,4 @@ COPY --from=build /app/exec/target/opensrp-gateway-plugin-exec.jar /app/
 COPY resources/hapi_page_url_allowed_queries.json resources/hapi_page_url_allowed_queries.json
 COPY resources/hapi_sync_filter_ignored_queries.json resources/hapi_sync_filter_ignored_queries.json
 
-CMD ["/app/opensrp-gateway-plugin-exec.jar"]
+CMD ["/app/opensrp-gateway-plugin-exec.jar", "--server.max-http-header-size=40KB"]
