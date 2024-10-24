@@ -1,5 +1,7 @@
 package org.smartregister.fhir.gateway.plugins;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
@@ -8,6 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.apache.commons.codec.binary.Hex;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Binary;
 import org.hl7.fhir.r4.model.Bundle;
@@ -192,5 +195,11 @@ public class Utils {
             syncStrategy = jsonArray.get(0).getAsString();
 
         return syncStrategy;
+    }
+
+    public static String generateHash(String input) throws NoSuchAlgorithmException {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hashBytes = digest.digest(input.getBytes());
+        return Hex.encodeHexString(hashBytes);
     }
 }

@@ -1,5 +1,6 @@
 package org.smartregister.fhir.gateway.plugins;
 
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,7 +12,6 @@ import java.util.stream.Collectors;
 import javax.inject.Named;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.hl7.fhir.r4.model.Binary;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CareTeam;
@@ -103,20 +103,22 @@ public class PermissionAccessChecker implements AccessChecker {
     private void initSyncAccessDecision(RequestDetailsReader requestDetailsReader) {
         Map<String, List<String>> syncStrategyIds;
 
+        Composition composition = fetchComposition();
+        String syncStrategy = readSyncStrategyFromComposition(composition);
+
         if (CacheHelper.INSTANCE.skipCache()) {
             syncStrategyIds =
-                    getSyncStrategyIds(
-                            jwt.getSubject(), applicationId, fhirContext, requestDetailsReader);
+                    getSyncStrategyIds(jwt.getSubject(), syncStrategy, requestDetailsReader);
         } else {
             syncStrategyIds =
                     CacheHelper.INSTANCE.cache.get(
-                            jwt.getSubject(),
-                            userId ->
+                            generateSyncStrategyIdsCacheKey(
+                                    jwt.getSubject(),
+                                    syncStrategy,
+                                    requestDetailsReader.getParameters()),
+                            key ->
                                     getSyncStrategyIds(
-                                            userId,
-                                            applicationId,
-                                            fhirContext,
-                                            requestDetailsReader));
+                                            jwt.getSubject(), syncStrategy, requestDetailsReader));
         }
 
         this.syncAccessDecision =
@@ -127,6 +129,35 @@ public class PermissionAccessChecker implements AccessChecker {
                         syncStrategyIds,
                         syncStrategyIds.keySet().iterator().next(),
                         userRoles);
+    }
+
+    private String generateSyncStrategyIdsCacheKey(
+            String userId, String syncStrategy, Map<String, String[]> parameters) {
+
+        String key = null;
+        switch (syncStrategy) {
+            case Constants.SyncStrategy.RELATED_ENTITY_LOCATION:
+                try {
+
+                    String[] syncLocations =
+                            parameters.getOrDefault(
+                                    Constants.SYNC_LOCATIONS_SEARCH_PARAM, new String[] {});
+
+                    if (syncLocations.length == 0)
+                        throw new IllegalStateException("No _syncLocation query param specified");
+
+                    key = Utils.generateHash(syncLocations[0]);
+                } catch (NoSuchAlgorithmException exception) {
+                    logger.error(exception.getMessage());
+                }
+
+                break;
+
+            default:
+                key = userId;
+        }
+
+        return key;
     }
 
     private boolean checkUserHasRole(String resourceName, String requestType) {
@@ -216,8 +247,7 @@ public class PermissionAccessChecker implements AccessChecker {
         return compositionEntry != null ? (Composition) compositionEntry.getResource() : null;
     }
 
-    Pair<Composition, PractitionerDetails> fetchCompositionAndPractitionerDetails(
-            String subject, String applicationId, FhirContext fhirContext) {
+    PractitionerDetails fetchPractitionerDetails(String subject) {
         fhirContext.registerCustomType(PractitionerDetails.class);
 
         IGenericClient client = Utils.createFhirClientForR4(fhirContext);
@@ -227,44 +257,33 @@ public class PermissionAccessChecker implements AccessChecker {
         PractitionerDetails practitionerDetails =
                 practitionerDetailsEndpointHelper.getPractitionerDetailsByKeycloakId(subject);
 
-        Composition composition = readCompositionResource(applicationId, fhirContext);
-
-        if (composition == null)
-            throw new IllegalStateException(
-                    "No Composition resource found for application id '" + applicationId + "'");
-
         if (practitionerDetails == null)
             throw new IllegalStateException(
                     "No PractitionerDetail resource found for user with id '" + subject + "'");
 
-        return Pair.of(composition, practitionerDetails);
+        return practitionerDetails;
     }
 
-    Pair<String, PractitionerDetails> fetchSyncStrategyDetails(
-            String subject, String applicationId, FhirContext fhirContext) {
+    private Composition fetchComposition() {
+        Composition composition = readCompositionResource(applicationId, fhirContext);
+        if (composition == null)
+            throw new IllegalStateException(
+                    "No Composition resource found for application id '" + applicationId + "'");
 
-        Pair<Composition, PractitionerDetails> compositionPractitionerDetailsPair =
-                fetchCompositionAndPractitionerDetails(subject, applicationId, fhirContext);
-        Composition composition = compositionPractitionerDetailsPair.getLeft();
-        PractitionerDetails practitionerDetails = compositionPractitionerDetailsPair.getRight();
+        return composition;
+    }
 
+    private String readSyncStrategyFromComposition(Composition composition) {
         String binaryResourceReference = Utils.getBinaryResourceReference(composition);
         Binary binary =
                 Utils.readApplicationConfigBinaryResource(binaryResourceReference, fhirContext);
-
-        return Pair.of(Utils.findSyncStrategy(binary), practitionerDetails);
+        return Utils.findSyncStrategy(binary);
     }
 
     private Map<String, List<String>> getSyncStrategyIds(
-            String subjectId,
-            String applicationId,
-            FhirContext fhirContext,
-            RequestDetailsReader requestDetailsReader) {
-        Pair<String, PractitionerDetails> syncStrategyDetails =
-                fetchSyncStrategyDetails(subjectId, applicationId, fhirContext);
+            String subjectId, String syncStrategy, RequestDetailsReader requestDetailsReader) {
 
-        String syncStrategy = syncStrategyDetails.getLeft();
-        PractitionerDetails practitionerDetails = syncStrategyDetails.getRight();
+        PractitionerDetails practitionerDetails = fetchPractitionerDetails(subjectId);
 
         return collateSyncStrategyIds(syncStrategy, practitionerDetails, requestDetailsReader);
     }
@@ -272,8 +291,9 @@ public class PermissionAccessChecker implements AccessChecker {
     private List<String> getLocationUuids(String[] syncLocations) {
         List<String> locationUuids = new ArrayList<>();
         String syncLocationParam;
-        for (int i = 0; i < syncLocations.length; i++) {
-            syncLocationParam = syncLocations[i];
+
+        for (String syncLocation : syncLocations) {
+            syncLocationParam = syncLocation;
             if (!syncLocationParam.isEmpty())
                 locationUuids.addAll(
                         Set.of(syncLocationParam.split(Constants.PARAM_VALUES_SEPARATOR)));
