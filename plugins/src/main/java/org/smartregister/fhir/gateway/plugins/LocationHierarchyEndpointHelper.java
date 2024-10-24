@@ -114,6 +114,8 @@ public class LocationHierarchyEndpointHelper {
             locationHierarchy.setId(LOCATION_RESOURCE + locationId);
 
             locationHierarchy.setLocationHierarchyTree(locationHierarchyTree);
+
+            logger.info("Finished building Location Hierarchy of Location Id : {}", locationId);
         } else {
             logger.error("LocationHierarchy with identifier: {} not found", locationId);
             locationHierarchy.setId(LOCATION_RESOURCE_NOT_FOUND);
