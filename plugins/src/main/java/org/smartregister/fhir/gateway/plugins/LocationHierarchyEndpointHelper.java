@@ -148,64 +148,71 @@ public class LocationHierarchyEndpointHelper {
     }
 
     public List<Location> getDescendants(
-        String locationId, Location parentLocation, List<String> adminLevels) {
+            String locationId, Location parentLocation, List<String> adminLevels) {
         IQuery<IBaseBundle> query =
-            getFhirClientForR4()
-                .search()
-                .forResource(Location.class)
-                .where(
-                    new ReferenceClientParam(Location.SP_PARTOF)
-                        .hasAnyOfIds(locationId));
+                getFhirClientForR4()
+                        .search()
+                        .forResource(Location.class)
+                        .where(
+                                new ReferenceClientParam(Location.SP_PARTOF)
+                                        .hasAnyOfIds(locationId));
 
         if (adminLevels != null && !adminLevels.isEmpty()) {
             TokenClientParam adminLevelParam = new TokenClientParam(Constants.TYPE_SEARCH_PARAM);
             String[] adminLevelArray = adminLevels.toArray(new String[0]);
 
             query =
-                query.and(
-                    adminLevelParam
-                        .exactly()
-                        .systemAndValues(
-                            Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL,
-                            adminLevelArray));
+                    query.and(
+                            adminLevelParam
+                                    .exactly()
+                                    .systemAndValues(
+                                            Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL,
+                                            adminLevelArray));
         }
+
+        Bundle childLocationBundle =
+                query.usingStyle(SearchStyleEnum.POST)
+                        .count(
+                                SyncAccessDecision.SyncAccessDecisionConstants
+                                        .REL_LOCATION_CHUNK_SIZE)
+                        .returnBundle(Bundle.class)
+                        .execute();
 
         List<Location> allLocations = Collections.synchronizedList(new ArrayList<>());
         if (parentLocation != null) {
             allLocations.add(parentLocation);
         }
+        if (childLocationBundle != null) {
+            childLocationBundle.getEntry().parallelStream()
+                    .forEach(
+                            childLocation -> {
+                                Location childLocationEntity =
+                                        (Location) childLocation.getResource();
+                                allLocations.add(childLocationEntity);
+                                allLocations.addAll(
+                                        getDescendants(
+                                                childLocationEntity.getIdElement().getIdPart(),
+                                                null,
+                                                adminLevels));
+                            });
 
-        Bundle resultBundle = query.usingStyle(SearchStyleEnum.POST).returnBundle(Bundle.class).execute();
+            while (childLocationBundle.getLink(Bundle.LINK_NEXT) != null) {
+                childLocationBundle =
+                        getFhirClientForR4().loadPage().next(childLocationBundle).execute();
 
-        resultBundle.getEntry().parallelStream()
-            .forEach(
-                childLocation -> {
-                    Location childLocationEntity = (Location) childLocation.getResource();
-                    allLocations.add(childLocationEntity);
-                    allLocations.addAll(
-                        getDescendants(
-                            childLocationEntity.getIdElement().getIdPart(),
-                            null,
-                            adminLevels));
-                });
-
-        while (resultBundle.getLink(Bundle.LINK_NEXT) != null) {
-            resultBundle = getFhirClientForR4()
-                .loadPage()
-                .next(resultBundle)
-                .execute();
-
-            resultBundle.getEntry().parallelStream()
-                .forEach(
-                    childLocation -> {
-                        Location childLocationEntity = (Location) childLocation.getResource();
-                        allLocations.add(childLocationEntity);
-                        allLocations.addAll(
-                            getDescendants(
-                                childLocationEntity.getIdElement().getIdPart(),
-                                null,
-                                adminLevels));
-                    });
+                childLocationBundle.getEntry().parallelStream()
+                        .forEach(
+                                childLocation -> {
+                                    Location childLocationEntity =
+                                            (Location) childLocation.getResource();
+                                    allLocations.add(childLocationEntity);
+                                    allLocations.addAll(
+                                            getDescendants(
+                                                    childLocationEntity.getIdElement().getIdPart(),
+                                                    null,
+                                                    adminLevels));
+                                });
+            }
         }
 
         return allLocations;
