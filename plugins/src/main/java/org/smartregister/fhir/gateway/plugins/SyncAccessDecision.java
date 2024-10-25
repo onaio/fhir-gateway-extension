@@ -289,19 +289,18 @@ public class SyncAccessDecision implements AccessDecision {
                             .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
                             .subList(startIndex, endIndex);
 
-            Bundle requestBundle = new Bundle();
-            requestBundle.setType(Bundle.BundleType.BATCH);
+            String requestURL = requestPath;
+
+            if (entries.size() > 0)
+                requestURL += "&_tag=" + Constants.DEFAULT_RELATED_ENTITY_TAG_URL + "%7C";
+
             for (String entry : entries) {
-                requestBundle.addEntry(
-                        createBundleEntryComponent(
-                                Bundle.HTTPVerb.GET,
-                                requestPath
-                                        + "&_tag="
-                                        + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
-                                        + "%7C"
-                                        + entry,
-                                null));
+
+                requestURL += entry + ",";
             }
+            Bundle requestBundle = new Bundle();
+            requestBundle.addEntry(
+                    createBundleEntryComponent(Bundle.HTTPVerb.GET, requestURL, null));
 
             Bundle res = fhirR4Client.transaction().withBundle(requestBundle).execute();
 
