@@ -30,7 +30,6 @@ public class Constants {
     public static final String PAGINATION_PAGE_SIZE = "_count";
     public static final String PAGINATION_PAGE_NUMBER = "_page";
     public static final int PAGINATION_DEFAULT_PAGE_SIZE = 20;
-    public static final int LOCATIONS_PAGE_COUNT = 100;
     public static final int PAGINATION_DEFAULT_PAGE_NUMBER = 1;
     public static final String SYNC_LOCATIONS_SEARCH_PARAM = "_syncLocations";
     public static final String RELATED_ENTITY_TAG_URL_ENV = "RELATED_ENTITY_TAG_URL";
