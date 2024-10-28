@@ -37,6 +37,7 @@ import com.google.gson.Gson;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.api.RequestTypeEnum;
+import ca.uhn.fhir.rest.api.SearchStyleEnum;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.ForbiddenOperationException;
 import jakarta.annotation.Nonnull;
@@ -289,29 +290,33 @@ public class SyncAccessDecision implements AccessDecision {
                             .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
                             .subList(startIndex, endIndex);
 
-            String requestURL = requestPath;
+            if (!entries.isEmpty()) {
+                StringBuilder requestURL = new StringBuilder(requestPath);
+                requestURL.append("&_tag=" + Constants.DEFAULT_RELATED_ENTITY_TAG_URL + "%7C");
 
-            if (entries.size() > 0)
-                requestURL += "&_tag=" + Constants.DEFAULT_RELATED_ENTITY_TAG_URL + "%7C";
+                for (String entry : entries) {
 
-            for (String entry : entries) {
+                    requestURL.append(entry).append(",");
+                }
 
-                requestURL += entry + ",";
+                Bundle paginatedResult =
+                        (Bundle)
+                                fhirR4Client
+                                        .search()
+                                        .byUrl(requestURL.toString())
+                                        .usingStyle(SearchStyleEnum.POST)
+                                        .execute();
+                Utils.fetchAllBundlePagesAndInject(fhirR4Client, paginatedResult);
+
+                List<Bundle.BundleEntryComponent> entryComponentList =
+                        paginatedResult.getEntry().parallelStream()
+                                .map(it -> (Bundle) it.getResource())
+                                .flatMap(it -> it.getEntry().stream())
+                                .collect(Collectors.toList());
+
+                allResults.addAll(entryComponentList);
+                totalResultMatches += paginatedResult.getTotal();
             }
-            Bundle requestBundle = new Bundle();
-            requestBundle.addEntry(
-                    createBundleEntryComponent(Bundle.HTTPVerb.GET, requestURL, null));
-
-            Bundle res = fhirR4Client.transaction().withBundle(requestBundle).execute();
-
-            List<Bundle.BundleEntryComponent> entryComponentList =
-                    res.getEntry().parallelStream()
-                            .map(it -> (Bundle) it.getResource())
-                            .flatMap(it -> it.getEntry().stream())
-                            .collect(Collectors.toList());
-
-            allResults.addAll(entryComponentList);
-            totalResultMatches += entryComponentList.size();
         }
 
         resultContent = new BasicResponseHandler().handleResponse(response);
