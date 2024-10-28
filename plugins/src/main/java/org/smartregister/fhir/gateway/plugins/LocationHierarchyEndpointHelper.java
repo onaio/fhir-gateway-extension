@@ -171,15 +171,18 @@ public class LocationHierarchyEndpointHelper {
         }
 
         Bundle childLocationBundle =
-                query.usingStyle(SearchStyleEnum.POST).returnBundle(Bundle.class).execute();
+                query.usingStyle(SearchStyleEnum.POST)
+                        .count(
+                                SyncAccessDecision.SyncAccessDecisionConstants
+                                        .REL_LOCATION_CHUNK_SIZE)
+                        .returnBundle(Bundle.class)
+                        .execute();
 
         List<Location> allLocations = Collections.synchronizedList(new ArrayList<>());
         if (parentLocation != null) {
             allLocations.add(parentLocation);
         }
-
         if (childLocationBundle != null) {
-
             childLocationBundle.getEntry().parallelStream()
                     .forEach(
                             childLocation -> {
@@ -192,6 +195,24 @@ public class LocationHierarchyEndpointHelper {
                                                 null,
                                                 adminLevels));
                             });
+
+            while (childLocationBundle.getLink(Bundle.LINK_NEXT) != null) {
+                childLocationBundle =
+                        getFhirClientForR4().loadPage().next(childLocationBundle).execute();
+
+                childLocationBundle.getEntry().parallelStream()
+                        .forEach(
+                                childLocation -> {
+                                    Location childLocationEntity =
+                                            (Location) childLocation.getResource();
+                                    allLocations.add(childLocationEntity);
+                                    allLocations.addAll(
+                                            getDescendants(
+                                                    childLocationEntity.getIdElement().getIdPart(),
+                                                    null,
+                                                    adminLevels));
+                                });
+            }
         }
 
         return allLocations;
