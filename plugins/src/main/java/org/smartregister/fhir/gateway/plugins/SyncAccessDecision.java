@@ -76,8 +76,15 @@ public class SyncAccessDecision implements AccessDecision {
         this.config = getSkippedResourcesConfigs();
         this.roles = roles;
         try {
-            setFhirR4Client(
-                    fhirR4Context.newRestfulGenericClient(System.getenv(Constants.PROXY_TO_ENV)));
+            // Set up HAPI FHIR Generic Client
+            this.fhirR4Client =
+                    fhirR4Context.newRestfulGenericClient(System.getenv(Constants.PROXY_TO_ENV));
+            this.fhirR4Client
+                    .getFhirContext()
+                    .getRestfulClientFactory()
+                    .setConnectionRequestTimeout(300000);
+            this.fhirR4Client.getFhirContext().getRestfulClientFactory().setSocketTimeout(300000);
+
         } catch (NullPointerException e) {
             logger.error(e.getMessage());
         }
@@ -127,7 +134,7 @@ public class SyncAccessDecision implements AccessDecision {
 
                 int endIndex =
                         Math.min(
-                                SyncAccessDecisionConstants.REL_LOCATION_INITIAL_CHUNK_SIZE,
+                                SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE,
                                 syncStrategyIdsMap
                                         .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
                                         .size());
@@ -157,6 +164,7 @@ public class SyncAccessDecision implements AccessDecision {
                                             List.of(
                                                     StringUtils.join(
                                                             syncFilterParameterValues, ","))))
+                            .discardQueryParams(List.of(Constants.SYNC_LOCATIONS_SEARCH_PARAM))
                             .build();
         }
 
@@ -253,8 +261,6 @@ public class SyncAccessDecision implements AccessDecision {
     private IBaseResource processRelatedEntityLocationSyncStrategy(
             RequestDetailsReader request, HttpResponse response) throws IOException {
         String resultContent;
-        fhirR4Client.getFhirContext().getRestfulClientFactory().setConnectionRequestTimeout(300000);
-        fhirR4Client.getFhirContext().getRestfulClientFactory().setSocketTimeout(300000);
 
         List<Bundle.BundleEntryComponent> allResults = new ArrayList<>();
         int totalResultMatches = 0;
@@ -264,7 +270,7 @@ public class SyncAccessDecision implements AccessDecision {
                         + "?"
                         + getRequestParametersString(request.getParameters());
 
-        for (int startIndex = SyncAccessDecisionConstants.REL_LOCATION_INITIAL_CHUNK_SIZE;
+        for (int startIndex = SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE;
                 startIndex
                         < syncStrategyIdsMap
                                 .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
@@ -283,19 +289,18 @@ public class SyncAccessDecision implements AccessDecision {
                             .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
                             .subList(startIndex, endIndex);
 
-            Bundle requestBundle = new Bundle();
-            requestBundle.setType(Bundle.BundleType.BATCH);
+            String requestURL = requestPath;
+
+            if (entries.size() > 0)
+                requestURL += "&_tag=" + Constants.DEFAULT_RELATED_ENTITY_TAG_URL + "%7C";
+
             for (String entry : entries) {
-                requestBundle.addEntry(
-                        createBundleEntryComponent(
-                                Bundle.HTTPVerb.GET,
-                                requestPath
-                                        + "&_tag="
-                                        + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
-                                        + "%7C"
-                                        + entry,
-                                null));
+
+                requestURL += entry + ",";
             }
+            Bundle requestBundle = new Bundle();
+            requestBundle.addEntry(
+                    createBundleEntryComponent(Bundle.HTTPVerb.GET, requestURL, null));
 
             Bundle res = fhirR4Client.transaction().withBundle(requestBundle).execute();
 
@@ -318,6 +323,8 @@ public class SyncAccessDecision implements AccessDecision {
                 ((Bundle) responseResource)
                         .setTotal(((Bundle) responseResource).getTotal() + totalResultMatches);
             } else {
+
+                Utils.fetchAllBundlePagesAndInject(fhirR4Client, (Bundle) responseResource);
 
                 ((Bundle) responseResource).getEntry().addAll(allResults);
                 ((Bundle) responseResource).setTotal(((Bundle) responseResource).getEntry().size());
@@ -344,7 +351,7 @@ public class SyncAccessDecision implements AccessDecision {
                     && !Constants.TAG_SEARCH_PARAM.equals(key)) {
 
                 for (String value : values) {
-                    queryString.append(key).append("=").append(value).append("&");
+                    queryString.append("&").append(key).append("=").append(value);
                 }
             }
         }
@@ -696,8 +703,6 @@ public class SyncAccessDecision implements AccessDecision {
         public static final String ROLE_SUPERVISOR = "SUPERVISOR";
         public static final String ENDPOINT_PRACTITIONER_DETAILS = "PractitionerDetail";
         public static final int REL_LOCATION_CHUNK_SIZE =
-                100; // Magic Number Alert - Do not change value for maximum stability
-        private static final int REL_LOCATION_INITIAL_CHUNK_SIZE =
-                20; // Magic Number Alert - Do not change value for maximum stability
+                200; // Magic Number Alert - Do not change value for maximum stability
     }
 }
