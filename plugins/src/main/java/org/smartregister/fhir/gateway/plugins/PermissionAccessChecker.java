@@ -2,6 +2,8 @@ package org.smartregister.fhir.gateway.plugins;
 
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -143,10 +145,12 @@ public class PermissionAccessChecker implements AccessChecker {
                             parameters.getOrDefault(
                                     Constants.SYNC_LOCATIONS_SEARCH_PARAM, new String[] {});
 
-                    if (syncLocations.length == 0)
-                        throw new IllegalStateException("No _syncLocation query param specified");
+                    if (syncLocations.length == 0) {
+                        key = userId;
+                    } else {
+                        key = Utils.generateHash(getSortedInput(syncLocations[0]));
+                    }
 
-                    key = Utils.generateHash(syncLocations[0]);
                 } catch (NoSuchAlgorithmException exception) {
                     logger.error(exception.getMessage());
                 }
@@ -158,6 +162,12 @@ public class PermissionAccessChecker implements AccessChecker {
         }
 
         return key;
+    }
+
+    private String getSortedInput(String input) {
+        return Arrays.stream(input.split(","))
+                .sorted(Comparator.naturalOrder())
+                .collect(Collectors.joining(","));
     }
 
     private boolean checkUserHasRole(String resourceName, String requestType) {
