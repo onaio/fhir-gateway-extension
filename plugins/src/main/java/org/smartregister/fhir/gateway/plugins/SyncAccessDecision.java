@@ -133,17 +133,8 @@ public class SyncAccessDecision implements AccessDecision {
             List<String> syncFilterParameterValues;
             if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equals(syncStrategy)) {
 
-                int endIndex =
-                        Math.min(
-                                SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE,
-                                syncStrategyIdsMap
-                                        .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
-                                        .size());
-
                 List<String> syncStrategyIdSubList =
-                        this.syncStrategyIdsMap
-                                .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
-                                .subList(0, endIndex);
+                        getInitialRELChunkStrategyIds(syncStrategyIdsMap);
 
                 syncFilterParameterValues =
                         addSyncFilters(
@@ -170,6 +161,20 @@ public class SyncAccessDecision implements AccessDecision {
         }
 
         return requestMutation;
+    }
+
+    private List<String> getInitialRELChunkStrategyIds(
+            Map<String, List<String>> syncStrategyIdsMap) {
+        int endIndex =
+                Math.min(
+                        SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE,
+                        syncStrategyIdsMap
+                                .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                                .size());
+
+        return this.syncStrategyIdsMap
+                .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                .subList(0, endIndex);
     }
 
     private String getClientRole() {
@@ -285,17 +290,16 @@ public class SyncAccessDecision implements AccessDecision {
                                     .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
                                     .size());
 
-            List<String> entries =
+            List<String> syncLocationIds =
                     syncStrategyIdsMap
                             .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
                             .subList(startIndex, endIndex);
 
-            if (!entries.isEmpty()) {
+            if (!syncLocationIds.isEmpty()) {
                 StringBuilder requestURL = new StringBuilder(requestPath);
                 requestURL.append("&_tag=" + Constants.DEFAULT_RELATED_ENTITY_TAG_URL + "%7C");
 
-                for (String entry : entries) {
-
+                for (String entry : syncLocationIds) {
                     requestURL.append(entry).append(",");
                 }
 
@@ -308,13 +312,7 @@ public class SyncAccessDecision implements AccessDecision {
                                         .execute();
                 Utils.fetchAllBundlePagesAndInject(fhirR4Client, paginatedResult);
 
-                List<Bundle.BundleEntryComponent> entryComponentList =
-                        paginatedResult.getEntry().parallelStream()
-                                .map(it -> (Bundle) it.getResource())
-                                .flatMap(it -> it.getEntry().stream())
-                                .collect(Collectors.toList());
-
-                allResults.addAll(entryComponentList);
+                allResults.addAll(paginatedResult.getEntry());
                 totalResultMatches += paginatedResult.getTotal();
             }
         }
