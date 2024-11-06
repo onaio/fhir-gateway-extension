@@ -657,7 +657,7 @@ public class PractitionerDetailsEndpointHelper {
                         locationsIdentifier ->
                                 new LocationHierarchyEndpointHelper(r4FHIRClient)
                                         .getLocationHierarchy(
-                                                locationsIdentifier, null, null, false))
+                                                locationsIdentifier, null, null, false, ""))
                 .filter(
                         locationHierarchy ->
                                 !org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND
