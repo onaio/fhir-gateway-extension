@@ -391,10 +391,11 @@ public class PractitionerDetailsEndpointHelper {
         List<String> locationIds =
                 getLocationIdsByOrganizationAffiliations(organizationAffiliations);
 
-        logger.info("Searching for location hierarchy list by locations identifiers");
-        List<LocationHierarchy> locationHierarchyList = getLocationsHierarchy(locationIds);
-
-        fhirPractitionerDetails.setLocationHierarchyList(locationHierarchyList);
+        //        logger.info("Searching for location hierarchy list by locations identifiers");
+        //        List<LocationHierarchy> locationHierarchyList =
+        // getLocationsHierarchy(locationIds);
+        //
+        //        fhirPractitionerDetails.setLocationHierarchyList(locationHierarchyList);
 
         logger.info("Searching for locations by ids : " + locationIds);
         List<Location> locationsList = getLocationsByIds(locationIds);
