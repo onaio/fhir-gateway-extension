@@ -421,6 +421,24 @@ Example:
 [GET] /LocationHierarchy?_id=<some-location-id>&filterInventory=true&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
 ```
 
+##### LastUpdated Filters
+
+The `LocationHierarchy` endpoint supports filtering by the lastUpdated timestamp
+of locations. This filter allows users to retrieve locations based on the last
+modification date, making it useful for tracking recent updates or syncing data
+changes over time.
+
+Behavior based on the lastUpdated parameter:
+
+- `_lastUpdated` Not Defined: The endpoint will include all locations in the
+  response, regardless of when they were last modified.
+- `_lastUpdated` Defined: The response will include only those locations that
+  were updated on or after the specified timestamp. Example:
+
+```
+[GET] /LocationHierarchy?_id=<some-location-id>&_lastUpdated=2024-09-22T15%3A13%3A53.014%2B00%3A00&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
+```
+
 #### Important Note:
 
 Developers, please update your client applications accordingly to accommodate
