@@ -61,30 +61,13 @@ public class LocationHierarchyEndpointHelper {
             List<String> postFetchAdminLevels,
             Boolean filterInventory,
             String lastUpdated) {
-        LocationHierarchy locationHierarchy;
-
-        if (CacheHelper.INSTANCE.skipCache()) {
-            locationHierarchy =
-                    getLocationHierarchyCore(
-                            locationId,
-                            preFetchAdminLevels,
-                            postFetchAdminLevels,
-                            filterInventory,
-                            lastUpdated);
-        } else {
-            locationHierarchy =
-                    (LocationHierarchy)
-                            CacheHelper.INSTANCE.resourceCache.get(
-                                    locationId,
-                                    key ->
-                                            getLocationHierarchyCore(
-                                                    locationId,
-                                                    preFetchAdminLevels,
-                                                    postFetchAdminLevels,
-                                                    filterInventory,
-                                                    lastUpdated));
-        }
-        return locationHierarchy;
+        // TODO: implement correct caching
+        return getLocationHierarchyCore(
+                locationId,
+                preFetchAdminLevels,
+                postFetchAdminLevels,
+                filterInventory,
+                lastUpdated);
     }
 
     public List<LocationHierarchy> getLocationHierarchies(
