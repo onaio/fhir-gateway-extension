@@ -1,13 +1,11 @@
 package org.smartregister.fhir.gateway.plugins;
 
-import static ca.uhn.fhir.rest.api.Constants.PARAM_SUMMARY;
 import static org.smartregister.fhir.gateway.plugins.EnvUtil.getEnvironmentVar;
 
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -133,8 +131,7 @@ public class SyncAccessDecision implements AccessDecision {
             List<String> syncFilterParameterValues;
             if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equals(syncStrategy)) {
 
-                List<String> syncStrategyIdSubList =
-                        getInitialRELChunkStrategyIds(syncStrategyIdsMap);
+                List<String> syncStrategyIdSubList = getRelChunkStrategyIds(0, syncStrategyIdsMap);
 
                 syncFilterParameterValues =
                         addSyncFilters(
@@ -163,18 +160,19 @@ public class SyncAccessDecision implements AccessDecision {
         return requestMutation;
     }
 
-    private List<String> getInitialRELChunkStrategyIds(
-            Map<String, List<String>> syncStrategyIdsMap) {
+    private List<String> getRelChunkStrategyIds(
+            int startIndex, Map<String, List<String>> syncStrategyIdsMap) {
+
         int endIndex =
                 Math.min(
-                        SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE,
+                        startIndex + SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE,
                         syncStrategyIdsMap
                                 .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
                                 .size());
 
         return this.syncStrategyIdsMap
                 .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
-                .subList(0, endIndex);
+                .subList(startIndex, endIndex);
     }
 
     private String getClientRole() {
@@ -264,81 +262,79 @@ public class SyncAccessDecision implements AccessDecision {
         return resultContent;
     }
 
+    // int count = getQueryParamValue("_count", request);
+
+    private int getQueryParamValue(String key, RequestDetailsReader requestDetailsReader) {
+        String[] countRaw = requestDetailsReader.getParameters().get("_count");
+        return countRaw.length > 0 ? Integer.parseInt(countRaw[0]) : 0;
+    }
+
     private IBaseResource processRelatedEntityLocationSyncStrategy(
             RequestDetailsReader request, HttpResponse response) throws IOException {
+
         String resultContent;
 
+        int totalRecords = 0;
+
         List<Bundle.BundleEntryComponent> allResults = new ArrayList<>();
-        int totalResultMatches = 0;
-
-        String requestPath =
-                request.getRequestPath()
-                        + "?"
-                        + getRequestParametersString(request.getParameters());
-
-        for (int startIndex = SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE;
-                startIndex
-                        < syncStrategyIdsMap
-                                .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
-                                .size();
-                startIndex += SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE) {
-
-            int endIndex =
-                    Math.min(
-                            startIndex + SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE,
-                            syncStrategyIdsMap
-                                    .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
-                                    .size());
-
-            List<String> syncLocationIds =
-                    syncStrategyIdsMap
-                            .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
-                            .subList(startIndex, endIndex);
-
-            if (!syncLocationIds.isEmpty()) {
-                StringBuilder requestURL = new StringBuilder(requestPath);
-                requestURL.append("&_tag=" + Constants.DEFAULT_RELATED_ENTITY_TAG_URL + "%7C");
-
-                for (String entry : syncLocationIds) {
-                    requestURL.append(entry).append(",");
-                }
-
-                Bundle paginatedResult =
-                        (Bundle)
-                                fhirR4Client
-                                        .search()
-                                        .byUrl(requestURL.toString())
-                                        .usingStyle(SearchStyleEnum.POST)
-                                        .execute();
-                Utils.fetchAllBundlePagesAndInject(fhirR4Client, paginatedResult);
-
-                allResults.addAll(paginatedResult.getEntry());
-                totalResultMatches += paginatedResult.getTotal();
-            }
-        }
 
         resultContent = new BasicResponseHandler().handleResponse(response);
 
         IBaseResource responseResource = this.fhirR4JsonParser.parseResource(resultContent);
 
         if (responseResource instanceof Bundle) {
-            if (request.getParameters().containsKey(PARAM_SUMMARY)) {
-                ((Bundle) responseResource)
-                        .setTotal(((Bundle) responseResource).getTotal() + totalResultMatches);
-            } else {
 
-                Utils.fetchAllBundlePagesAndInject(fhirR4Client, (Bundle) responseResource);
-
-                ((Bundle) responseResource).getEntry().addAll(allResults);
-                ((Bundle) responseResource).setTotal(((Bundle) responseResource).getEntry().size());
-
-                Bundle.BundleLinkComponent selfLinkComponent = new Bundle.BundleLinkComponent();
-                selfLinkComponent.setRelation(Bundle.LINK_SELF);
-                selfLinkComponent.setUrl(request.getCompleteUrl());
-
-                ((Bundle) responseResource).setLink(Collections.singletonList(selfLinkComponent));
+            if (syncStrategyIdsMap
+                            .getOrDefault(Constants.SyncStrategy.RELATED_ENTITY_LOCATION, List.of())
+                            .size()
+                    <= SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE) {
+                return responseResource;
             }
+
+            // We have more chunks
+
+            totalRecords += ((Bundle) responseResource).getTotal();
+
+            String requestPath =
+                    request.getRequestPath()
+                            + "?"
+                            + getRequestParametersString(request.getParameters());
+
+            for (int startIndex = SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE;
+                    startIndex
+                            < syncStrategyIdsMap
+                                    .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                                    .size();
+                    startIndex += SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE) {
+
+                List<String> syncLocationIds =
+                        getRelChunkStrategyIds(startIndex, syncStrategyIdsMap);
+
+                if (!syncLocationIds.isEmpty()) {
+                    StringBuilder requestURL = new StringBuilder(requestPath);
+                    requestURL.append("&_tag=" + Constants.DEFAULT_RELATED_ENTITY_TAG_URL + "%7C");
+
+                    for (String entry : syncLocationIds) {
+                        requestURL.append(entry).append(",");
+                    }
+
+                    Bundle paginatedResult =
+                            (Bundle)
+                                    fhirR4Client
+                                            .search()
+                                            .byUrl(requestURL.toString())
+                                            .usingStyle(SearchStyleEnum.POST)
+                                            .execute();
+                    Utils.fetchAllBundlePagesAndInject(fhirR4Client, paginatedResult);
+
+                    allResults.addAll(paginatedResult.getEntry());
+                    totalRecords += paginatedResult.getTotal();
+                }
+            }
+
+            ((Bundle) responseResource).setTotal(totalRecords);
         }
+
         return responseResource;
     }
 
@@ -706,6 +702,6 @@ public class SyncAccessDecision implements AccessDecision {
         public static final String ROLE_SUPERVISOR = "SUPERVISOR";
         public static final String ENDPOINT_PRACTITIONER_DETAILS = "PractitionerDetail";
         public static final int REL_LOCATION_CHUNK_SIZE =
-                100; // Magic Number Alert - Do not change value for maximum stability
+                1; // Magic Number Alert - Do not change value for maximum stability
     }
 }
