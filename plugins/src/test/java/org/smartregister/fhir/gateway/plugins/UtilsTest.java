@@ -4,7 +4,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.hl7.fhir.r4.model.Base64BinaryType;
 import org.hl7.fhir.r4.model.Binary;
@@ -16,6 +18,7 @@ import org.hl7.fhir.r4.model.Reference;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 import com.google.gson.JsonArray;
@@ -230,7 +233,7 @@ public class UtilsTest {
     }
 
     @Test
-    public void testCleanUpServerBaseUrl_MultipleLinks() {
+    public void testCleanUpServerBaseUrlMultipleLinks() {
         Bundle resultBundle = new Bundle();
         resultBundle
                 .addLink()
@@ -260,5 +263,38 @@ public class UtilsTest {
                         .orElse(null);
         Assert.assertNotNull(prevLink);
         Assert.assertEquals("http://old-base-url/prevPage", prevLink.getUrl());
+    }
+
+    @Test
+    public void testGenerateSyncStrategyIdsCacheKeyWithSyncLocations() {
+        String userId = "user123";
+        String syncStrategy = Constants.SyncStrategy.RELATED_ENTITY_LOCATION;
+        Map<String, String[]> parameters = new HashMap<>();
+        parameters.put(Constants.SYNC_LOCATIONS_SEARCH_PARAM, new String[] {"location1"});
+
+        MockedStatic<Utils> mockUtils = Mockito.mockStatic(Utils.class);
+        mockUtils.when(() -> Utils.generateHash("location1")).thenReturn("hashedLocation1");
+
+        String result =
+                PermissionAccessChecker.generateSyncStrategyIdsCacheKey(
+                        userId, syncStrategy, parameters);
+        Assert.assertEquals("hashedLocation1", result);
+        mockUtils.close();
+        Mockito.clearAllCaches();
+    }
+
+    @Test
+    public void testGenerateSyncStrategyIdsCacheKeyDefaultStrategy() {
+        String userId = "user123";
+        String syncStrategy = "someOtherStrategy";
+        Map<String, String[]> parameters = new HashMap<>();
+        parameters.put(Constants.SYNC_LOCATIONS_SEARCH_PARAM, new String[] {"location1"});
+
+        String result =
+                PermissionAccessChecker.generateSyncStrategyIdsCacheKey(
+                        userId, syncStrategy, parameters);
+
+        Assert.assertEquals(userId, result);
+        Mockito.clearAllCaches();
     }
 }
