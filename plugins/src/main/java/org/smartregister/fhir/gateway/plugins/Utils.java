@@ -230,6 +230,42 @@ public class Utils {
         resultBundle.getMeta().setLastUpdated(resultBundle.getMeta().getLastUpdated());
     }
 
+    public static void fetchAllBundlePagesAndInject(
+            IGenericClient fhirClient, Bundle resultBundle, int records) {
+
+        if (resultBundle.getLink(Bundle.LINK_NEXT) != null
+                && resultBundle.getEntry().size() < records) {
+
+            cleanUpServerBaseUrl((GenericClient) fhirClient, resultBundle);
+
+            Bundle pageResultBundle = fhirClient.loadPage().next(resultBundle).execute();
+
+            //  int lastPageIndex = 0;
+            //    String lastLocationFilter = resultBundle.getLink(Bundle.LINK_NEXT);
+
+            if (records < pageResultBundle.getEntry().size()) {
+                resultBundle.getEntry().addAll(pageResultBundle.getEntry());
+            } else if (records == pageResultBundle.getEntry().size()) {
+                resultBundle.getEntry().addAll(pageResultBundle.getEntry());
+            } else {
+                resultBundle.getEntry().addAll(pageResultBundle.getEntry().subList(0, records));
+                //  lastPageIndex = records;
+            }
+
+            resultBundle.setLink(pageResultBundle.getLink());
+
+            fetchAllBundlePagesAndInject(fhirClient, resultBundle);
+        }
+
+        resultBundle.setLink(
+                resultBundle.getLink().stream()
+                        .filter(
+                                bundleLinkComponent ->
+                                        !Bundle.LINK_NEXT.equals(bundleLinkComponent.getRelation()))
+                        .collect(Collectors.toList()));
+        resultBundle.getMeta().setLastUpdated(resultBundle.getMeta().getLastUpdated());
+    }
+
     public static void cleanUpServerBaseUrl(GenericClient fhirClient, Bundle resultBundle) {
         String cleanUrl =
                 cleanBaseUrl(
@@ -249,5 +285,40 @@ public class Utils {
         return originalUrl.indexOf('?') > -1
                 ? fhirServerBaseUrl + originalUrl.substring(originalUrl.indexOf('?'))
                 : fhirServerBaseUrl;
+    }
+
+    public static String replaceQueryParamValue(String url, String queryParam, String newValue) {
+        // Find the start of the query string
+        int questionMarkIndex = url.indexOf("?");
+        if (questionMarkIndex == -1) {
+            return url; // No query parameters to replace
+        }
+
+        String baseUrl = url.substring(0, questionMarkIndex);
+        String queryString = url.substring(questionMarkIndex + 1);
+
+        // Use StringBuilder to manipulate the query string
+        StringBuilder queryBuilder = new StringBuilder(queryString);
+        String paramToReplace = queryParam + "=";
+
+        // Find the index of the parameter to replace
+        int paramIndex = queryBuilder.indexOf(paramToReplace);
+        if (paramIndex != -1) {
+            // Calculate the start and end positions for replacement
+            int valueStartIndex = paramIndex + paramToReplace.length();
+            int valueEndIndex = valueStartIndex;
+
+            // Find the end of the current value
+            while (valueEndIndex < queryBuilder.length()
+                    && queryBuilder.charAt(valueEndIndex) != '&') {
+                valueEndIndex++;
+            }
+
+            // Replace the old value with the new value
+            queryBuilder.replace(valueStartIndex, valueEndIndex, newValue);
+        }
+
+        // Return the full URL
+        return baseUrl + "?" + queryBuilder.toString();
     }
 }
