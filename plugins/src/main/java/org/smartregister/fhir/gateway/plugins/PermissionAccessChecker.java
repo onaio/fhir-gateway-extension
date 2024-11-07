@@ -133,7 +133,8 @@ public class PermissionAccessChecker implements AccessChecker {
                         userRoles);
     }
 
-    private String generateSyncStrategyIdsCacheKey(
+    @VisibleForTesting
+    protected static String generateSyncStrategyIdsCacheKey(
             String userId, String syncStrategy, Map<String, String[]> parameters) {
 
         String key = null;
@@ -164,7 +165,7 @@ public class PermissionAccessChecker implements AccessChecker {
         return key;
     }
 
-    private String getSortedInput(String input) {
+    private static String getSortedInput(String input) {
         return Arrays.stream(input.split(","))
                 .sorted(Comparator.naturalOrder())
                 .collect(Collectors.joining(","));
