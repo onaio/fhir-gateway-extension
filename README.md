@@ -227,6 +227,14 @@ environment variables
   If not set, defaults to
   https://smartregister.org/related-entity-location-tag-id
 
+**Monitoring**
+
+[Spring actuator](https://docs.spring.io/spring-boot/reference/actuator/enabling.html)
+dependency has been added to provide monitoring for the application and its
+components using HTTP endpoints or with JMX. By default, the health endpoint is
+exposed over HTTP and JMX. To expose other endpoints e.g. prometheus, one has to
+update the application configuration.
+
 ### Run project
 
 As documented on the Info Gateway modules
