@@ -441,10 +441,15 @@ Behavior based on the lastUpdated parameter:
 - `_lastUpdated` Not Defined: The endpoint will include all locations in the
   response, regardless of when they were last modified.
 - `_lastUpdated` Defined: The response will include only those locations that
-  were updated on or after the specified timestamp. Example:
+  were updated on or after the specified timestamp.
+
+Note: This filter only works when in list mode i.e `mode=list` is set as one of
+the parameters
+
+Example:
 
 ```
-[GET] /LocationHierarchy?_id=<some-location-id>&_lastUpdated=2024-09-22T15%3A13%3A53.014%2B00%3A00&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
+[GET] /LocationHierarchy?_id=<some-location-id>&mode=list&_lastUpdated=2024-09-22T15%3A13%3A53.014%2B00%3A00&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
 ```
 
 #### Important Note:
