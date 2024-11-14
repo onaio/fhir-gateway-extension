@@ -32,6 +32,8 @@ public class Constants {
     public static final int PAGINATION_DEFAULT_PAGE_SIZE = 20;
     public static final int PAGINATION_DEFAULT_PAGE_NUMBER = 1;
     public static final String SYNC_LOCATIONS_SEARCH_PARAM = "_syncLocations";
+    public static final String SYNC_LOCATIONS_HASH_PARAM = "_sLHash";
+    public static final String SYNC_LOCATIONS_PAGE_PARAM = "_sLPage";
     public static final String RELATED_ENTITY_TAG_URL_ENV = "RELATED_ENTITY_TAG_URL";
     public static final String DEFAULT_RELATED_ENTITY_TAG_URL =
             "https://smartregister.org/related-entity-location-tag-id";
