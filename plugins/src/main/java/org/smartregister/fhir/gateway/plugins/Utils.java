@@ -3,13 +3,17 @@ package org.smartregister.fhir.gateway.plugins;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.codec.binary.Hex;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
@@ -199,6 +203,14 @@ public class Utils {
         return Hex.encodeHexString(hashBytes);
     }
 
+    public static String getSortedInput(String input, String separator) {
+        return getSortedInput(Arrays.stream(input.split(separator)), separator);
+    }
+
+    public static String getSortedInput(Stream<String> inputStream, String separator) {
+        return inputStream.sorted(Comparator.naturalOrder()).collect(Collectors.joining(separator));
+    }
+
     /**
      * This is a recursive function which updates the result bundle with results of all pages
      * whenever there's an entry for Bundle.LINK_NEXT
@@ -211,7 +223,7 @@ public class Utils {
 
         if (resultBundle.getLink(Bundle.LINK_NEXT) != null) {
 
-            cleanUpServerBaseUrl((GenericClient) fhirClient, resultBundle);
+            cleanUpBundlePaginationNextLinkServerBaseUrl((GenericClient) fhirClient, resultBundle);
 
             Bundle pageResultBundle = fhirClient.loadPage().next(resultBundle).execute();
 
@@ -230,45 +242,10 @@ public class Utils {
         resultBundle.getMeta().setLastUpdated(resultBundle.getMeta().getLastUpdated());
     }
 
-    public static void fetchAllBundlePagesAndInject(
-            IGenericClient fhirClient, Bundle resultBundle, int records) {
-
-        if (resultBundle.getLink(Bundle.LINK_NEXT) != null
-                && resultBundle.getEntry().size() < records) {
-
-            cleanUpServerBaseUrl((GenericClient) fhirClient, resultBundle);
-
-            Bundle pageResultBundle = fhirClient.loadPage().next(resultBundle).execute();
-
-            //  int lastPageIndex = 0;
-            //    String lastLocationFilter = resultBundle.getLink(Bundle.LINK_NEXT);
-
-            if (records < pageResultBundle.getEntry().size()) {
-                resultBundle.getEntry().addAll(pageResultBundle.getEntry());
-            } else if (records == pageResultBundle.getEntry().size()) {
-                resultBundle.getEntry().addAll(pageResultBundle.getEntry());
-            } else {
-                resultBundle.getEntry().addAll(pageResultBundle.getEntry().subList(0, records));
-                //  lastPageIndex = records;
-            }
-
-            resultBundle.setLink(pageResultBundle.getLink());
-
-            fetchAllBundlePagesAndInject(fhirClient, resultBundle);
-        }
-
-        resultBundle.setLink(
-                resultBundle.getLink().stream()
-                        .filter(
-                                bundleLinkComponent ->
-                                        !Bundle.LINK_NEXT.equals(bundleLinkComponent.getRelation()))
-                        .collect(Collectors.toList()));
-        resultBundle.getMeta().setLastUpdated(resultBundle.getMeta().getLastUpdated());
-    }
-
-    public static void cleanUpServerBaseUrl(GenericClient fhirClient, Bundle resultBundle) {
+    public static void cleanUpBundlePaginationNextLinkServerBaseUrl(
+            GenericClient fhirClient, Bundle resultBundle) {
         String cleanUrl =
-                cleanBaseUrl(
+                cleanHapiPaginationLinkBaseUrl(
                         resultBundle.getLink(Bundle.LINK_NEXT).getUrl(), fhirClient.getUrlBase());
         resultBundle
                 .getLink()
@@ -282,43 +259,51 @@ public class Utils {
     }
 
     public static String cleanBaseUrl(String originalUrl, String fhirServerBaseUrl) {
+        int hostStartIndex = originalUrl.indexOf("://") + 3;
+        int pathStartIndex = originalUrl.indexOf("/", hostStartIndex);
+
+        // If the URL has no path, assume it ends right after the host
+        if (pathStartIndex == -1) {
+            pathStartIndex = originalUrl.length();
+        }
+
+        return fhirServerBaseUrl + originalUrl.substring(pathStartIndex);
+    }
+
+    public static String cleanHapiPaginationLinkBaseUrl(
+            String originalUrl, String fhirServerBaseUrl) {
         return originalUrl.indexOf('?') > -1
                 ? fhirServerBaseUrl + originalUrl.substring(originalUrl.indexOf('?'))
                 : fhirServerBaseUrl;
     }
 
-    public static String replaceQueryParamValue(String url, String queryParam, String newValue) {
-        // Find the start of the query string
-        int questionMarkIndex = url.indexOf("?");
-        if (questionMarkIndex == -1) {
-            return url; // No query parameters to replace
+    public static String replaceQueryParamValue(String url, String paramName, String newValue) {
+        int queryIndex = url.indexOf("?");
+        if (queryIndex == -1) {
+            return url + "?" + paramName + "=" + newValue;
         }
 
-        String baseUrl = url.substring(0, questionMarkIndex);
-        String queryString = url.substring(questionMarkIndex + 1);
+        String baseUrl = url.substring(0, queryIndex);
+        String queryString = url.substring(queryIndex + 1);
 
-        // Use StringBuilder to manipulate the query string
-        StringBuilder queryBuilder = new StringBuilder(queryString);
-        String paramToReplace = queryParam + "=";
+        String[] queryParams = queryString.split("&");
+        Map<String, String> queryMap = new HashMap<>();
 
-        // Find the index of the parameter to replace
-        int paramIndex = queryBuilder.indexOf(paramToReplace);
-        if (paramIndex != -1) {
-            // Calculate the start and end positions for replacement
-            int valueStartIndex = paramIndex + paramToReplace.length();
-            int valueEndIndex = valueStartIndex;
+        for (String param : queryParams) {
+            String[] pair = param.split("=");
+            queryMap.put(pair[0], pair.length > 1 ? pair[1] : "");
+        }
 
-            // Find the end of the current value
-            while (valueEndIndex < queryBuilder.length()
-                    && queryBuilder.charAt(valueEndIndex) != '&') {
-                valueEndIndex++;
+        queryMap.put(paramName, newValue);
+
+        StringBuilder newQueryString = new StringBuilder();
+        for (Map.Entry<String, String> entry : queryMap.entrySet()) {
+            if (newQueryString.length() > 0) {
+                newQueryString.append("&");
             }
-
-            // Replace the old value with the new value
-            queryBuilder.replace(valueStartIndex, valueEndIndex, newValue);
+            newQueryString.append(entry.getKey()).append("=").append(entry.getValue());
         }
 
-        // Return the full URL
-        return baseUrl + "?" + queryBuilder.toString();
+        return baseUrl + "?" + newQueryString;
     }
 }
