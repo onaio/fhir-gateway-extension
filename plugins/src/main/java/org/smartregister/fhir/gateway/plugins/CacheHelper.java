@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.StringUtils;
+import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.DomainResource;
 import org.hl7.fhir.r4.model.Location;
 
@@ -22,6 +23,8 @@ public enum CacheHelper {
     Cache<String, String> stringCache;
 
     Cache<String, List<String>> listStringCache;
+
+    Cache<String, List<Bundle.BundleEntryComponent>> resourceListCache;
 
     CacheHelper() {
         cache =
@@ -45,6 +48,11 @@ public enum CacheHelper {
                         .maximumSize(DEFAULT_CACHE_SIZE)
                         .build();
         listStringCache =
+                Caffeine.newBuilder()
+                        .expireAfterWrite(getCacheExpiryDurationInSeconds(), TimeUnit.SECONDS)
+                        .maximumSize(DEFAULT_CACHE_SIZE)
+                        .build();
+        resourceListCache =
                 Caffeine.newBuilder()
                         .expireAfterWrite(getCacheExpiryDurationInSeconds(), TimeUnit.SECONDS)
                         .maximumSize(DEFAULT_CACHE_SIZE)
