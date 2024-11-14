@@ -2,8 +2,6 @@ package org.smartregister.fhir.gateway.plugins;
 
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -149,7 +147,7 @@ public class PermissionAccessChecker implements AccessChecker {
                     if (syncLocations.length == 0) {
                         key = userId;
                     } else {
-                        key = Utils.generateHash(getSortedInput(syncLocations[0]));
+                        key = Utils.generateHash(Utils.getSortedInput(syncLocations[0], ","));
                     }
 
                 } catch (NoSuchAlgorithmException exception) {
@@ -163,12 +161,6 @@ public class PermissionAccessChecker implements AccessChecker {
         }
 
         return key;
-    }
-
-    private static String getSortedInput(String input) {
-        return Arrays.stream(input.split(","))
-                .sorted(Comparator.naturalOrder())
-                .collect(Collectors.joining(","));
     }
 
     private boolean checkUserHasRole(String resourceName, String requestType) {
