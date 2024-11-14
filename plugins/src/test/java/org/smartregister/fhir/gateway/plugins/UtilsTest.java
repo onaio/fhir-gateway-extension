@@ -233,17 +233,17 @@ public class UtilsTest {
     }
 
     @Test
-    public void testCleanUpServerBaseUrlMultipleLinks() {
+    public void testCleanUpBundleLinksServerBaseUrlMultiplePaginationNextLink() {
         Bundle resultBundle = new Bundle();
         resultBundle
                 .addLink()
                 .setRelation(Bundle.LINK_NEXT)
-                .setUrl("http://old-base-url/nextPage?param=value");
-        resultBundle.addLink().setRelation(Bundle.LINK_PREV).setUrl("http://old-base-url/prevPage");
+                .setUrl(
+                        "http://old-base-url:8080/fhir?_getpages=c380a770-4ecc-45fa-b9c4-003c5b37e1f4&_getpagesoffset=2&_count=1&_pretty=true&_bundletype=searchset");
 
         Mockito.when(genericClientMock.getUrlBase()).thenReturn("http://new-base-url");
 
-        Utils.cleanUpServerBaseUrl(genericClientMock, resultBundle);
+        Utils.cleanUpBundlePaginationNextLinkServerBaseUrl(genericClientMock, resultBundle);
 
         List<Bundle.BundleLinkComponent> links = resultBundle.getLink();
 
@@ -253,16 +253,17 @@ public class UtilsTest {
                         .findFirst()
                         .orElse(null);
         Assert.assertNotNull(nextLink);
-        // TODO the assertion below should pass
-        // Assert.assertEquals("http://new-base-url/nextPage?param=value", nextLink.getUrl());
+        Assert.assertEquals(
+                "http://new-base-url?_getpages=c380a770-4ecc-45fa-b9c4-003c5b37e1f4&_getpagesoffset=2&_count=1&_pretty=true&_bundletype=searchset",
+                nextLink.getUrl());
+    }
 
-        Bundle.BundleLinkComponent prevLink =
-                links.stream()
-                        .filter(link -> Bundle.LINK_PREV.equals(link.getRelation()))
-                        .findFirst()
-                        .orElse(null);
-        Assert.assertNotNull(prevLink);
-        Assert.assertEquals("http://old-base-url/prevPage", prevLink.getUrl());
+    @Test
+    public void testGenericCleanBaseUrl() {
+        String cleanHostUrl =
+                Utils.cleanBaseUrl(
+                        "http://old-base-url/nextPage?param=value", "http://new-base-url");
+        Assert.assertEquals("http://new-base-url/nextPage?param=value", cleanHostUrl);
     }
 
     @Test
