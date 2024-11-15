@@ -15,9 +15,7 @@ import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Meta;
 import org.hl7.fhir.r4.model.Reference;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
@@ -43,6 +41,11 @@ public class UtilsTest {
 
         Mockito.when(fhirContextMock.newRestfulGenericClient(Mockito.anyString()))
                 .thenReturn(clientMock);
+    }
+
+    @After
+    public void tearDown() {
+        Mockito.clearAllCaches();
     }
 
     @Test
@@ -275,13 +278,13 @@ public class UtilsTest {
 
         MockedStatic<Utils> mockUtils = Mockito.mockStatic(Utils.class);
         mockUtils.when(() -> Utils.generateHash("location1")).thenReturn("hashedLocation1");
+        mockUtils.when(() -> Utils.getSortedInput("location1", ",")).thenReturn("location1");
 
         String result =
                 PermissionAccessChecker.generateSyncStrategyIdsCacheKey(
                         userId, syncStrategy, parameters);
         Assert.assertEquals("hashedLocation1", result);
         mockUtils.close();
-        Mockito.clearAllCaches();
     }
 
     @Test
@@ -296,6 +299,5 @@ public class UtilsTest {
                         userId, syncStrategy, parameters);
 
         Assert.assertEquals(userId, result);
-        Mockito.clearAllCaches();
     }
 }
