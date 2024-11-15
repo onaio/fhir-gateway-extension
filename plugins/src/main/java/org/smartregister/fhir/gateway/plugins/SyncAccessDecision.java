@@ -833,6 +833,6 @@ public class SyncAccessDecision implements AccessDecision {
         public static final String ROLE_SUPERVISOR = "SUPERVISOR";
         public static final String ENDPOINT_PRACTITIONER_DETAILS = "PractitionerDetail";
         public static final int REL_LOCATION_CHUNK_SIZE =
-                1; // Magic Number Alert - Do not change value for maximum stability
+                20; // Magic Number Alert - Do not change value for maximum stability
     }
 }
