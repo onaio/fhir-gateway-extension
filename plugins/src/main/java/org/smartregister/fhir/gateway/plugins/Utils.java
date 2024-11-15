@@ -277,11 +277,13 @@ public class Utils {
                 : fhirServerBaseUrl;
     }
 
-    public static String replaceQueryParamValue(String url, String paramName, String newValue) {
+    public static String replaceAddQueryParamValue(String url, String paramName, String newValue) {
         int queryIndex = url.indexOf("?");
         if (queryIndex == -1) {
             return url + "?" + paramName + "=" + newValue;
         }
+
+        if (url.length() == queryIndex + 1) return url + paramName + "=" + newValue;
 
         String baseUrl = url.substring(0, queryIndex);
         String queryString = url.substring(queryIndex + 1);
