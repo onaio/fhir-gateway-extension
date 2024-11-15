@@ -433,7 +433,7 @@ public class SyncAccessDecision implements AccessDecision {
     }
 
     private String getPaginationURL(RequestDetailsReader request, int pageNo, boolean isNext) {
-        return Utils.replaceQueryParamValue(
+        return Utils.replaceAddQueryParamValue(
                 request.getCompleteUrl(),
                 Constants.SYNC_LOCATIONS_PAGE_PARAM,
                 String.valueOf(isNext ? pageNo + 1 : pageNo - 1));
