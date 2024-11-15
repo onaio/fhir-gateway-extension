@@ -300,4 +300,35 @@ public class UtilsTest {
 
         Assert.assertEquals(userId, result);
     }
+
+    @Test
+    public void testReplaceAddQueryParamValue() {
+        String url = "http://new-base-url/nextPage?param=value&param2=value2";
+        String result = Utils.replaceAddQueryParamValue(url, "param", "replacedValue");
+        Assert.assertEquals(
+                "http://new-base-url/nextPage?param=replacedValue&param2=value2", result);
+    }
+
+    @Test
+    public void testReplaceAddQueryParamValueNoQueryParams() {
+        String url = "http://new-base-url/nextPage";
+        String result = Utils.replaceAddQueryParamValue(url, "param", "replacedValue");
+        Assert.assertEquals("http://new-base-url/nextPage?param=replacedValue", result);
+    }
+
+    @Test
+    public void testReplaceAddQueryParamValueWithQuestionMarkNoQueryParams() {
+        String url = "http://new-base-url/nextPage?";
+        String result = Utils.replaceAddQueryParamValue(url, "param", "replacedValue");
+        Assert.assertEquals("http://new-base-url/nextPage?param=replacedValue", result);
+    }
+
+    @Test
+    public void testGetSortedInput() {
+        String result = Utils.getSortedInput("gamma,zen,alpha,chi", ",");
+        Assert.assertEquals("alpha,chi,gamma,zen", result);
+
+        String result2 = Utils.getSortedInput("zebra,cat,sheep,dog", ",");
+        Assert.assertEquals("cat,dog,sheep,zebra", result2);
+    }
 }
