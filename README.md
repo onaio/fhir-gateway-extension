@@ -452,6 +452,19 @@ Example:
 [GET] /LocationHierarchy?_id=<some-location-id>&mode=list&_lastUpdated=2024-09-22T15%3A13%3A53.014%2B00%3A00&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
 ```
 
+##### LocationHierarchy Summary Count
+
+The LocationHierarchy endpoint supports the `_summary=count` parameter. This
+allows users to retrieve the total number of matching resources without
+returning the resource data. This filter only works when in list mode i.e
+`mode=list` is set as one of the parameters.
+
+Example:
+
+```
+GET /LocationHierarchy?_id=<some-location-id>&mode=list&_summary=count
+```
+
 #### Important Note:
 
 Developers, please update your client applications accordingly to accommodate
