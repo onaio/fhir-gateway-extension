@@ -400,6 +400,64 @@ public class LocationHierarchyEndpointHelperTest {
     }
 
     @Test
+    public void testGetPaginatedLocationsSummaryReturnsSummary() {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        Mockito.doReturn("12345").when(request).getParameter(Constants.IDENTIFIER);
+        Mockito.doReturn("2").when(request).getParameter(Constants.PAGINATION_PAGE_SIZE);
+        Mockito.doReturn("2").when(request).getParameter(Constants.PAGINATION_PAGE_NUMBER);
+        Mockito.doReturn(Constants.COUNT).when(request).getParameter(Constants.SUMMARY);
+        Mockito.doReturn(new StringBuffer("http://test:8080/LocationHierarchy"))
+                .when(request)
+                .getRequestURL();
+
+        Map<String, String[]> parameters = new HashMap<>();
+        parameters.put(Constants.IDENTIFIER, new String[] {"12345"});
+        parameters.put(Constants.PAGINATION_PAGE_SIZE, new String[] {"2"});
+        parameters.put(Constants.PAGINATION_PAGE_NUMBER, new String[] {"2"});
+        parameters.put(Constants.SUMMARY, new String[] {Constants.COUNT});
+
+        Mockito.doReturn(parameters).when(request).getParameterMap();
+
+        LocationHierarchyEndpointHelper mockLocationHierarchyEndpointHelper =
+                mock(LocationHierarchyEndpointHelper.class);
+        List<Location> locations = createTestLocationList(5, false, false);
+        List<String> adminLevels = new ArrayList<>();
+
+        List<String> locationIds = Collections.singletonList("12345");
+
+        Mockito.doReturn(false)
+                .when(mockLocationHierarchyEndpointHelper)
+                .adminLevelFilter(Mockito.any(Location.class), Mockito.any());
+        Mockito.doReturn(false)
+                .when(mockLocationHierarchyEndpointHelper)
+                .lastUpdatedFilter(Mockito.any(Location.class), Mockito.any());
+        Mockito.doReturn(false)
+                .when(mockLocationHierarchyEndpointHelper)
+                .inventoryFilter(Mockito.any(Location.class));
+        Mockito.doCallRealMethod()
+                .when(mockLocationHierarchyEndpointHelper)
+                .getPaginatedLocations(request, locationIds);
+        Mockito.doCallRealMethod()
+                .when(mockLocationHierarchyEndpointHelper)
+                .postFetchFilters(locations, adminLevels, false, "");
+
+        Mockito.doReturn(locations)
+                .when(mockLocationHierarchyEndpointHelper)
+                .getLocationHierarchyLocations(
+                        "12345", null, adminLevels, adminLevels, false, null);
+
+        Bundle resultBundle =
+                mockLocationHierarchyEndpointHelper.getPaginatedLocations(request, locationIds);
+
+        Assert.assertFalse(resultBundle.hasEntry());
+        Assert.assertTrue(resultBundle.hasType());
+        Assert.assertTrue(resultBundle.hasTotal());
+        Assert.assertTrue(resultBundle.hasTotal());
+        Assert.assertEquals(0, resultBundle.getEntry().size());
+        Assert.assertEquals(5, resultBundle.getTotal());
+    }
+
+    @Test
     public void testFilterLocationsByLastUpdatedBasic() {
         List<Location> locations = createTestLocationList(5, true, true);
         String lastUpdated = OffsetDateTime.now().minusDays(2).toString();
