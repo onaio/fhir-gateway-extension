@@ -367,6 +367,7 @@ public class LocationHierarchyEndpointHelper {
         String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
         Boolean filterInventory = Boolean.valueOf(request.getParameter(Constants.FILTER_INVENTORY));
         String lastUpdated = request.getParameter(Constants.LAST_UPDATED);
+        String summary = request.getParameter(Constants.SUMMARY);
         List<String> preFetchAdminLevels =
                 generateAdminLevels(
                         String.valueOf(Constants.DEFAULT_MIN_ADMIN_LEVEL), administrativeLevelMax);
@@ -403,6 +404,13 @@ public class LocationHierarchyEndpointHelper {
         int end = Math.min(start + count, resourceLocations.size());
         List<Resource> paginatedResourceLocations = resourceLocations.subList(start, end);
         Bundle resultBundle;
+        if (Constants.COUNT.equals(summary)) {
+            resultBundle =
+                    Utils.createEmptyBundle(
+                            request.getRequestURL() + "?" + request.getQueryString());
+            resultBundle.setTotal(totalEntries);
+            return resultBundle;
+        }
 
         if (resourceLocations.isEmpty()) {
             resultBundle =
