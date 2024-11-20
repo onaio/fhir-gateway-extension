@@ -90,6 +90,13 @@
       "queryParams": {
         "_id": "ANY_VALUE"
       }
+    },
+    {
+      "path": "Group",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
     }
   ]
 }

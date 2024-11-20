@@ -77,6 +77,8 @@ public class LocationHierarchyEndpointHelper {
             Boolean filterInventory,
             String lastUpdated) {
 
+        locationIds = locationIds != null ? locationIds : Collections.emptyList();
+
         return locationIds.parallelStream()
                 .map(
                         locationId ->
@@ -285,9 +287,11 @@ public class LocationHierarchyEndpointHelper {
                                 filterInventory,
                                 lastUpdated);
                 List<Resource> resourceList =
-                        locationHierarchies.stream()
-                                .map(locationHierarchy -> (Resource) locationHierarchy)
-                                .collect(Collectors.toList());
+                        locationHierarchies != null
+                                ? locationHierarchies.stream()
+                                        .map(locationHierarchy -> (Resource) locationHierarchy)
+                                        .collect(Collectors.toList())
+                                : Collections.emptyList();
                 return Utils.createBundle(resourceList);
             } else {
                 List<String> locationIds =
@@ -301,9 +305,11 @@ public class LocationHierarchyEndpointHelper {
                                 filterInventory,
                                 lastUpdated);
                 List<Resource> resourceList =
-                        locationHierarchies.stream()
-                                .map(locationHierarchy -> (Resource) locationHierarchy)
-                                .collect(Collectors.toList());
+                        locationHierarchies != null
+                                ? locationHierarchies.stream()
+                                        .map(locationHierarchy -> (Resource) locationHierarchy)
+                                        .collect(Collectors.toList())
+                                : Collections.emptyList();
                 return Utils.createBundle(resourceList);
             }
         }
