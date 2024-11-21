@@ -292,6 +292,7 @@ public class Utils {
         Map<String, String> queryMap = new HashMap<>();
 
         for (String param : queryParams) {
+            if (param.isEmpty()) continue;
             String[] pair = param.split("=");
             queryMap.put(pair[0], pair.length > 1 ? pair[1] : "");
         }

@@ -186,7 +186,7 @@ public class SyncAccessDecision implements AccessDecision {
 
         int endIndex =
                 Math.min(
-                        startIndex + SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE,
+                        startIndex + getRelLocationChunkSize(),
                         syncStrategyIdsMap
                                 .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
                                 .size());
@@ -283,18 +283,21 @@ public class SyncAccessDecision implements AccessDecision {
         return resultContent;
     }
 
-    // int count = getQueryParamValue("_count", request);
-
     private String getQueryParamValue(
             String key, RequestDetailsReader requestDetailsReader, String defaultValue) {
-        String[] countRaw = requestDetailsReader.getParameters().get(key);
+        String[] countRaw = requestDetailsReader.getParameters().getOrDefault(key, new String[] {});
         return countRaw.length > 0 ? countRaw[0] : defaultValue;
     }
 
     private int getQueryParamIntValue(
             String key, RequestDetailsReader requestDetailsReader, int defaultValue) {
-        String[] countRaw = requestDetailsReader.getParameters().getOrDefault(key, new String[] {});
-        return countRaw.length > 0 ? Integer.parseInt(countRaw[0]) : defaultValue;
+        return Integer.parseInt(
+                getQueryParamValue(key, requestDetailsReader, String.valueOf(defaultValue)));
+    }
+
+    @VisibleForTesting
+    protected int getRelLocationChunkSize() {
+        return SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE;
     }
 
     private IBaseResource processRelatedEntityLocationSyncStrategy(
@@ -313,7 +316,7 @@ public class SyncAccessDecision implements AccessDecision {
             if (syncStrategyIdsMap
                             .getOrDefault(Constants.SyncStrategy.RELATED_ENTITY_LOCATION, List.of())
                             .size()
-                    <= SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE) {
+                    <= getRelLocationChunkSize()) {
                 return responseResource;
             }
 
@@ -333,12 +336,12 @@ public class SyncAccessDecision implements AccessDecision {
                                 + "?"
                                 + getRequestParametersString(request.getParameters());
 
-                for (int startIndex = SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE;
+                for (int startIndex = getRelLocationChunkSize();
                         startIndex
                                 < syncStrategyIdsMap
                                         .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
                                         .size();
-                        startIndex += SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE) {
+                        startIndex += getRelLocationChunkSize()) {
 
                     List<String> syncLocationIds =
                             getRelChunkStrategyIds(startIndex, syncStrategyIdsMap);
