@@ -162,6 +162,8 @@ public class PractitionerDetailsEndpointHelper {
 
     @Nonnull
     public static Set<String> getAttributedLocations(List<LocationHierarchy> locationHierarchies) {
+        locationHierarchies =
+                locationHierarchies != null ? locationHierarchies : Collections.emptyList();
         List<ParentChildrenMap> parentChildrenList =
                 locationHierarchies.stream()
                         .flatMap(
