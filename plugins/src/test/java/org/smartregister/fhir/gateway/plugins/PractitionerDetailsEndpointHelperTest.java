@@ -115,7 +115,7 @@ public class PractitionerDetailsEndpointHelperTest {
                         + "  \"locationId\": \"12345\"\n"
                         + "}";
 
-        FhirContext ctx = FhirContext.forR4Cached();
+        FhirContext ctx = FhirContext.forR4();
         ctx.registerCustomType(LocationHierarchy.class);
         IParser parser = ctx.newJsonParser();
         LocationHierarchy locationHierarchy =

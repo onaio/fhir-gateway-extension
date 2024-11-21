@@ -1092,18 +1092,13 @@ public class SyncAccessDecisionTest {
 
         FhirContext fhirR4Context = mock(FhirContext.class);
         IGenericClient iGenericClient = mock(IGenericClient.class);
-        ITransaction iTransaction = mock(ITransaction.class);
         ITransactionTyped<Bundle> iClientExecutable = mock(ITransactionTyped.class);
 
-        Mockito.when(iGenericClient.transaction()).thenReturn(iTransaction);
-        Mockito.when(iTransaction.withBundle(any(Bundle.class))).thenReturn(iClientExecutable);
         Mockito.when(testInstance.getRelLocationChunkSize()).thenReturn(2);
 
         Bundle resultBundle = new Bundle();
         resultBundle.setType(Bundle.BundleType.BATCHRESPONSE);
         resultBundle.setId("bundle-result-id");
-
-        Mockito.when(iClientExecutable.execute()).thenReturn(resultBundle);
 
         testInstance.setFhirR4Context(fhirR4Context);
 
@@ -1116,7 +1111,6 @@ public class SyncAccessDecisionTest {
         String fhirServerBase = "http://test:8080/fhir";
 
         Mockito.when(requestDetailsSpy.getParameters()).thenReturn(params);
-        Mockito.when(requestDetailsSpy.getFhirServerBase()).thenReturn(fhirServerBase);
         Mockito.when(requestDetailsSpy.getRequestPath()).thenReturn("Encounter");
 
         StringBuilder queryParamStringBuilder = new StringBuilder();
@@ -1158,14 +1152,7 @@ public class SyncAccessDecisionTest {
                 FhirContext.forR4().newJsonParser().encodeResourceToString(bundle));
 
         IUntypedQuery searchClient = Mockito.mock(IUntypedQuery.class);
-        IQuery searchClientIQuery = Mockito.mock(IQuery.class);
         Mockito.when(iGenericClient.search()).thenReturn(searchClient);
-
-        // First batch
-        Mockito.when(searchClient.byUrl("Encounter?&_count=2")).thenReturn(searchClientIQuery);
-        Mockito.when(searchClientIQuery.usingStyle(SearchStyleEnum.POST))
-                .thenReturn(searchClientIQuery);
-        Mockito.when(searchClientIQuery.execute()).thenReturn(bundle);
 
         // Second batch
         Bundle bundle2 = new Bundle();
