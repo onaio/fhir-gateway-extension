@@ -23,18 +23,20 @@ import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.OrganizationAffiliation;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.PractitionerRole;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartregister.model.location.LocationHierarchy;
 import org.smartregister.model.location.ParentChildrenMap;
 import org.smartregister.model.practitioner.FhirPractitionerDetails;
 import org.smartregister.model.practitioner.PractitionerDetails;
-import org.springframework.lang.Nullable;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import ca.uhn.fhir.rest.api.SearchStyleEnum;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
 public class PractitionerDetailsEndpointHelper {
     private static final Logger logger =
@@ -88,7 +90,8 @@ public class PractitionerDetailsEndpointHelper {
         return bundle;
     }
 
-    private Bundle getAttributedPractitionerDetailsByPractitioner(Practitioner practitioner) {
+    @VisibleForTesting
+    protected Bundle getAttributedPractitionerDetailsByPractitioner(Practitioner practitioner) {
         Bundle responseBundle = new Bundle();
         List<Practitioner> attributedPractitioners = new ArrayList<>();
         PractitionerDetails practitionerDetails =
@@ -157,8 +160,10 @@ public class PractitionerDetailsEndpointHelper {
         return responseBundle;
     }
 
-    @NotNull
+    @Nonnull
     public static Set<String> getAttributedLocations(List<LocationHierarchy> locationHierarchies) {
+        locationHierarchies =
+                locationHierarchies != null ? locationHierarchies : Collections.emptyList();
         List<ParentChildrenMap> parentChildrenList =
                 locationHierarchies.stream()
                         .flatMap(
@@ -189,7 +194,8 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toSet());
     }
 
-    private List<String> getOrganizationIdsByLocationIds(Set<String> attributedLocationsList) {
+    @VisibleForTesting
+    protected List<String> getOrganizationIdsByLocationIds(Set<String> attributedLocationsList) {
         if (attributedLocationsList == null || attributedLocationsList.isEmpty()) {
             return new ArrayList<>();
         }
@@ -245,6 +251,70 @@ public class PractitionerDetailsEndpointHelper {
         }
 
         return practitionerDetails;
+    }
+
+    public List<String> getPractitionerLocationIdsByByKeycloakId(String keycloakUUID) {
+        logger.info("Searching for Practitioner with user id: " + keycloakUUID);
+        Practitioner practitioner = getPractitionerByIdentifier(keycloakUUID);
+        List<String> locationIds = new ArrayList<>();
+
+        if (practitioner != null) {
+            String practitionerId = getPractitionerIdentifier(practitioner);
+            if (CacheHelper.INSTANCE.skipCache()) {
+                locationIds = getPractitionerLocationIdsByByKeycloakIdCore(practitionerId);
+            } else {
+                locationIds =
+                        CacheHelper.INSTANCE.listStringCache.get(
+                                keycloakUUID,
+                                key ->
+                                        getPractitionerLocationIdsByByKeycloakIdCore(
+                                                practitionerId));
+            }
+
+        } else {
+            logger.error("Practitioner with KC identifier : " + keycloakUUID + " not found");
+        }
+        return locationIds;
+    }
+
+    @VisibleForTesting
+    protected List<String> getPractitionerLocationIdsByByKeycloakIdCore(String practitionerId) {
+
+        logger.info("Searching for CareTeams with Practitioner Id: " + practitionerId);
+        Bundle careTeams = getCareTeams(practitionerId);
+        List<CareTeam> careTeamsList = mapBundleToCareTeams(careTeams);
+
+        logger.info(
+                "Searching for Organizations tied to CareTeams list of size : "
+                        + careTeamsList.size());
+        Set<String> careTeamManagingOrganizationIds =
+                getManagingOrganizationsOfCareTeamIds(careTeamsList);
+
+        List<PractitionerRole> practitionerRoleList =
+                getPractitionerRolesByPractitionerId(practitionerId);
+        logger.info("Practitioner Roles fetched: " + practitionerRoleList.size());
+
+        Set<String> practitionerOrganizationIds =
+                getOrganizationIdsByPractitionerRoles(practitionerRoleList);
+
+        Set<String> organizationIds =
+                Stream.concat(
+                                careTeamManagingOrganizationIds.stream(),
+                                practitionerOrganizationIds.stream())
+                        .collect(Collectors.toSet());
+
+        logger.info("Searching for locations by organizations: " + organizationIds.size());
+
+        Bundle organizationAffiliationsBundle =
+                getOrganizationAffiliationsByOrganizationIdsBundle(organizationIds);
+
+        List<OrganizationAffiliation> organizationAffiliations =
+                mapBundleToOrganizationAffiliation(organizationAffiliationsBundle);
+
+        List<String> locationIds =
+                getLocationIdsByOrganizationAffiliations(organizationAffiliations);
+
+        return locationIds;
     }
 
     public PractitionerDetails getPractitionerDetailsByPractitionerCore(
@@ -323,10 +393,11 @@ public class PractitionerDetailsEndpointHelper {
         List<String> locationIds =
                 getLocationIdsByOrganizationAffiliations(organizationAffiliations);
 
-        logger.info("Searching for location hierarchy list by locations identifiers");
-        List<LocationHierarchy> locationHierarchyList = getLocationsHierarchy(locationIds);
-
-        fhirPractitionerDetails.setLocationHierarchyList(locationHierarchyList);
+        //        logger.info("Searching for location hierarchy list by locations identifiers");
+        //        List<LocationHierarchy> locationHierarchyList =
+        // getLocationsHierarchy(locationIds);
+        //
+        //        fhirPractitionerDetails.setLocationHierarchyList(locationHierarchyList);
 
         logger.info("Searching for locations by ids : " + locationIds);
         List<Location> locationsList = getLocationsByIds(locationIds);
@@ -363,12 +434,14 @@ public class PractitionerDetailsEndpointHelper {
         return t -> seen.add(uniqueKeyExtractor.apply(t));
     }
 
-    private List<PractitionerRole> getPractitionerRolesByPractitionerId(String practitionerId) {
+    @VisibleForTesting
+    protected List<PractitionerRole> getPractitionerRolesByPractitionerId(String practitionerId) {
         Bundle practitionerRoles = getPractitionerRoles(practitionerId);
         return mapBundleToPractitionerRolesWithOrganization(practitionerRoles);
     }
 
-    private Set<String> getOrganizationIdsByPractitionerRoles(
+    @VisibleForTesting
+    protected Set<String> getOrganizationIdsByPractitionerRoles(
             List<PractitionerRole> practitionerRoles) {
         return practitionerRoles.stream()
                 .filter(PractitionerRole::hasOrganization)
@@ -376,7 +449,8 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toSet());
     }
 
-    private Practitioner getPractitionerByIdentifier(String identifier) {
+    @VisibleForTesting
+    protected Practitioner getPractitionerByIdentifier(String identifier) {
         Bundle resultBundle =
                 getFhirClientForR4()
                         .search()
@@ -391,7 +465,8 @@ public class PractitionerDetailsEndpointHelper {
                 : null;
     }
 
-    private List<CareTeam> getCareTeamsByOrganizationIds(List<String> organizationIds) {
+    @VisibleForTesting
+    protected List<CareTeam> getCareTeamsByOrganizationIds(List<String> organizationIds) {
         if (organizationIds.isEmpty()) return new ArrayList<>();
 
         Bundle bundle =
@@ -421,7 +496,8 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toList());
     }
 
-    private Bundle getCareTeams(String practitionerId) {
+    @VisibleForTesting
+    protected Bundle getCareTeams(String practitionerId) {
         return getFhirClientForR4()
                 .search()
                 .forResource(CareTeam.class)
@@ -450,7 +526,8 @@ public class PractitionerDetailsEndpointHelper {
                 reference.lastIndexOf(org.smartregister.utils.Constants.FORWARD_SLASH) + 1);
     }
 
-    private Bundle getOrganizationsById(Set<String> organizationIds) {
+    @VisibleForTesting
+    protected Bundle getOrganizationsById(Set<String> organizationIds) {
         return organizationIds.isEmpty()
                 ? EMPTY_BUNDLE
                 : getFhirClientForR4()
@@ -464,7 +541,8 @@ public class PractitionerDetailsEndpointHelper {
                         .execute();
     }
 
-    private @Nullable List<Location> getLocationsByIds(List<String> locationIds) {
+    @VisibleForTesting
+    protected @Nullable List<Location> getLocationsByIds(List<String> locationIds) {
         if (locationIds == null || locationIds.isEmpty()) {
             return new ArrayList<>();
         }
@@ -485,7 +563,8 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toList());
     }
 
-    private List<OrganizationAffiliation> getOrganizationAffiliationsByOrganizationIds(
+    @VisibleForTesting
+    protected List<OrganizationAffiliation> getOrganizationAffiliationsByOrganizationIds(
             Set<String> organizationIds) {
         if (organizationIds == null || organizationIds.isEmpty()) {
             return new ArrayList<>();
@@ -495,7 +574,9 @@ public class PractitionerDetailsEndpointHelper {
         return mapBundleToOrganizationAffiliation(organizationAffiliationsBundle);
     }
 
-    private Bundle getOrganizationAffiliationsByOrganizationIdsBundle(Set<String> organizationIds) {
+    @VisibleForTesting
+    protected Bundle getOrganizationAffiliationsByOrganizationIdsBundle(
+            Set<String> organizationIds) {
         return organizationIds.isEmpty()
                 ? EMPTY_BUNDLE
                 : getFhirClientForR4()
@@ -509,7 +590,8 @@ public class PractitionerDetailsEndpointHelper {
                         .execute();
     }
 
-    private List<String> getLocationIdsByOrganizationAffiliations(
+    @VisibleForTesting
+    protected List<String> getLocationIdsByOrganizationAffiliations(
             List<OrganizationAffiliation> organizationAffiliations) {
 
         return organizationAffiliations.stream()
@@ -523,7 +605,8 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toList());
     }
 
-    private Set<String> getManagingOrganizationsOfCareTeamIds(List<CareTeam> careTeamsList) {
+    @VisibleForTesting
+    protected Set<String> getManagingOrganizationsOfCareTeamIds(List<CareTeam> careTeamsList) {
         return careTeamsList.stream()
                 .filter(CareTeam::hasManagingOrganization)
                 .flatMap(it -> it.getManagingOrganization().stream())
@@ -531,7 +614,8 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toSet());
     }
 
-    private List<CareTeam> mapBundleToCareTeams(Bundle careTeams) {
+    @VisibleForTesting
+    protected List<CareTeam> mapBundleToCareTeams(Bundle careTeams) {
         return careTeams != null
                 ? careTeams.getEntry().stream()
                         .map(bundleEntryComponent -> (CareTeam) bundleEntryComponent.getResource())
@@ -556,7 +640,8 @@ public class PractitionerDetailsEndpointHelper {
                 : Collections.emptyList();
     }
 
-    private List<OrganizationAffiliation> mapBundleToOrganizationAffiliation(
+    @VisibleForTesting
+    protected List<OrganizationAffiliation> mapBundleToOrganizationAffiliation(
             Bundle organizationAffiliationBundle) {
         return organizationAffiliationBundle != null
                 ? organizationAffiliationBundle.getEntry().stream()
@@ -573,7 +658,8 @@ public class PractitionerDetailsEndpointHelper {
                 .map(
                         locationsIdentifier ->
                                 new LocationHierarchyEndpointHelper(r4FHIRClient)
-                                        .getLocationHierarchy(locationsIdentifier, null, null))
+                                        .getLocationHierarchy(
+                                                locationsIdentifier, null, null, false, ""))
                 .filter(
                         locationHierarchy ->
                                 !org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND

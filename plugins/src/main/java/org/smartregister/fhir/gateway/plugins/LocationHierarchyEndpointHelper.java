@@ -3,22 +3,21 @@ package org.smartregister.fhir.gateway.plugins;
 import static org.smartregister.utils.Constants.LOCATION_RESOURCE;
 import static org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import javax.annotation.Nullable;
-import javax.servlet.http.HttpServletRequest;
-
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Binary;
 import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.CodeableConcept;
-import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Composition;
+import org.hl7.fhir.r4.model.ListResource;
 import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.StringType;
@@ -38,6 +37,8 @@ import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
 import ca.uhn.fhir.rest.gclient.TokenClientParam;
 import ca.uhn.fhir.rest.server.exceptions.ForbiddenOperationException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import jakarta.annotation.Nullable;
+import jakarta.servlet.http.HttpServletRequest;
 
 public class LocationHierarchyEndpointHelper {
 
@@ -57,42 +58,45 @@ public class LocationHierarchyEndpointHelper {
     public LocationHierarchy getLocationHierarchy(
             String locationId,
             List<String> preFetchAdminLevels,
-            List<String> postFetchAdminLevels) {
-        LocationHierarchy locationHierarchy;
-
-        if (CacheHelper.INSTANCE.skipCache()) {
-            locationHierarchy =
-                    getLocationHierarchyCore(locationId, preFetchAdminLevels, postFetchAdminLevels);
-        } else {
-            locationHierarchy =
-                    (LocationHierarchy)
-                            CacheHelper.INSTANCE.resourceCache.get(
-                                    locationId,
-                                    key ->
-                                            getLocationHierarchyCore(
-                                                    locationId,
-                                                    preFetchAdminLevels,
-                                                    postFetchAdminLevels));
-        }
-        return locationHierarchy;
+            List<String> postFetchAdminLevels,
+            Boolean filterInventory,
+            String lastUpdated) {
+        // TODO: implement correct caching
+        return getLocationHierarchyCore(
+                locationId,
+                preFetchAdminLevels,
+                postFetchAdminLevels,
+                filterInventory,
+                lastUpdated);
     }
 
     public List<LocationHierarchy> getLocationHierarchies(
             List<String> locationIds,
             List<String> preFetchAdminLevels,
-            List<String> postFetchAdminLevels) {
+            List<String> postFetchAdminLevels,
+            Boolean filterInventory,
+            String lastUpdated) {
+
+        locationIds = locationIds != null ? locationIds : Collections.emptyList();
+
         return locationIds.parallelStream()
                 .map(
                         locationId ->
                                 getLocationHierarchy(
-                                        locationId, preFetchAdminLevels, postFetchAdminLevels))
+                                        locationId,
+                                        preFetchAdminLevels,
+                                        postFetchAdminLevels,
+                                        filterInventory,
+                                        lastUpdated))
                 .collect(Collectors.toList());
     }
 
     public LocationHierarchy getLocationHierarchyCore(
             String locationId,
             List<String> preFetchAdminLevels,
-            List<String> postFetchAdminLevels) {
+            List<String> postFetchAdminLevels,
+            Boolean filterInventory,
+            String lastUpdated) {
         Location location = getLocationById(locationId);
 
         LocationHierarchyTree locationHierarchyTree = new LocationHierarchyTree();
@@ -100,10 +104,13 @@ public class LocationHierarchyEndpointHelper {
         if (location != null) {
             logger.info("Building Location Hierarchy of Location Id : {}", locationId);
 
-            locationHierarchyTree.buildTreeFromList(
-                    filterLocationsByAdminLevels(
-                            getDescendants(locationId, location, preFetchAdminLevels),
-                            postFetchAdminLevels));
+            List<Location> descendants = getDescendants(locationId, location, preFetchAdminLevels);
+
+            descendants =
+                    postFetchFilters(
+                            descendants, postFetchAdminLevels, filterInventory, lastUpdated);
+
+            locationHierarchyTree.buildTreeFromList(descendants);
             StringType locationIdString = new StringType().setId(locationId).getIdElement();
             locationHierarchy.setLocationId(locationIdString);
             locationHierarchy.setId(LOCATION_RESOURCE + locationId);
@@ -120,7 +127,9 @@ public class LocationHierarchyEndpointHelper {
             String locationId,
             Location parentLocation,
             List<String> preFetchAdminLevels,
-            List<String> postFetchAdminLevels) {
+            List<String> postFetchAdminLevels,
+            Boolean filterInventory,
+            String lastUpdated) {
         List<Location> descendants;
 
         if (CacheHelper.INSTANCE.skipCache()) {
@@ -131,7 +140,9 @@ public class LocationHierarchyEndpointHelper {
                             locationId,
                             key -> getDescendants(locationId, parentLocation, preFetchAdminLevels));
         }
-        return filterLocationsByAdminLevels(descendants, postFetchAdminLevels);
+        descendants =
+                postFetchFilters(descendants, postFetchAdminLevels, filterInventory, lastUpdated);
+        return descendants;
     }
 
     public List<Location> getDescendants(
@@ -158,15 +169,18 @@ public class LocationHierarchyEndpointHelper {
         }
 
         Bundle childLocationBundle =
-                query.usingStyle(SearchStyleEnum.POST).returnBundle(Bundle.class).execute();
+                query.usingStyle(SearchStyleEnum.POST)
+                        .count(
+                                SyncAccessDecision.SyncAccessDecisionConstants
+                                        .REL_LOCATION_CHUNK_SIZE)
+                        .returnBundle(Bundle.class)
+                        .execute();
 
         List<Location> allLocations = Collections.synchronizedList(new ArrayList<>());
         if (parentLocation != null) {
             allLocations.add(parentLocation);
         }
-
         if (childLocationBundle != null) {
-
             childLocationBundle.getEntry().parallelStream()
                     .forEach(
                             childLocation -> {
@@ -179,6 +193,24 @@ public class LocationHierarchyEndpointHelper {
                                                 null,
                                                 adminLevels));
                             });
+
+            while (childLocationBundle.getLink(Bundle.LINK_NEXT) != null) {
+                childLocationBundle =
+                        getFhirClientForR4().loadPage().next(childLocationBundle).execute();
+
+                childLocationBundle.getEntry().parallelStream()
+                        .forEach(
+                                childLocation -> {
+                                    Location childLocationEntity =
+                                            (Location) childLocation.getResource();
+                                    allLocations.add(childLocationEntity);
+                                    allLocations.addAll(
+                                            getDescendants(
+                                                    childLocationEntity.getIdElement().getIdPart(),
+                                                    null,
+                                                    adminLevels));
+                                });
+            }
         }
 
         return allLocations;
@@ -199,18 +231,25 @@ public class LocationHierarchyEndpointHelper {
     public Bundle handleIdentifierRequest(HttpServletRequest request, String identifier) {
         String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
         String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
+        String mode = request.getParameter(Constants.MODE);
+        Boolean filterInventory = Boolean.valueOf(request.getParameter(Constants.FILTER_INVENTORY));
+        String lastUpdated = "";
         List<String> preFetchAdminLevels =
                 generateAdminLevels(
                         String.valueOf(Constants.DEFAULT_MIN_ADMIN_LEVEL), administrativeLevelMax);
         List<String> postFetchAdminLevels =
                 generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
-        String mode = request.getParameter(Constants.MODE);
         if (Constants.LIST.equals(mode)) {
             List<String> locationIds = Collections.singletonList(identifier);
             return getPaginatedLocations(request, locationIds);
         } else {
             LocationHierarchy locationHierarchy =
-                    getLocationHierarchy(identifier, preFetchAdminLevels, postFetchAdminLevels);
+                    getLocationHierarchy(
+                            identifier,
+                            preFetchAdminLevels,
+                            postFetchAdminLevels,
+                            filterInventory,
+                            lastUpdated);
             return Utils.createBundle(Collections.singletonList(locationHierarchy));
         }
     }
@@ -223,6 +262,7 @@ public class LocationHierarchyEndpointHelper {
         String syncLocationsParam = request.getParameter(Constants.SYNC_LOCATIONS_SEARCH_PARAM);
         String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
         String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
+        Boolean filterInventory = Boolean.valueOf(request.getParameter(Constants.FILTER_INVENTORY));
         List<String> preFetchAdminLevels =
                 generateAdminLevels(
                         String.valueOf(Constants.DEFAULT_MIN_ADMIN_LEVEL), administrativeLevelMax);
@@ -233,6 +273,7 @@ public class LocationHierarchyEndpointHelper {
         List<String> userRoles = JwtUtils.getUserRolesFromJWT(verifiedJwt);
         String applicationId = JwtUtils.getApplicationIdFromJWT(verifiedJwt);
         String syncStrategy = getSyncStrategyByAppId(applicationId);
+        String lastUpdated = "";
 
         if (Constants.LIST.equals(mode)) {
             if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)
@@ -241,15 +282,9 @@ public class LocationHierarchyEndpointHelper {
                 return getPaginatedLocations(request, selectedSyncLocations);
 
             } else {
-                List<Location> locations =
-                        practitionerDetailsEndpointHelper
-                                .getPractitionerDetailsByKeycloakId(practitionerId)
-                                .getFhirPractitionerDetails()
-                                .getLocations();
-                List<String> locationIds = new ArrayList<>();
-                for (Location location : locations) {
-                    locationIds.add(location.getIdElement().getIdPart());
-                }
+                List<String> locationIds =
+                        practitionerDetailsEndpointHelper.getPractitionerLocationIdsByByKeycloakId(
+                                practitionerId);
                 return getPaginatedLocations(request, locationIds);
             }
 
@@ -259,22 +294,35 @@ public class LocationHierarchyEndpointHelper {
                     && !selectedSyncLocations.isEmpty()) {
                 List<LocationHierarchy> locationHierarchies =
                         getLocationHierarchies(
-                                selectedSyncLocations, preFetchAdminLevels, postFetchAdminLevels);
+                                selectedSyncLocations,
+                                preFetchAdminLevels,
+                                postFetchAdminLevels,
+                                filterInventory,
+                                lastUpdated);
                 List<Resource> resourceList =
-                        locationHierarchies.stream()
-                                .map(locationHierarchy -> (Resource) locationHierarchy)
-                                .collect(Collectors.toList());
+                        locationHierarchies != null
+                                ? locationHierarchies.stream()
+                                        .map(locationHierarchy -> (Resource) locationHierarchy)
+                                        .collect(Collectors.toList())
+                                : Collections.emptyList();
                 return Utils.createBundle(resourceList);
             } else {
+                List<String> locationIds =
+                        practitionerDetailsEndpointHelper.getPractitionerLocationIdsByByKeycloakId(
+                                practitionerId);
                 List<LocationHierarchy> locationHierarchies =
-                        practitionerDetailsEndpointHelper
-                                .getPractitionerDetailsByKeycloakId(practitionerId)
-                                .getFhirPractitionerDetails()
-                                .getLocationHierarchyList();
+                        getLocationHierarchies(
+                                locationIds,
+                                preFetchAdminLevels,
+                                postFetchAdminLevels,
+                                filterInventory,
+                                lastUpdated);
                 List<Resource> resourceList =
-                        locationHierarchies.stream()
-                                .map(locationHierarchy -> (Resource) locationHierarchy)
-                                .collect(Collectors.toList());
+                        locationHierarchies != null
+                                ? locationHierarchies.stream()
+                                        .map(locationHierarchy -> (Resource) locationHierarchy)
+                                        .collect(Collectors.toList())
+                                : Collections.emptyList();
                 return Utils.createBundle(resourceList);
             }
         }
@@ -330,6 +378,9 @@ public class LocationHierarchyEndpointHelper {
         String pageNumber = request.getParameter(Constants.PAGINATION_PAGE_NUMBER);
         String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
         String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
+        Boolean filterInventory = Boolean.valueOf(request.getParameter(Constants.FILTER_INVENTORY));
+        String lastUpdated = request.getParameter(Constants.LAST_UPDATED);
+        String summary = request.getParameter(Constants.SUMMARY);
         List<String> preFetchAdminLevels =
                 generateAdminLevels(
                         String.valueOf(Constants.DEFAULT_MIN_ADMIN_LEVEL), administrativeLevelMax);
@@ -348,19 +399,31 @@ public class LocationHierarchyEndpointHelper {
 
         int start = Math.max(0, (page - 1)) * count;
 
-        List<Resource> resourceLocations = new ArrayList<>();
-        for (String identifier : locationIds) {
-            Location parentLocation = getLocationById(identifier);
-            List<Location> locations =
-                    getLocationHierarchyLocations(
-                            identifier, parentLocation, preFetchAdminLevels, postFetchAdminLevels);
-            resourceLocations.addAll(locations);
-        }
+        List<Resource> resourceLocations =
+                locationIds.parallelStream()
+                        .flatMap(
+                                identifier ->
+                                        getLocationHierarchyLocations(
+                                                identifier,
+                                                getLocationById(identifier),
+                                                preFetchAdminLevels,
+                                                postFetchAdminLevels,
+                                                filterInventory,
+                                                lastUpdated)
+                                                .stream())
+                        .collect(Collectors.toList());
         int totalEntries = resourceLocations.size();
 
         int end = Math.min(start + count, resourceLocations.size());
         List<Resource> paginatedResourceLocations = resourceLocations.subList(start, end);
         Bundle resultBundle;
+        if (Constants.COUNT.equals(summary)) {
+            resultBundle =
+                    Utils.createEmptyBundle(
+                            request.getRequestURL() + "?" + request.getQueryString());
+            resultBundle.setTotal(totalEntries);
+            return resultBundle;
+        }
 
         if (resourceLocations.isEmpty()) {
             resultBundle =
@@ -415,24 +478,57 @@ public class LocationHierarchyEndpointHelper {
         return adminLevels;
     }
 
-    public List<Location> filterLocationsByAdminLevels(
-            List<Location> locations, List<String> postFetchAdminLevels) {
-        if (postFetchAdminLevels == null) {
-            return locations;
-        }
-        List<Location> allLocations = new ArrayList<>();
-        for (Location location : locations) {
-            for (CodeableConcept codeableConcept : location.getType()) {
-                List<Coding> codings = codeableConcept.getCoding();
-                for (Coding coding : codings) {
-                    if (coding.getSystem().equals(Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL)) {
-                        if (postFetchAdminLevels.contains(coding.getCode())) {
-                            allLocations.add(location);
-                        }
-                    }
-                }
-            }
-        }
-        return allLocations;
+    public List<Location> postFetchFilters(
+            List<Location> locations,
+            List<String> postFetchAdminLevels,
+            boolean filterByInventory,
+            String lastUpdated) {
+        return locations.stream()
+                .filter(
+                        location ->
+                                postFetchAdminLevels == null
+                                        || postFetchAdminLevels.isEmpty()
+                                        || adminLevelFilter(location, postFetchAdminLevels))
+                .filter(
+                        location ->
+                                lastUpdated == null
+                                        || lastUpdated.isBlank()
+                                        || lastUpdatedFilter(location, lastUpdated))
+                .filter(location -> !filterByInventory || inventoryFilter(location))
+                .collect(Collectors.toList());
+    }
+
+    public boolean adminLevelFilter(Location location, List<String> postFetchAdminLevels) {
+        return location.getType().stream()
+                .flatMap(codeableConcept -> codeableConcept.getCoding().stream())
+                .anyMatch(
+                        coding ->
+                                Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL.equals(coding.getSystem())
+                                        && postFetchAdminLevels.contains(coding.getCode()));
+    }
+
+    public boolean lastUpdatedFilter(Location location, String lastUpdated) {
+        Date locationlastUpdated = location.getMeta().getLastUpdated();
+        OffsetDateTime locationLastUpdated =
+                locationlastUpdated.toInstant().atOffset(ZoneOffset.UTC);
+        return locationLastUpdated.isAfter(OffsetDateTime.parse(lastUpdated))
+                || locationLastUpdated.isEqual(OffsetDateTime.parse(lastUpdated));
+    }
+
+    public boolean inventoryFilter(Location location) {
+        String locationId = location.getIdElement().getIdPart();
+        String locationReference =
+                Constants.SyncStrategy.LOCATION + Constants.FORWARD_SLASH + locationId;
+
+        Bundle listBundle =
+                getFhirClientForR4()
+                        .search()
+                        .forResource(ListResource.class)
+                        .where(new ReferenceClientParam(Constants.SUBJECT).hasId(locationReference))
+                        .usingStyle(SearchStyleEnum.POST)
+                        .returnBundle(Bundle.class)
+                        .execute();
+
+        return listBundle != null && !listBundle.getEntry().isEmpty();
     }
 }
