@@ -13,8 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import javax.annotation.Nullable;
-
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpResponse;
@@ -25,7 +23,6 @@ import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.ListResource;
 import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.Resource;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +39,8 @@ import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.api.RequestTypeEnum;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.ForbiddenOperationException;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import lombok.Getter;
 
 public class SyncAccessDecision implements AccessDecision {
@@ -152,7 +151,7 @@ public class SyncAccessDecision implements AccessDecision {
 
             requestMutation =
                     RequestMutation.builder()
-                            .queryParams(
+                            .additionalQueryParams(
                                     Map.of(
                                             Constants.TAG_SEARCH_PARAM,
                                             List.of(
@@ -359,7 +358,7 @@ public class SyncAccessDecision implements AccessDecision {
                 && SyncAccessDecisionConstants.ENDPOINT_PRACTITIONER_DETAILS.equals(requestPath);
     }
 
-    @NotNull
+    @Nonnull
     private static OperationOutcome createOperationOutcome(String exception) {
         OperationOutcome operationOutcome = new OperationOutcome();
         OperationOutcome.OperationOutcomeIssueComponent operationOutcomeIssueComponent =
@@ -371,7 +370,7 @@ public class SyncAccessDecision implements AccessDecision {
         return operationOutcome;
     }
 
-    @NotNull
+    @Nonnull
     private static Bundle processListEntriesGatewayModeByListResource(
             ListResource responseListResource, int start, int count) {
         Bundle requestBundle = new Bundle();
@@ -418,7 +417,7 @@ public class SyncAccessDecision implements AccessDecision {
         return requestBundle.setEntry(bundleEntryComponentList);
     }
 
-    @NotNull
+    @Nonnull
     static Bundle.BundleEntryComponent createBundleEntryComponent(
             Bundle.HTTPVerb method, String requestPath, @Nullable String condition) {
 

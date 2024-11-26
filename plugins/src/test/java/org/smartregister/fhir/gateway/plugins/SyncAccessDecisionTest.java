@@ -83,9 +83,10 @@ public class SyncAccessDecisionTest {
             Assert.assertFalse(requestDetails.getCompleteUrl().contains(locationId));
             Assert.assertFalse(requestDetails.getRequestPath().contains(locationId));
         }
+        assert mutatedRequest != null;
         Assert.assertTrue(
                 mutatedRequest
-                        .getQueryParams()
+                        .getAdditionalQueryParams()
                         .get(Constants.TAG_SEARCH_PARAM)
                         .get(0)
                         .contains(
@@ -95,7 +96,8 @@ public class SyncAccessDecisionTest {
                                                 + Constants.DEFAULT_LOCATION_TAG_URL
                                                 + Constants.CODE_URL_VALUE_SEPARATOR)));
 
-        for (String param : mutatedRequest.getQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
+        for (String param :
+                mutatedRequest.getAdditionalQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
             Assert.assertFalse(param.contains(Constants.DEFAULT_CARE_TEAM_TAG_URL));
             Assert.assertFalse(param.contains(Constants.DEFAULT_ORGANISATION_TAG_URL));
         }
@@ -180,7 +182,7 @@ public class SyncAccessDecisionTest {
         }
         Assert.assertTrue(
                 mutatedRequest
-                        .getQueryParams()
+                        .getAdditionalQueryParams()
                         .get(Constants.TAG_SEARCH_PARAM)
                         .get(0)
                         .contains(
@@ -190,7 +192,8 @@ public class SyncAccessDecisionTest {
                                                 + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
                                                 + Constants.CODE_URL_VALUE_SEPARATOR)));
 
-        for (String param : mutatedRequest.getQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
+        for (String param :
+                mutatedRequest.getAdditionalQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
             Assert.assertFalse(param.contains(Constants.DEFAULT_CARE_TEAM_TAG_URL));
             Assert.assertFalse(param.contains(Constants.DEFAULT_ORGANISATION_TAG_URL));
         }
@@ -258,12 +261,15 @@ public class SyncAccessDecisionTest {
 
             Assert.assertEquals(
                     expected.substring(0, expected.length() - 1),
-                    mutatedRequest.getQueryParams().get(Constants.TAG_SEARCH_PARAM).get(0));
+                    mutatedRequest
+                            .getAdditionalQueryParams()
+                            .get(Constants.TAG_SEARCH_PARAM)
+                            .get(0));
 
             Collections.reverse(relatedEntityLocationIds);
             Assert.assertFalse(
                     mutatedRequest
-                            .getQueryParams()
+                            .getAdditionalQueryParams()
                             .get(Constants.TAG_SEARCH_PARAM)
                             .get(0)
                             .contains(
@@ -371,7 +377,7 @@ public class SyncAccessDecisionTest {
 
         Assert.assertTrue(
                 mutatedRequest
-                        .getQueryParams()
+                        .getAdditionalQueryParams()
                         .get(Constants.TAG_SEARCH_PARAM)
                         .get(0)
                         .contains(
@@ -381,7 +387,8 @@ public class SyncAccessDecisionTest {
                                                 + Constants.DEFAULT_CARE_TEAM_TAG_URL
                                                 + Constants.CODE_URL_VALUE_SEPARATOR)));
 
-        for (String param : mutatedRequest.getQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
+        for (String param :
+                mutatedRequest.getAdditionalQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
             Assert.assertFalse(param.contains(Constants.DEFAULT_LOCATION_TAG_URL));
             Assert.assertFalse(param.contains(Constants.DEFAULT_ORGANISATION_TAG_URL));
         }
@@ -410,7 +417,7 @@ public class SyncAccessDecisionTest {
             Assert.assertFalse(requestDetails.getRequestPath().contains(locationId));
             Assert.assertTrue(
                     mutatedRequest
-                            .getQueryParams()
+                            .getAdditionalQueryParams()
                             .get(Constants.TAG_SEARCH_PARAM)
                             .contains(
                                     Constants.DEFAULT_ORGANISATION_TAG_URL
@@ -418,7 +425,8 @@ public class SyncAccessDecisionTest {
                                             + locationId));
         }
 
-        for (String param : mutatedRequest.getQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
+        for (String param :
+                mutatedRequest.getAdditionalQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
             Assert.assertFalse(param.contains(Constants.DEFAULT_LOCATION_TAG_URL));
             Assert.assertFalse(param.contains(Constants.DEFAULT_CARE_TEAM_TAG_URL));
         }
@@ -445,11 +453,11 @@ public class SyncAccessDecisionTest {
         for (String locationId : organisationIds) {
             Assert.assertFalse(requestDetails.getCompleteUrl().contains(locationId));
             Assert.assertFalse(requestDetails.getRequestPath().contains(locationId));
-            Assert.assertEquals(1, mutatedRequest.getQueryParams().size());
+            Assert.assertEquals(1, mutatedRequest.getAdditionalQueryParams().size());
         }
         Assert.assertTrue(
                 mutatedRequest
-                        .getQueryParams()
+                        .getAdditionalQueryParams()
                         .get(Constants.TAG_SEARCH_PARAM)
                         .get(0)
                         .contains(
@@ -557,7 +565,7 @@ public class SyncAccessDecisionTest {
                 testInstance.getRequestMutation(new TestRequestDetailsToReader(requestDetails));
 
         List<String> searchParamArrays =
-                mutatedRequest.getQueryParams().get(Constants.TAG_SEARCH_PARAM);
+                mutatedRequest.getAdditionalQueryParams().get(Constants.TAG_SEARCH_PARAM);
         Assert.assertNotNull(searchParamArrays);
 
         Assert.assertTrue(
@@ -1013,7 +1021,7 @@ public class SyncAccessDecisionTest {
         }
         Assert.assertTrue(
                 mutatedRequest
-                        .getQueryParams()
+                        .getAdditionalQueryParams()
                         .get(Constants.TAG_SEARCH_PARAM)
                         .get(0)
                         .contains(
@@ -1023,7 +1031,8 @@ public class SyncAccessDecisionTest {
                                                 + Constants.DEFAULT_LOCATION_TAG_URL
                                                 + Constants.CODE_URL_VALUE_SEPARATOR)));
 
-        for (String param : mutatedRequest.getQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
+        for (String param :
+                mutatedRequest.getAdditionalQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
             Assert.assertFalse(param.contains(Constants.DEFAULT_CARE_TEAM_TAG_URL));
             Assert.assertFalse(param.contains(Constants.DEFAULT_ORGANISATION_TAG_URL));
         }

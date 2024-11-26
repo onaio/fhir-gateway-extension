@@ -4,10 +4,6 @@ import static org.smartregister.fhir.gateway.plugins.Constants.AUTHORIZATION;
 
 import java.io.IOException;
 
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.apache.http.HttpStatus;
 import org.hl7.fhir.r4.model.Bundle;
 import org.smartregister.fhir.gateway.plugins.Constants;
@@ -18,6 +14,9 @@ import org.smartregister.fhir.gateway.plugins.RestUtils;
 import com.auth0.jwt.interfaces.DecodedJWT;
 
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @WebServlet("/LocationHierarchy")
 public class LocationHierarchyEndpoint extends BaseEndpoint {

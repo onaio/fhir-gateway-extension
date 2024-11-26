@@ -6,6 +6,7 @@ public class Constants {
             "https://smartregister.org/care-team-tag-id";
     public static final String CODE_URL_VALUE_SEPARATOR = "|";
     public static final String EMPTY_STRING = "";
+    public static final String FORWARD_SLASH = "/";
     public static final String LOCATION_TAG_URL_ENV = "LOCATION_TAG_URL";
     public static final String DEFAULT_LOCATION_TAG_URL =
             "https://smartregister.org/location-tag-id";
@@ -23,6 +24,10 @@ public class Constants {
     public static final String IDENTIFIER = "_id";
     public static final String MIN_ADMIN_LEVEL = "administrativeLevelMin";
     public static final String MAX_ADMIN_LEVEL = "administrativeLevelMax";
+    public static final String FILTER_INVENTORY = "filterInventory";
+    public static final String LAST_UPDATED = "_lastUpdated";
+    public static final String SUMMARY = "_summary";
+    public static final String COUNT = "count";
     public static final int DEFAULT_MAX_ADMIN_LEVEL = 10;
     public static final int DEFAULT_MIN_ADMIN_LEVEL = 0;
     public static final String PAGINATION_PAGE_SIZE = "_count";
@@ -38,6 +43,7 @@ public class Constants {
     public static final String ROLE_WEB_CLIENT = "WEB_CLIENT";
     public static final String MODE = "mode";
     public static final String LIST = "list";
+    public static final String SUBJECT = "subject";
     public static final String CORS_ALLOW_HEADERS_KEY = "Access-Control-Allow-Headers";
     public static final String CORS_ALLOW_HEADERS_VALUE = "authorization, cache-control";
     public static final String CORS_ALLOW_METHODS_KEY = "Access-Control-Allow-Methods";

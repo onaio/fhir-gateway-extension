@@ -21,6 +21,8 @@ public enum CacheHelper {
 
     Cache<String, String> stringCache;
 
+    Cache<String, List<String>> listStringCache;
+
     CacheHelper() {
         cache =
                 Caffeine.newBuilder()
@@ -38,6 +40,11 @@ public enum CacheHelper {
                         .maximumSize(DEFAULT_CACHE_SIZE)
                         .build();
         stringCache =
+                Caffeine.newBuilder()
+                        .expireAfterWrite(getCacheExpiryDurationInSeconds(), TimeUnit.SECONDS)
+                        .maximumSize(DEFAULT_CACHE_SIZE)
+                        .build();
+        listStringCache =
                 Caffeine.newBuilder()
                         .expireAfterWrite(getCacheExpiryDurationInSeconds(), TimeUnit.SECONDS)
                         .maximumSize(DEFAULT_CACHE_SIZE)

@@ -2,9 +2,6 @@ package org.smartregister.fhir.gateway.plugins;
 
 import static org.smartregister.fhir.gateway.plugins.Constants.AUTHORIZATION;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,6 +9,8 @@ import com.google.fhir.gateway.ExceptionUtil;
 import com.google.fhir.gateway.TokenVerifier;
 
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 public class RestUtils {
 

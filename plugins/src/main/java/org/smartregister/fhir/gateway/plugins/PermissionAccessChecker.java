@@ -16,7 +16,6 @@ import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CareTeam;
 import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.Organization;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartregister.fhir.gateway.plugins.interfaces.ResourceFinder;
@@ -40,6 +39,7 @@ import ca.uhn.fhir.rest.api.RequestTypeEnum;
 import ca.uhn.fhir.rest.api.SearchStyleEnum;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
+import jakarta.annotation.Nonnull;
 
 public class PermissionAccessChecker implements AccessChecker {
     private static final Logger logger = LoggerFactory.getLogger(PermissionAccessChecker.class);
@@ -291,7 +291,7 @@ public class PermissionAccessChecker implements AccessChecker {
         return locationUuids;
     }
 
-    @NotNull
+    @Nonnull
     private Map<String, List<String>> collateSyncStrategyIds(
             String syncStrategy,
             PractitionerDetails practitionerDetails,

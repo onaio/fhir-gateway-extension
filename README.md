@@ -227,6 +227,14 @@ environment variables
   If not set, defaults to
   https://smartregister.org/related-entity-location-tag-id
 
+**Monitoring**
+
+[Spring actuator](https://docs.spring.io/spring-boot/reference/actuator/enabling.html)
+dependency has been added to provide monitoring for the application and its
+components using HTTP endpoints or with JMX. By default, the health endpoint is
+exposed over HTTP and JMX. To expose other endpoints e.g. prometheus, one has to
+update the application configuration.
+
 ### Run project
 
 As documented on the Info Gateway modules
@@ -394,6 +402,67 @@ Example:
 
 ```
 [GET] /LocationHierarchy?_id=<some-location-id>&administrativeLevelMin=2&administrativeLevelMax=4&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
+```
+
+##### Inventory Filters
+
+The `LocationHierarchy` endpoint supports filtering by inventory availability,
+allowing users to specify whether they want to retrieve only locations that have
+associated inventories. This filter can be particularly useful for narrowing
+down the results to locations that are actively involved in inventory
+management.
+
+The following search parameter is available:
+
+- `filterInventory`: A boolean parameter that specifies whether the response
+  should be filtered by locations with inventories.
+  - `filterInventory=true`: Only locations with inventories will be included in
+    the response.
+  - `filterInventory=false` (or not set): Locations with or without inventories
+    will be returned. This effectively disables inventory-based filtering. The
+    response will include all locations, regardless of their inventory status.
+    Both locations with and without inventories will be returned.
+
+Example:
+
+```
+[GET] /LocationHierarchy?_id=<some-location-id>&filterInventory=true&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
+```
+
+##### LastUpdated Filters
+
+The `LocationHierarchy` endpoint supports filtering by the lastUpdated timestamp
+of locations. This filter allows users to retrieve locations based on the last
+modification date, making it useful for tracking recent updates or syncing data
+changes over time.
+
+Behavior based on the lastUpdated parameter:
+
+- `_lastUpdated` Not Defined: The endpoint will include all locations in the
+  response, regardless of when they were last modified.
+- `_lastUpdated` Defined: The response will include only those locations that
+  were updated on or after the specified timestamp.
+
+Note: This filter only works when in list mode i.e `mode=list` is set as one of
+the parameters
+
+Example:
+
+```
+[GET] /LocationHierarchy?_id=<some-location-id>&mode=list&_lastUpdated=2024-09-22T15%3A13%3A53.014%2B00%3A00&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
+```
+
+##### LocationHierarchy Summary Count
+
+The LocationHierarchy endpoint supports the `_summary=count` parameter. This
+allows users to retrieve the total number of matching resources without
+returning the resource data. This filter only works when in list mode i.e
+`mode=list` is set as one of the parameters.
+
+Example:
+
+```
+GET /LocationHierarchy?_id=<some-location-id>&mode=list&_summary=count
 ```
 
 #### Important Note:
