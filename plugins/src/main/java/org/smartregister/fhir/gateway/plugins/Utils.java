@@ -1,6 +1,5 @@
 package org.smartregister.fhir.gateway.plugins;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
@@ -163,7 +162,13 @@ public class Utils {
         IGenericClient client = Utils.createFhirClientForR4(fhirContext);
         Binary binary = null;
         if (!binaryResourceId.isBlank()) {
-            binary = client.read().resource(Binary.class).withId(binaryResourceId).execute();
+            Bundle bundle =
+                    (Bundle)
+                            client.search()
+                                    .forResource(Binary.class)
+                                    .where(Binary.RES_ID.exactly().identifier(binaryResourceId))
+                                    .execute();
+            binary = (Binary) bundle.getEntryFirstRep().getResource();
         }
         return binary;
     }
@@ -176,12 +181,9 @@ public class Utils {
         return findSyncStrategy(bytes);
     }
 
-    public static String findSyncStrategy(String binaryData) {
-        byte[] bytes = binaryData.getBytes(StandardCharsets.UTF_8);
-        return findSyncStrategy(bytes);
-    }
-
     public static String findSyncStrategy(byte[] binaryDataBytes) {
+        if (binaryDataBytes == null || binaryDataBytes.length == 0)
+            return org.smartregister.utils.Constants.EMPTY_STRING;
         String syncStrategy = org.smartregister.utils.Constants.EMPTY_STRING;
         String json = new String(binaryDataBytes);
         JsonObject jsonObject = new Gson().fromJson(json, JsonObject.class);
