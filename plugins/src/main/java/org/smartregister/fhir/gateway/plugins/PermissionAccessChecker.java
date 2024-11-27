@@ -249,7 +249,6 @@ public class PermissionAccessChecker implements AccessChecker {
         PractitionerDetails practitionerDetails = compositionPractitionerDetailsPair.getRight();
 
         String binaryResourceReference = Utils.getBinaryResourceReference(composition);
-
         Binary binary =
                 Utils.readApplicationConfigBinaryResource(binaryResourceReference, fhirContext);
 
@@ -348,7 +347,7 @@ public class PermissionAccessChecker implements AccessChecker {
 
                 } else {
 
-                    // Assigned location
+                    // Assigned locations
                     syncStrategyIds =
                             practitionerDetails != null
                                             && practitionerDetails.getFhirPractitionerDetails()
