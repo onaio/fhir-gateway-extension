@@ -11,7 +11,6 @@ import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Reference;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -126,10 +125,8 @@ public class UtilsTest {
     }
 
     @Test
-    @Ignore
     public void testFindSyncStrategyWithNullBinary() {
-        Binary binary = null;
-        String result = Utils.findSyncStrategy(binary);
+        String result = Utils.findSyncStrategy((Binary) null);
         Assert.assertEquals(org.smartregister.utils.Constants.EMPTY_STRING, result);
     }
 
