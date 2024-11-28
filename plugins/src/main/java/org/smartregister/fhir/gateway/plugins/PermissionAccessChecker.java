@@ -353,9 +353,16 @@ public class PermissionAccessChecker implements AccessChecker {
                                             && practitionerDetails.getFhirPractitionerDetails()
                                                     != null
                                     ? PractitionerDetailsEndpointHelper.getAttributedLocations(
-                                            practitionerDetails
-                                                    .getFhirPractitionerDetails()
-                                                    .getLocationHierarchyList())
+                                            PractitionerDetailsEndpointHelper.getLocationsHierarchy(
+                                                    practitionerDetails
+                                                            .getFhirPractitionerDetails()
+                                                            .getLocations()
+                                                            .stream()
+                                                            .map(
+                                                                    location ->
+                                                                            location.getIdElement()
+                                                                                    .getIdPart())
+                                                            .collect(Collectors.toList())))
                                     : new HashSet<>();
                 }
 
@@ -363,7 +370,15 @@ public class PermissionAccessChecker implements AccessChecker {
                 throw new IllegalStateException(
                         "'" + syncStrategy + "' sync strategy NOT supported!!");
 
-            resultMap = Map.of(syncStrategy, new ArrayList<>(syncStrategyIds));
+            resultMap =
+                    !syncStrategyIds.isEmpty()
+                            ? Map.of(syncStrategy, new ArrayList<>(syncStrategyIds))
+                            : null;
+
+            if (resultMap == null) {
+                throw new IllegalStateException(
+                        "No Sync strategy ids found for selected sync strategy " + syncStrategy);
+            }
 
         } else
             throw new IllegalStateException(

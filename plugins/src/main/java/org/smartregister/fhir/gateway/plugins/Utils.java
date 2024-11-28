@@ -162,26 +162,34 @@ public class Utils {
         IGenericClient client = Utils.createFhirClientForR4(fhirContext);
         Binary binary = null;
         if (!binaryResourceId.isBlank()) {
-            binary = client.read().resource(Binary.class).withId(binaryResourceId).execute();
+            Bundle bundle =
+                    (Bundle)
+                            client.search()
+                                    .forResource(Binary.class)
+                                    .where(Binary.RES_ID.exactly().identifier(binaryResourceId))
+                                    .execute();
+            binary = (Binary) bundle.getEntryFirstRep().getResource();
         }
         return binary;
     }
 
     public static String findSyncStrategy(Binary binary) {
-
         byte[] bytes =
                 binary != null && binary.getDataElement() != null
                         ? Base64.getDecoder().decode(binary.getDataElement().getValueAsString())
                         : null;
+        return findSyncStrategy(bytes);
+    }
+
+    public static String findSyncStrategy(byte[] binaryDataBytes) {
+        if (binaryDataBytes == null || binaryDataBytes.length == 0)
+            return org.smartregister.utils.Constants.EMPTY_STRING;
         String syncStrategy = org.smartregister.utils.Constants.EMPTY_STRING;
-        if (bytes != null) {
-            String json = new String(bytes);
-            JsonObject jsonObject = new Gson().fromJson(json, JsonObject.class);
-            JsonArray jsonArray =
-                    jsonObject.getAsJsonArray(Constants.AppConfigJsonKey.SYNC_STRATEGY);
-            if (jsonArray != null && !jsonArray.isEmpty())
-                syncStrategy = jsonArray.get(0).getAsString();
-        }
+        String json = new String(binaryDataBytes);
+        JsonObject jsonObject = new Gson().fromJson(json, JsonObject.class);
+        JsonArray jsonArray = jsonObject.getAsJsonArray(Constants.AppConfigJsonKey.SYNC_STRATEGY);
+        if (jsonArray != null && !jsonArray.isEmpty())
+            syncStrategy = jsonArray.get(0).getAsString();
 
         return syncStrategy;
     }
