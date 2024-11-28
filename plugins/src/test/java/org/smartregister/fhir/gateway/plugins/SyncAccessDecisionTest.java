@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -19,7 +20,9 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpResponse;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Encounter;
 import org.hl7.fhir.r4.model.ListResource;
+import org.hl7.fhir.r4.model.Meta;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Assert;
@@ -39,10 +42,13 @@ import com.google.fhir.gateway.interfaces.RequestMutation;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.api.RequestTypeEnum;
 import ca.uhn.fhir.rest.api.RestOperationTypeEnum;
+import ca.uhn.fhir.rest.api.SearchStyleEnum;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
+import ca.uhn.fhir.rest.gclient.IQuery;
 import ca.uhn.fhir.rest.gclient.ITransaction;
 import ca.uhn.fhir.rest.gclient.ITransactionTyped;
+import ca.uhn.fhir.rest.gclient.IUntypedQuery;
 import ca.uhn.fhir.rest.server.servlet.ServletRequestDetails;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -1070,5 +1076,133 @@ public class SyncAccessDecisionTest {
                 accessDecision.getIgnoredResourcesConfigFileConfiguration(configFileUrl.getPath());
         accessDecision.setSkippedResourcesConfig(skippedDataFilterConfig);
         return accessDecision;
+    }
+
+    @Test
+    public void testPostProcessWithRELSyncStrategyWorksCorrectly() throws IOException {
+
+        relatedEntityLocationIds.add("relocationid1");
+        relatedEntityLocationIds.add("relocationid2");
+        relatedEntityLocationIds.add("relocationid3");
+
+        testInstance =
+                Mockito.spy(
+                        createSyncAccessDecisionTestInstance(
+                                Constants.SyncStrategy.RELATED_ENTITY_LOCATION));
+
+        FhirContext fhirR4Context = mock(FhirContext.class);
+        IGenericClient iGenericClient = mock(IGenericClient.class);
+        ITransactionTyped<Bundle> iClientExecutable = mock(ITransactionTyped.class);
+
+        Mockito.when(testInstance.getRelLocationChunkSize()).thenReturn(2);
+
+        Bundle resultBundle = new Bundle();
+        resultBundle.setType(Bundle.BundleType.BATCHRESPONSE);
+        resultBundle.setId("bundle-result-id");
+
+        testInstance.setFhirR4Context(fhirR4Context);
+
+        RequestDetailsReader requestDetailsSpy = Mockito.mock(RequestDetailsReader.class);
+
+        Map<String, String[]> params = new HashMap<>();
+        params.put(Constants.PAGINATION_PAGE_SIZE, new String[] {"2"});
+        params.put(
+                Constants.SYNC_LOCATIONS_SEARCH_PARAM, new String[] {"location1d", "location2d"});
+        String fhirServerBase = "http://test:8080/fhir";
+
+        Mockito.when(requestDetailsSpy.getParameters()).thenReturn(params);
+        Mockito.when(requestDetailsSpy.getRequestPath()).thenReturn("Encounter");
+
+        StringBuilder queryParamStringBuilder = new StringBuilder();
+        params.forEach(
+                (key, value) ->
+                        queryParamStringBuilder
+                                .append("&")
+                                .append(key)
+                                .append("=")
+                                .append(String.join(",", value)));
+
+        Mockito.when(requestDetailsSpy.getCompleteUrl())
+                .thenReturn(fhirServerBase + "/Encounter?" + queryParamStringBuilder.toString());
+
+        Encounter encounter = new Encounter();
+        encounter.setId("encounter-1");
+
+        Encounter encounter2 = new Encounter();
+        encounter2.setId("encounter-2");
+
+        Bundle bundle = new Bundle();
+        bundle.setTotal(3);
+        bundle.setType(Bundle.BundleType.SEARCHSET);
+        bundle.setMeta(new Meta().setLastUpdated(new Date()));
+
+        Bundle.BundleEntryComponent bundleEntryComponent = new Bundle.BundleEntryComponent();
+        bundleEntryComponent.setResource(encounter);
+
+        Bundle.BundleEntryComponent bundleEntryComponent2 = new Bundle.BundleEntryComponent();
+        bundleEntryComponent2.setResource(encounter);
+
+        bundle.setEntry(List.of(bundleEntryComponent, bundleEntryComponent2));
+
+        HttpResponse fhirResponseMock =
+                Mockito.mock(HttpResponse.class, Answers.RETURNS_DEEP_STUBS);
+
+        TestUtil.setUpFhirResponseMock(
+                fhirResponseMock,
+                FhirContext.forR4().newJsonParser().encodeResourceToString(bundle));
+
+        IUntypedQuery searchClient = Mockito.mock(IUntypedQuery.class);
+        Mockito.when(iGenericClient.search()).thenReturn(searchClient);
+
+        // Second batch
+        Bundle bundle2 = new Bundle();
+        bundle2.setTotal(3);
+        bundle2.setType(Bundle.BundleType.SEARCHSET);
+
+        Encounter encounter3 = new Encounter();
+        encounter3.setId("encounter-3");
+
+        Bundle.BundleEntryComponent bundleEntryComponent3 = new Bundle.BundleEntryComponent();
+        bundleEntryComponent3.setResource(encounter3);
+
+        bundle2.setEntry(List.of(bundleEntryComponent3));
+
+        IQuery searchClientIQuery2 = Mockito.mock(IQuery.class);
+        Mockito.when(
+                        searchClient.byUrl(
+                                "Encounter?&_count=2&_tag=https://smartregister.org/related-entity-location-tag-id%7Crelocationid3,"))
+                .thenReturn(searchClientIQuery2);
+        Mockito.when(searchClientIQuery2.usingStyle(SearchStyleEnum.POST))
+                .thenReturn(searchClientIQuery2);
+        Mockito.when(searchClientIQuery2.execute()).thenReturn(bundle2);
+
+        testInstance.setFhirR4Client(iGenericClient);
+        testInstance.setFhirR4Context(FhirContext.forR4());
+        String resultContent = testInstance.postProcess(requestDetailsSpy, fhirResponseMock);
+
+        // Verify correct request to HAPI FHIR server
+
+        ArgumentCaptor<String> searchUrlCaptor = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(searchClient).byUrl(searchUrlCaptor.capture());
+
+        String capturedSearchUrl = searchUrlCaptor.getValue();
+        Assert.assertNotNull(capturedSearchUrl);
+        Assert.assertEquals(
+                "Encounter?&_count=2&_tag=https://smartregister.org/related-entity-location-tag-id%7Crelocationid3,",
+                capturedSearchUrl);
+
+        // Verify returned result content from the server request, has pagination links
+        Assert.assertNotNull(resultContent);
+        Bundle resultContentBundle =
+                (Bundle) FhirContext.forR4Cached().newJsonParser().parseResource(resultContent);
+        Assert.assertNotNull(resultContentBundle.getMeta().getLastUpdated());
+        Assert.assertEquals(2, resultContentBundle.getLink().size());
+        Assert.assertEquals(2, resultContentBundle.getEntry().size());
+        Assert.assertEquals(
+                "http://test:8080/fhir/Encounter?&_count=2&_syncLocations=location1d,location2d",
+                resultContentBundle.getLink(Bundle.LINK_SELF).getUrl());
+        Assert.assertEquals(
+                "http://test:8080/fhir/Encounter?_count=2&_sLPage=2&_syncLocations=location1d,location2d",
+                resultContentBundle.getLink(Bundle.LINK_NEXT).getUrl());
     }
 }

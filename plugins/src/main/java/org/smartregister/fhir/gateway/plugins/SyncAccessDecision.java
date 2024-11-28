@@ -5,9 +5,9 @@ import static org.smartregister.fhir.gateway.plugins.EnvUtil.getEnvironmentVar;
 
 import java.io.FileReader;
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +37,7 @@ import com.google.gson.Gson;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.api.RequestTypeEnum;
+import ca.uhn.fhir.rest.api.SearchStyleEnum;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.ForbiddenOperationException;
 import jakarta.annotation.Nonnull;
@@ -76,8 +77,15 @@ public class SyncAccessDecision implements AccessDecision {
         this.config = getSkippedResourcesConfigs();
         this.roles = roles;
         try {
-            setFhirR4Client(
-                    fhirR4Context.newRestfulGenericClient(System.getenv(Constants.PROXY_TO_ENV)));
+            // Set up HAPI FHIR Generic Client
+            this.fhirR4Client =
+                    fhirR4Context.newRestfulGenericClient(System.getenv(Constants.PROXY_TO_ENV));
+            this.fhirR4Client
+                    .getFhirContext()
+                    .getRestfulClientFactory()
+                    .setConnectionRequestTimeout(300000);
+            this.fhirR4Client.getFhirContext().getRestfulClientFactory().setSocketTimeout(300000);
+
         } catch (NullPointerException e) {
             logger.error(e.getMessage());
         }
@@ -123,19 +131,10 @@ public class SyncAccessDecision implements AccessDecision {
             }
 
             List<String> syncFilterParameterValues;
+            Map<String, List<String>> additionalQueryParamsListMap = new HashMap<>();
             if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equals(syncStrategy)) {
 
-                int endIndex =
-                        Math.min(
-                                SyncAccessDecisionConstants.REL_LOCATION_INITIAL_CHUNK_SIZE,
-                                syncStrategyIdsMap
-                                        .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
-                                        .size());
-
-                List<String> syncStrategyIdSubList =
-                        this.syncStrategyIdsMap
-                                .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
-                                .subList(0, endIndex);
+                List<String> syncStrategyIdSubList = getRelChunkStrategyIds(0, syncStrategyIdsMap);
 
                 syncFilterParameterValues =
                         addSyncFilters(
@@ -144,23 +143,57 @@ public class SyncAccessDecision implements AccessDecision {
                                         Map.of(
                                                 Constants.SyncStrategy.RELATED_ENTITY_LOCATION,
                                                 syncStrategyIdSubList)));
+
+                if (hasSyncLocations(requestDetailsReader)) {
+
+                    String cacheKey = getRelCacheKey(requestDetailsReader);
+
+                    additionalQueryParamsListMap.put(
+                            Constants.SYNC_LOCATIONS_HASH_PARAM, List.of(cacheKey));
+                }
+
             } else {
                 syncFilterParameterValues =
                         addSyncFilters(getSyncTags(this.syncStrategy, this.syncStrategyIdsMap));
             }
 
+            additionalQueryParamsListMap.put(
+                    Constants.TAG_SEARCH_PARAM,
+                    List.of(StringUtils.join(syncFilterParameterValues, ",")));
+
             requestMutation =
                     RequestMutation.builder()
-                            .additionalQueryParams(
-                                    Map.of(
-                                            Constants.TAG_SEARCH_PARAM,
-                                            List.of(
-                                                    StringUtils.join(
-                                                            syncFilterParameterValues, ","))))
+                            .additionalQueryParams(additionalQueryParamsListMap)
+                            .discardQueryParams(List.of(Constants.SYNC_LOCATIONS_SEARCH_PARAM))
                             .build();
         }
 
         return requestMutation;
+    }
+
+    private boolean hasSyncLocations(RequestDetailsReader requestDetailsReader) {
+        return (requestDetailsReader.getParameters().get(Constants.SYNC_LOCATIONS_SEARCH_PARAM)
+                        != null
+                && requestDetailsReader
+                                .getParameters()
+                                .get(Constants.SYNC_LOCATIONS_SEARCH_PARAM)
+                                .length
+                        > 0);
+    }
+
+    private List<String> getRelChunkStrategyIds(
+            int startIndex, Map<String, List<String>> syncStrategyIdsMap) {
+
+        int endIndex =
+                Math.min(
+                        startIndex + getRelLocationChunkSize(),
+                        syncStrategyIdsMap
+                                .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                                .size());
+
+        return this.syncStrategyIdsMap
+                .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                .subList(startIndex, endIndex);
     }
 
     private String getClientRole() {
@@ -250,86 +283,193 @@ public class SyncAccessDecision implements AccessDecision {
         return resultContent;
     }
 
+    private String getQueryParamValue(
+            String key, RequestDetailsReader requestDetailsReader, String defaultValue) {
+        String[] countRaw = requestDetailsReader.getParameters().getOrDefault(key, new String[] {});
+        return countRaw.length > 0 ? countRaw[0] : defaultValue;
+    }
+
+    private int getQueryParamIntValue(
+            String key, RequestDetailsReader requestDetailsReader, int defaultValue) {
+        return Integer.parseInt(
+                getQueryParamValue(key, requestDetailsReader, String.valueOf(defaultValue)));
+    }
+
+    @VisibleForTesting
+    protected int getRelLocationChunkSize() {
+        return SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE;
+    }
+
     private IBaseResource processRelatedEntityLocationSyncStrategy(
             RequestDetailsReader request, HttpResponse response) throws IOException {
+
         String resultContent;
-        fhirR4Client.getFhirContext().getRestfulClientFactory().setConnectionRequestTimeout(300000);
-        fhirR4Client.getFhirContext().getRestfulClientFactory().setSocketTimeout(300000);
 
-        List<Bundle.BundleEntryComponent> allResults = new ArrayList<>();
-        int totalResultMatches = 0;
-
-        String requestPath =
-                request.getRequestPath()
-                        + "?"
-                        + getRequestParametersString(request.getParameters());
-
-        for (int startIndex = SyncAccessDecisionConstants.REL_LOCATION_INITIAL_CHUNK_SIZE;
-                startIndex
-                        < syncStrategyIdsMap
-                                .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
-                                .size();
-                startIndex += SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE) {
-
-            int endIndex =
-                    Math.min(
-                            startIndex + SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE,
-                            syncStrategyIdsMap
-                                    .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
-                                    .size());
-
-            List<String> entries =
-                    syncStrategyIdsMap
-                            .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
-                            .subList(startIndex, endIndex);
-
-            Bundle requestBundle = new Bundle();
-            requestBundle.setType(Bundle.BundleType.BATCH);
-            for (String entry : entries) {
-                requestBundle.addEntry(
-                        createBundleEntryComponent(
-                                Bundle.HTTPVerb.GET,
-                                requestPath
-                                        + "&_tag="
-                                        + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
-                                        + "%7C"
-                                        + entry,
-                                null));
-            }
-
-            Bundle res = fhirR4Client.transaction().withBundle(requestBundle).execute();
-
-            List<Bundle.BundleEntryComponent> entryComponentList =
-                    res.getEntry().parallelStream()
-                            .map(it -> (Bundle) it.getResource())
-                            .flatMap(it -> it.getEntry().stream())
-                            .collect(Collectors.toList());
-
-            allResults.addAll(entryComponentList);
-            totalResultMatches += entryComponentList.size();
-        }
+        int totalRecords = 0;
 
         resultContent = new BasicResponseHandler().handleResponse(response);
 
         IBaseResource responseResource = this.fhirR4JsonParser.parseResource(resultContent);
 
         if (responseResource instanceof Bundle) {
-            if (request.getParameters().containsKey(PARAM_SUMMARY)) {
-                ((Bundle) responseResource)
-                        .setTotal(((Bundle) responseResource).getTotal() + totalResultMatches);
+
+            if (syncStrategyIdsMap
+                            .getOrDefault(Constants.SyncStrategy.RELATED_ENTITY_LOCATION, List.of())
+                            .size()
+                    <= getRelLocationChunkSize()) {
+                return responseResource;
+            }
+
+            // We have more chunks
+
+            // check if we have a live cache , load it and use it else do the processing
+
+            List<Bundle.BundleEntryComponent> cachedRelResults = getCachedRelResults(request);
+
+            if (cachedRelResults.isEmpty()) {
+
+                Utils.fetchAllBundlePagesAndInject(fhirR4Client, ((Bundle) responseResource));
+                totalRecords += ((Bundle) responseResource).getTotal();
+
+                String requestPath =
+                        request.getRequestPath()
+                                + "?"
+                                + getRequestParametersString(request.getParameters());
+
+                for (int startIndex = getRelLocationChunkSize();
+                        startIndex
+                                < syncStrategyIdsMap
+                                        .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                                        .size();
+                        startIndex += getRelLocationChunkSize()) {
+
+                    List<String> syncLocationIds =
+                            getRelChunkStrategyIds(startIndex, syncStrategyIdsMap);
+
+                    if (!syncLocationIds.isEmpty()) {
+                        StringBuilder requestURL = new StringBuilder(requestPath);
+
+                        for (String entry : syncLocationIds) {
+                            requestURL
+                                    .append(
+                                            "&_tag="
+                                                    + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
+                                                    + "%7C")
+                                    .append(entry)
+                                    .append(",");
+                        }
+
+                        Bundle paginatedResult =
+                                (Bundle)
+                                        fhirR4Client
+                                                .search()
+                                                .byUrl(requestURL.toString())
+                                                .usingStyle(SearchStyleEnum.POST)
+                                                .execute();
+                        Utils.fetchAllBundlePagesAndInject(fhirR4Client, paginatedResult);
+                        totalRecords += paginatedResult.getTotal();
+
+                        ((Bundle) responseResource).getEntry().addAll(paginatedResult.getEntry());
+                    }
+                }
+
+                cacheRelBundleResults(request, (Bundle) responseResource);
+                cachedRelResults = ((Bundle) responseResource).getEntry();
+
+                ((Bundle) responseResource).setTotal(totalRecords);
+
             } else {
+                ((Bundle) responseResource).setTotal(cachedRelResults.size());
+            }
 
-                ((Bundle) responseResource).getEntry().addAll(allResults);
-                ((Bundle) responseResource).setTotal(((Bundle) responseResource).getEntry().size());
+            if (!request.getParameters().containsKey(PARAM_SUMMARY)) {
 
+                int pageSize =
+                        getQueryParamIntValue(
+                                Constants.PAGINATION_PAGE_SIZE,
+                                request,
+                                Constants.PAGINATION_DEFAULT_PAGE_SIZE);
+
+                int page =
+                        Math.max(
+                                getQueryParamIntValue(
+                                        Constants.SYNC_LOCATIONS_PAGE_PARAM, request, 1),
+                                1);
+
+                List<Bundle.BundleEntryComponent> bundleEntryComponentList =
+                        cachedRelResults.stream()
+                                .skip((long) (page - 1) * pageSize)
+                                .limit(pageSize)
+                                .collect(Collectors.toList());
+                ((Bundle) responseResource).setEntry(bundleEntryComponentList);
+
+                // Pagination links
+                List<Bundle.BundleLinkComponent> bundlePaginationLinks = new ArrayList<>();
+
+                // Self
                 Bundle.BundleLinkComponent selfLinkComponent = new Bundle.BundleLinkComponent();
                 selfLinkComponent.setRelation(Bundle.LINK_SELF);
                 selfLinkComponent.setUrl(request.getCompleteUrl());
+                bundlePaginationLinks.add(selfLinkComponent);
 
-                ((Bundle) responseResource).setLink(Collections.singletonList(selfLinkComponent));
+                // Next
+                if (cachedRelResults.size() > (page * pageSize)) {
+                    Bundle.BundleLinkComponent nextLinkComponent = new Bundle.BundleLinkComponent();
+                    nextLinkComponent.setRelation(Bundle.LINK_NEXT);
+                    nextLinkComponent.setUrl(getPaginationURL(request, page, true));
+                    bundlePaginationLinks.add(nextLinkComponent);
+                }
+
+                // Previous
+                if (page > 1) {
+                    Bundle.BundleLinkComponent previousLinkComponent =
+                            new Bundle.BundleLinkComponent();
+                    previousLinkComponent.setRelation(Bundle.LINK_PREV);
+                    previousLinkComponent.setUrl(getPaginationURL(request, page, false));
+                    bundlePaginationLinks.add(previousLinkComponent);
+                }
+                ((Bundle) responseResource).setLink(bundlePaginationLinks);
             }
         }
+
         return responseResource;
+    }
+
+    private String getPaginationURL(RequestDetailsReader request, int pageNo, boolean isNext) {
+        return Utils.replaceAddQueryParamValue(
+                request.getCompleteUrl(),
+                Constants.SYNC_LOCATIONS_PAGE_PARAM,
+                String.valueOf(isNext ? pageNo + 1 : pageNo - 1));
+    }
+
+    private void cacheRelBundleResults(RequestDetailsReader reader, Bundle responseResource) {
+        CacheHelper.INSTANCE.resourceListCache.put(
+                getRelCacheKey(reader), responseResource.getEntry());
+    }
+
+    private List<Bundle.BundleEntryComponent> getCachedRelResults(RequestDetailsReader reader) {
+        return CacheHelper.INSTANCE.resourceListCache.get(getRelCacheKey(reader), key -> List.of());
+    }
+
+    private String getRelCacheKey(RequestDetailsReader requestDetailsReader) {
+        try {
+            return requestDetailsReader
+                                    .getParameters()
+                                    .getOrDefault(
+                                            Constants.SYNC_LOCATIONS_HASH_PARAM, new String[] {})
+                                    .length
+                            > 0
+                    ? requestDetailsReader.getParameters()
+                            .get(Constants.SYNC_LOCATIONS_HASH_PARAM)[0]
+                    : Utils.generateHash(
+                            requestDetailsReader.getRequestPath()
+                                    + Utils.getSortedInput(
+                                            requestDetailsReader.getParameters()
+                                                    .get(Constants.SYNC_LOCATIONS_SEARCH_PARAM)[0],
+                                            ","));
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private String getRequestParametersString(Map<String, String[]> parameters) {
@@ -344,7 +484,7 @@ public class SyncAccessDecision implements AccessDecision {
                     && !Constants.TAG_SEARCH_PARAM.equals(key)) {
 
                 for (String value : values) {
-                    queryString.append(key).append("=").append(value).append("&");
+                    queryString.append("&").append(key).append("=").append(value);
                 }
             }
         }
@@ -697,7 +837,5 @@ public class SyncAccessDecision implements AccessDecision {
         public static final String ENDPOINT_PRACTITIONER_DETAILS = "PractitionerDetail";
         public static final int REL_LOCATION_CHUNK_SIZE =
                 100; // Magic Number Alert - Do not change value for maximum stability
-        private static final int REL_LOCATION_INITIAL_CHUNK_SIZE =
-                20; // Magic Number Alert - Do not change value for maximum stability
     }
 }

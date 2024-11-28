@@ -116,6 +116,8 @@ public class LocationHierarchyEndpointHelper {
             locationHierarchy.setId(LOCATION_RESOURCE + locationId);
 
             locationHierarchy.setLocationHierarchyTree(locationHierarchyTree);
+
+            logger.info("Finished building Location Hierarchy of Location Id : {}", locationId);
         } else {
             logger.error("LocationHierarchy with identifier: {} not found", locationId);
             locationHierarchy.setId(LOCATION_RESOURCE_NOT_FOUND);
@@ -181,6 +183,9 @@ public class LocationHierarchyEndpointHelper {
             allLocations.add(parentLocation);
         }
         if (childLocationBundle != null) {
+
+            Utils.fetchAllBundlePagesAndInject(r4FHIRClient, childLocationBundle);
+
             childLocationBundle.getEntry().parallelStream()
                     .forEach(
                             childLocation -> {
@@ -193,24 +198,6 @@ public class LocationHierarchyEndpointHelper {
                                                 null,
                                                 adminLevels));
                             });
-
-            while (childLocationBundle.getLink(Bundle.LINK_NEXT) != null) {
-                childLocationBundle =
-                        getFhirClientForR4().loadPage().next(childLocationBundle).execute();
-
-                childLocationBundle.getEntry().parallelStream()
-                        .forEach(
-                                childLocation -> {
-                                    Location childLocationEntity =
-                                            (Location) childLocation.getResource();
-                                    allLocations.add(childLocationEntity);
-                                    allLocations.addAll(
-                                            getDescendants(
-                                                    childLocationEntity.getIdElement().getIdPart(),
-                                                    null,
-                                                    adminLevels));
-                                });
-            }
         }
 
         return allLocations;
