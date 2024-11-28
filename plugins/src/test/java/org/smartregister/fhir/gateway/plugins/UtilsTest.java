@@ -1,8 +1,10 @@
 package org.smartregister.fhir.gateway.plugins;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
 
+import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Base64BinaryType;
 import org.hl7.fhir.r4.model.Binary;
 import org.hl7.fhir.r4.model.Bundle;
@@ -12,6 +14,7 @@ import org.hl7.fhir.r4.model.Reference;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 import com.google.gson.JsonArray;
@@ -19,6 +22,9 @@ import com.google.gson.JsonObject;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
+import ca.uhn.fhir.rest.gclient.ICriterion;
+import ca.uhn.fhir.rest.gclient.IQuery;
+import ca.uhn.fhir.rest.gclient.IUntypedQuery;
 
 public class UtilsTest {
 
@@ -126,7 +132,7 @@ public class UtilsTest {
 
     @Test
     public void testFindSyncStrategyWithNullBinary() {
-        String result = Utils.findSyncStrategy(null);
+        String result = Utils.findSyncStrategy((Binary) null);
         Assert.assertEquals(org.smartregister.utils.Constants.EMPTY_STRING, result);
     }
 
@@ -178,5 +184,50 @@ public class UtilsTest {
     public void testReadApplicationConfigBinaryResourceWithEmptyResourceId() {
         Binary result = Utils.readApplicationConfigBinaryResource("", fhirContextMock);
         Assert.assertNull(result);
+    }
+
+    @Test
+    public void testReadApplicationConfigBinaryResourceReturnsBinary() {
+        Binary binary = new Binary();
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty("appId", "test-app");
+        jsonObject.addProperty("appTitle", "Test App");
+
+        String json = jsonObject.toString();
+        String encodedJson = Base64.getEncoder().encodeToString(json.getBytes());
+        binary.setDataElement(new Base64BinaryType(encodedJson));
+        binary.setId("test-binary-id");
+
+        IGenericClient client = Mockito.mock(IGenericClient.class);
+        Mockito.doReturn(client)
+                .when(fhirContextMock)
+                .newRestfulGenericClient(ArgumentMatchers.any());
+
+        IUntypedQuery<IBaseBundle> binaryIUntypedQuery = Mockito.mock(IUntypedQuery.class);
+        Mockito.doReturn(binaryIUntypedQuery).when(client).search();
+
+        IQuery<IBaseBundle> binaryIQuery = Mockito.mock(IQuery.class);
+
+        Mockito.doReturn(binaryIQuery).when(binaryIUntypedQuery).forResource(Binary.class);
+
+        IQuery<IBaseBundle> iQuery = Mockito.mock(IQuery.class);
+        Mockito.doReturn(iQuery).when(binaryIQuery).where(ArgumentMatchers.any(ICriterion.class));
+
+        Bundle bundle = new Bundle();
+        bundle.getEntry().add(new Bundle.BundleEntryComponent().setResource(binary));
+
+        Mockito.doReturn(bundle).when(iQuery).execute();
+
+        Binary result =
+                Utils.readApplicationConfigBinaryResource("test-binary-id", fhirContextMock);
+
+        Assert.assertNotNull(result);
+        Assert.assertEquals("test-binary-id", result.getId());
+
+        byte[] binaryDataByteArray =
+                Base64.getDecoder().decode(result.getDataElement().getValueAsString());
+        String decodedJson = new String(binaryDataByteArray, StandardCharsets.UTF_8);
+
+        Assert.assertEquals("{\"appId\":\"test-app\",\"appTitle\":\"Test App\"}", decodedJson);
     }
 }
