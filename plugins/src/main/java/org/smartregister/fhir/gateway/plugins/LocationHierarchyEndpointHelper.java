@@ -181,6 +181,7 @@ public class LocationHierarchyEndpointHelper {
             allLocations.add(parentLocation);
         }
         if (childLocationBundle != null) {
+            Utils.fetchAllBundlePagesAndInject(r4FHIRClient, childLocationBundle);
             childLocationBundle.getEntry().parallelStream()
                     .forEach(
                             childLocation -> {
@@ -193,24 +194,6 @@ public class LocationHierarchyEndpointHelper {
                                                 null,
                                                 adminLevels));
                             });
-
-            while (childLocationBundle.getLink(Bundle.LINK_NEXT) != null) {
-                childLocationBundle =
-                        getFhirClientForR4().loadPage().next(childLocationBundle).execute();
-
-                childLocationBundle.getEntry().parallelStream()
-                        .forEach(
-                                childLocation -> {
-                                    Location childLocationEntity =
-                                            (Location) childLocation.getResource();
-                                    allLocations.add(childLocationEntity);
-                                    allLocations.addAll(
-                                            getDescendants(
-                                                    childLocationEntity.getIdElement().getIdPart(),
-                                                    null,
-                                                    adminLevels));
-                                });
-            }
         }
 
         return allLocations;
