@@ -451,4 +451,16 @@ public class PermissionAccessCheckerTest {
 
         assertThat(canAccess, equalTo(false));
     }
+
+    @Test
+    public void testGenerateSyncStrategyIdsCacheKey() {
+        String testUserId = "my-test-user-id";
+        Map<String, String[]> strategyIdMap =
+                Map.of(Constants.SyncStrategy.CARE_TEAM, new String[] {"id-1, id-2,id-3"});
+        String cacheKey =
+                PermissionAccessChecker.generateSyncStrategyIdsCacheKey(
+                        testUserId, Constants.SyncStrategy.CARE_TEAM, strategyIdMap);
+
+        Assert.assertEquals(testUserId, cacheKey);
+    }
 }
