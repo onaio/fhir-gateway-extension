@@ -1,19 +1,28 @@
 package org.smartregister.fhir.gateway.plugins;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import org.apache.commons.codec.binary.Hex;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Binary;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
+import org.hl7.fhir.r4.model.StringType;
+import org.hl7.fhir.r4.model.UriType;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -21,6 +30,7 @@ import com.google.gson.JsonObject;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
+import ca.uhn.fhir.rest.client.impl.GenericClient;
 
 public class Utils {
 
@@ -192,5 +202,85 @@ public class Utils {
             syncStrategy = jsonArray.get(0).getAsString();
 
         return syncStrategy;
+    }
+
+    public static String generateHash(String input) throws NoSuchAlgorithmException {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hashBytes = digest.digest(input.getBytes());
+        return Hex.encodeHexString(hashBytes);
+    }
+
+    public static String getSortedInput(String input, String separator) {
+        return getSortedInput(Arrays.stream(input.split(separator)), separator);
+    }
+
+    public static String getSortedInput(Stream<String> inputStream, String separator) {
+        return inputStream.sorted(Comparator.naturalOrder()).collect(Collectors.joining(separator));
+    }
+
+    /**
+     * This is a recursive function which updates the result bundle with results of all pages
+     * whenever there's an entry for Bundle.LINK_NEXT
+     *
+     * @param fhirClient the Generic FHIR Client instance
+     * @param resultBundle the result bundle from the first request
+     */
+    public static void fetchAllBundlePagesAndInject(
+            IGenericClient fhirClient, Bundle resultBundle) {
+
+        if (resultBundle.getLink(Bundle.LINK_NEXT) != null) {
+
+            cleanUpBundlePaginationNextLinkServerBaseUrl((GenericClient) fhirClient, resultBundle);
+
+            Bundle pageResultBundle = fhirClient.loadPage().next(resultBundle).execute();
+
+            resultBundle.getEntry().addAll(pageResultBundle.getEntry());
+            resultBundle.setLink(pageResultBundle.getLink());
+
+            fetchAllBundlePagesAndInject(fhirClient, resultBundle);
+        }
+
+        resultBundle.setLink(
+                resultBundle.getLink().stream()
+                        .filter(
+                                bundleLinkComponent ->
+                                        !Bundle.LINK_NEXT.equals(bundleLinkComponent.getRelation()))
+                        .collect(Collectors.toList()));
+        resultBundle.getMeta().setLastUpdated(resultBundle.getMeta().getLastUpdated());
+    }
+
+    public static void cleanUpBundlePaginationNextLinkServerBaseUrl(
+            GenericClient fhirClient, Bundle resultBundle) {
+        String cleanUrl =
+                cleanHapiPaginationLinkBaseUrl(
+                        resultBundle.getLink(Bundle.LINK_NEXT).getUrl(), fhirClient.getUrlBase());
+        resultBundle
+                .getLink()
+                .replaceAll(
+                        bundleLinkComponent ->
+                                Bundle.LINK_NEXT.equals(bundleLinkComponent.getRelation())
+                                        ? new Bundle.BundleLinkComponent(
+                                                new StringType(Bundle.LINK_NEXT),
+                                                new UriType(cleanUrl))
+                                        : bundleLinkComponent);
+    }
+
+    public static String cleanBaseUrl(String originalUrl, String fhirServerBaseUrl) {
+        int hostStartIndex = originalUrl.indexOf("://") + 3;
+        int pathStartIndex = originalUrl.indexOf("/", hostStartIndex);
+
+        // If the URL has no path, assume it ends right after the host
+        if (pathStartIndex == -1) {
+            pathStartIndex = originalUrl.length();
+        }
+
+        return fhirServerBaseUrl + originalUrl.substring(pathStartIndex);
+    }
+
+    public static String cleanHapiPaginationLinkBaseUrl(
+            String originalUrl, String fhirServerBaseUrl) {
+        return originalUrl.indexOf('?') > -1
+                ? fhirServerBaseUrl + originalUrl.substring(originalUrl.indexOf('?'))
+                : fhirServerBaseUrl;
     }
 }
