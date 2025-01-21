@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Binary;
 import org.hl7.fhir.r4.model.Bundle;
@@ -125,12 +126,13 @@ public class LocationHierarchyEndpointHelper {
 
     public List<Location> getLocationHierarchyLocations(
             String locationId,
-            Location parentLocation,
             List<String> preFetchAdminLevels,
             List<String> postFetchAdminLevels,
             Boolean filterInventory,
             String lastUpdated) {
+
         List<Location> descendants;
+        Location parentLocation = getLocationById(locationId);
 
         if (CacheHelper.INSTANCE.skipCache()) {
             descendants = getDescendants(locationId, parentLocation, preFetchAdminLevels);
@@ -383,17 +385,15 @@ public class LocationHierarchyEndpointHelper {
         int start = Math.max(0, (page - 1)) * count;
 
         List<Resource> resourceLocations =
-                locationIds.parallelStream()
-                        .flatMap(
-                                identifier ->
-                                        getLocationHierarchyLocations(
-                                                identifier,
-                                                getLocationById(identifier),
-                                                preFetchAdminLevels,
-                                                postFetchAdminLevels,
-                                                filterInventory,
-                                                lastUpdated)
-                                                .stream())
+                locationIds.stream()
+                        .map(
+                                locationId ->
+                                        fetchAllDescendants(
+                                                locationId,
+                                                request.getParameterMap()
+                                                        .get(Constants.TYPE_SEARCH_PARAM)))
+                        .flatMap(descendant -> descendant.getEntry().stream())
+                        .map(Bundle.BundleEntryComponent::getResource)
                         .collect(Collectors.toList());
         int totalEntries = resourceLocations.size();
 
@@ -420,6 +420,25 @@ public class LocationHierarchyEndpointHelper {
         }
 
         return resultBundle;
+    }
+
+    private Bundle fetchAllDescendants(String locationId, String[] types) {
+        StringBuilder queryStringFilter = new StringBuilder("Location?");
+        if (StringUtils.isNotBlank(locationId)) {
+            queryStringFilter
+                    .append("&_tag=")
+                    .append(Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY)
+                    .append("%7C")
+                    .append(locationId)
+                    .append(',');
+        }
+
+        String type = types != null && types.length > 0 ? types[0] : null;
+        if (StringUtils.isNotBlank(type)) {
+            queryStringFilter.append("&type=").append(type);
+        }
+
+        return (Bundle) getFhirClientForR4().search().byUrl(queryStringFilter.toString()).execute();
     }
 
     public List<String> generateAdminLevels(

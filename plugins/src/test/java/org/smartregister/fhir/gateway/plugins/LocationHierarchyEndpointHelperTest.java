@@ -123,8 +123,7 @@ public class LocationHierarchyEndpointHelperTest {
 
         Mockito.doReturn(locations)
                 .when(mockLocationHierarchyEndpointHelper)
-                .getLocationHierarchyLocations(
-                        "12345", null, adminLevels, adminLevels, false, null);
+                .getLocationHierarchyLocations("12345", adminLevels, adminLevels, false, null);
 
         Bundle resultBundle =
                 mockLocationHierarchyEndpointHelper.getPaginatedLocations(request, locationIds);
@@ -210,7 +209,6 @@ public class LocationHierarchyEndpointHelperTest {
                 .when(mockLocationHierarchyEndpointHelper)
                 .getLocationHierarchyLocations(
                         Mockito.anyString(),
-                        Mockito.any(),
                         Mockito.any(),
                         Mockito.any(),
                         Mockito.any(),
@@ -445,8 +443,7 @@ public class LocationHierarchyEndpointHelperTest {
 
         Mockito.doReturn(locations)
                 .when(mockLocationHierarchyEndpointHelper)
-                .getLocationHierarchyLocations(
-                        "12345", null, adminLevels, adminLevels, false, null);
+                .getLocationHierarchyLocations("12345", adminLevels, adminLevels, false, null);
 
         Bundle resultBundle =
                 mockLocationHierarchyEndpointHelper.getPaginatedLocations(request, locationIds);
