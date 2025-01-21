@@ -213,6 +213,11 @@ public class LocationHierarchyEndpointHelper {
         return location;
     }
 
+    public @Nullable Bundle getLocationById(List<String> ids) {
+        return getFhirClientForR4()
+                .fetchResourceFromUrl(Bundle.class, "Location?_id=" + StringUtils.join(ids, ","));
+    }
+
     public Bundle handleIdentifierRequest(HttpServletRequest request, String identifier) {
         String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
         String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
@@ -384,21 +389,33 @@ public class LocationHierarchyEndpointHelper {
 
         int start = Math.max(0, (page - 1)) * count;
 
-        List<Resource> resourceLocations =
+        List<Location> resourceLocations =
                 locationIds.stream()
-                        .map(
-                                locationId ->
-                                        fetchAllDescendants(
-                                                locationId,
-                                                request.getParameterMap()
-                                                        .get(Constants.TYPE_SEARCH_PARAM)))
+                        .map(locationId -> fetchAllDescendants(locationId, preFetchAdminLevels))
                         .flatMap(descendant -> descendant.getEntry().stream())
-                        .map(Bundle.BundleEntryComponent::getResource)
+                        .map(bundleEntryComponent -> (Location) bundleEntryComponent.getResource())
                         .collect(Collectors.toList());
+
+        // Get the parents
+        Bundle parentLocation = getLocationById(locationIds);
+        if (parentLocation != null) {
+            List<Bundle.BundleEntryComponent> locationBundleEntryComponents =
+                    parentLocation.getEntry();
+            for (Bundle.BundleEntryComponent locationBundleEntryComponent :
+                    locationBundleEntryComponents) {
+                resourceLocations.add((Location) locationBundleEntryComponent.getResource());
+            }
+        }
+
+        // Apply the post filter
+        resourceLocations =
+                postFetchFilters(
+                        resourceLocations, postFetchAdminLevels, filterInventory, lastUpdated);
+
         int totalEntries = resourceLocations.size();
 
         int end = Math.min(start + count, resourceLocations.size());
-        List<Resource> paginatedResourceLocations = resourceLocations.subList(start, end);
+        List<Location> paginatedResourceLocations = resourceLocations.subList(start, end);
         Bundle resultBundle;
         if (Constants.COUNT.equals(summary)) {
             resultBundle =
@@ -422,7 +439,7 @@ public class LocationHierarchyEndpointHelper {
         return resultBundle;
     }
 
-    private Bundle fetchAllDescendants(String locationId, String[] types) {
+    private Bundle fetchAllDescendants(String locationId, List<String> preFetchAdminLevels) {
         StringBuilder queryStringFilter = new StringBuilder("Location?");
         if (StringUtils.isNotBlank(locationId)) {
             queryStringFilter
@@ -433,9 +450,15 @@ public class LocationHierarchyEndpointHelper {
                     .append(',');
         }
 
-        String type = types != null && types.length > 0 ? types[0] : null;
-        if (StringUtils.isNotBlank(type)) {
-            queryStringFilter.append("&type=").append(type);
+        if (preFetchAdminLevels != null && !preFetchAdminLevels.isEmpty()) {
+            queryStringFilter.append("&type=");
+            for (String adminLevel : preFetchAdminLevels) {
+                queryStringFilter
+                        .append(Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL)
+                        .append("%7C")
+                        .append(adminLevel)
+                        .append(',');
+            }
         }
 
         return (Bundle) getFhirClientForR4().search().byUrl(queryStringFilter.toString()).execute();
@@ -510,9 +533,9 @@ public class LocationHierarchyEndpointHelper {
     }
 
     public boolean lastUpdatedFilter(Location location, String lastUpdated) {
-        Date locationlastUpdated = location.getMeta().getLastUpdated();
+        Date metaLocationLastUpdated = location.getMeta().getLastUpdated();
         OffsetDateTime locationLastUpdated =
-                locationlastUpdated.toInstant().atOffset(ZoneOffset.UTC);
+                metaLocationLastUpdated.toInstant().atOffset(ZoneOffset.UTC);
         return locationLastUpdated.isAfter(OffsetDateTime.parse(lastUpdated))
                 || locationLastUpdated.isEqual(OffsetDateTime.parse(lastUpdated));
     }

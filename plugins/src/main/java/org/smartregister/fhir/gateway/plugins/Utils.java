@@ -103,7 +103,7 @@ public class Utils {
      * @param resourceList The list of resources to include in the Bundle.
      * @return A Bundle object containing the provided resources.
      */
-    public static Bundle createBundle(List<Resource> resourceList) {
+    public static Bundle createBundle(List<? extends Resource> resourceList) {
         Bundle responseBundle = new Bundle();
         List<Bundle.BundleEntryComponent> bundleEntryComponentList = new ArrayList<>();
 
