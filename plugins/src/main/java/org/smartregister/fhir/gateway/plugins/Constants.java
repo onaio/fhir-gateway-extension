@@ -74,4 +74,11 @@ public class Constants {
         @Deprecated String FHIR_GATEWAY_MODE = "fhir-gateway-mode";
         String MODE = "mode";
     }
+
+    public interface Meta {
+        interface Tag {
+            String SYSTEM_LOCATION_HIERARCHY =
+                    "http://smartregister.org/CodeSystem/location-hierarchy";
+        }
+    }
 }
