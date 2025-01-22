@@ -409,7 +409,8 @@ public class PractitionerDetailsEndpointHelper {
         return practitionerDetails;
     }
 
-    private List<Organization> mapBundleToOrganizations(Bundle organizationBundle) {
+    @VisibleForTesting
+    protected List<Organization> mapBundleToOrganizations(Bundle organizationBundle) {
         return organizationBundle.getEntry().stream()
                 .map(bundleEntryComponent -> (Organization) bundleEntryComponent.getResource())
                 .collect(Collectors.toList());
