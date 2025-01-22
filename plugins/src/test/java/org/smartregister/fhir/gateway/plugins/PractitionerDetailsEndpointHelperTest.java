@@ -606,6 +606,9 @@ public class PractitionerDetailsEndpointHelperTest {
         List<String> locationIds = new ArrayList<>();
         locationIds.add("Location/1234");
 
+        List<Organization> organizationList = new ArrayList<>();
+        organizationList.add(getOrganization());
+
         PractitionerDetailsEndpointHelper mockPractitionerDetailsEndpointHelper =
                 mock(PractitionerDetailsEndpointHelper.class);
 
@@ -618,6 +621,9 @@ public class PractitionerDetailsEndpointHelperTest {
         Mockito.doReturn(careTeamManagingOrganizationIds)
                 .when(mockPractitionerDetailsEndpointHelper)
                 .getManagingOrganizationsOfCareTeamIds(careTeamList);
+        Mockito.doReturn(organizationList)
+                .when(mockPractitionerDetailsEndpointHelper)
+                        .mapBundleToOrganizations(mock(Bundle.class));
         Mockito.doReturn(practitionerRoleList)
                 .when(mockPractitionerDetailsEndpointHelper)
                 .getPractitionerRolesByPractitionerId(practitionerId);
@@ -634,18 +640,21 @@ public class PractitionerDetailsEndpointHelperTest {
                 .when(mockPractitionerDetailsEndpointHelper)
                 .getLocationIdsByOrganizationAffiliations(organizationAffiliations);
 
+        Practitioner practitioner = getPractitioner();
         Mockito.doCallRealMethod()
                 .when(mockPractitionerDetailsEndpointHelper)
-                .getPractitionerLocationIdsByByKeycloakIdCore(practitionerId);
-        List<String> resultLocationIds =
-                mockPractitionerDetailsEndpointHelper.getPractitionerLocationIdsByByKeycloakIdCore(
-                        practitionerId);
+                .getPractitionerDetailsByPractitionerCore(practitionerId, practitioner);
 
-        Practitioner practitioner = getPractitioner();
         PractitionerDetails practitionerDetails = mockPractitionerDetailsEndpointHelper.getPractitionerDetailsByPractitionerCore(practitionerId, practitioner);
         Assert.assertNotNull(practitionerDetails);
-        List<CareTeam> containedCareTeamList = (List<CareTeam>) practitionerDetails.getContained().get(0);
-        Assert.assertEquals("CareTeam/1234", containedCareTeamList.get(0).getId());
+        CareTeam containedCareTeam = (CareTeam) practitionerDetails.getContained().get(0);
+        Assert.assertEquals("CareTeam/1234", containedCareTeam.getId());
+        Practitioner containedPractitioner = (Practitioner) practitionerDetails.getContained().get(1);
+        Assert.assertEquals("Practitioner/1234", containedPractitioner.getId());
+        PractitionerRole containedPractitionerRole= (PractitionerRole) practitionerDetails.getContained().get(2);
+        Assert.assertEquals("PractitionerRole/1234", containedPractitionerRole.getId());
+        OrganizationAffiliation containedOrganizationAffiliation= (OrganizationAffiliation) practitionerDetails.getContained().get(3);
+        Assert.assertEquals("OrganizationAffiliation/1234", containedOrganizationAffiliation.getId());
     }
 
     private Bundle getPractitionerBundle() {
@@ -731,5 +740,12 @@ public class PractitionerDetailsEndpointHelperTest {
         List<PractitionerRole> practitionerRoles = new ArrayList<>();
         practitionerRoles.add(practitionerRole);
         return practitionerRoles;
+    }
+
+    private Organization getOrganization() {
+        Organization organization = new Organization();
+        organization.setId("organization-id-1");
+        organization.setName("test organization");
+        return organization;
     }
 }
