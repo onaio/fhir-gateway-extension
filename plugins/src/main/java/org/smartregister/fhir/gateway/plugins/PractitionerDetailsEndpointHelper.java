@@ -326,8 +326,8 @@ public class PractitionerDetailsEndpointHelper {
         logger.info("Searching for CareTeams with practitioner id: " + practitionerId);
         Bundle careTeams = getCareTeams(practitionerId);
         List<CareTeam> careTeamsList = mapBundleToCareTeams(careTeams);
-        fhirPractitionerDetails.setCareTeams(careTeamsList);
-        fhirPractitionerDetails.setPractitioners(Arrays.asList(practitioner));
+        practitionerDetails.getContained().addAll(careTeamsList);
+        practitionerDetails.getContained().addAll(Arrays.asList(practitioner));
 
         logger.info(
                 "Searching for Organizations tied to CareTeams list of size: "
@@ -362,8 +362,8 @@ public class PractitionerDetailsEndpointHelper {
                         .filter(distinctByKey(Organization::getId))
                         .collect(Collectors.toList());
 
-        fhirPractitionerDetails.setOrganizations(bothOrganizations);
-        fhirPractitionerDetails.setPractitionerRoles(practitionerRoleList);
+        practitionerDetails.getContained().addAll(bothOrganizations);
+        practitionerDetails.getContained().addAll(practitionerRoleList);
 
         Bundle groupsBundle = getGroupsAssignedToPractitioner(practitionerId);
         logger.info(
@@ -371,7 +371,7 @@ public class PractitionerDetailsEndpointHelper {
                         + (groupsBundle != null ? groupsBundle.getTotal() : 0));
 
         List<Group> groupsList = mapBundleToGroups(groupsBundle);
-        fhirPractitionerDetails.setGroups(groupsList);
+        practitionerDetails.getContained().addAll(groupsList);
         fhirPractitionerDetails.setId(practitionerId);
 
         Set<String> organizationIds =
@@ -388,7 +388,7 @@ public class PractitionerDetailsEndpointHelper {
         List<OrganizationAffiliation> organizationAffiliations =
                 mapBundleToOrganizationAffiliation(organizationAffiliationsBundle);
 
-        fhirPractitionerDetails.setOrganizationAffiliations(organizationAffiliations);
+        practitionerDetails.getContained().addAll(organizationAffiliations);
 
         List<String> locationIds =
                 getLocationIdsByOrganizationAffiliations(organizationAffiliations);
@@ -401,7 +401,7 @@ public class PractitionerDetailsEndpointHelper {
 
         logger.info("Searching for locations by ids : " + locationIds);
         List<Location> locationsList = getLocationsByIds(locationIds);
-        fhirPractitionerDetails.setLocations(locationsList);
+        practitionerDetails.getContained().addAll(locationsList);
 
         practitionerDetails.setId(practitionerId);
         practitionerDetails.setFhirPractitionerDetails(fhirPractitionerDetails);
