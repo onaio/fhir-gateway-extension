@@ -439,7 +439,7 @@ public class LocationHierarchyEndpointHelper {
         return resultBundle;
     }
 
-    private Bundle fetchAllDescendants(String locationId, List<String> preFetchAdminLevels) {
+    public Bundle fetchAllDescendants(String locationId, List<String> preFetchAdminLevels) {
         StringBuilder queryStringFilter = new StringBuilder("Location?");
         if (StringUtils.isNotBlank(locationId)) {
             queryStringFilter

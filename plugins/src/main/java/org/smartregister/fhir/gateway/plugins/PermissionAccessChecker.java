@@ -305,6 +305,26 @@ public class PermissionAccessChecker implements AccessChecker {
         return locationUuids;
     }
 
+    private Set<String> getPractitionerLocationHierarchyDescendants(
+            PractitionerDetails practitionerDetails) {
+        List<String> locationIds =
+                practitionerDetails.getFhirPractitionerDetails().getLocations().stream()
+                        .map(location -> location.getIdElement().getIdPart())
+                        .collect(Collectors.toList());
+
+        return locationIds.stream()
+                .map(
+                        locationId ->
+                                (new LocationHierarchyEndpointHelper(
+                                                Utils.createFhirClientForR4(fhirContext)))
+                                        .fetchAllDescendants(locationId, null))
+                .flatMap(descendant -> descendant.getEntry().stream())
+                .map(
+                        bundleEntryComponent ->
+                                bundleEntryComponent.getResource().getIdElement().getIdPart())
+                .collect(Collectors.toSet());
+    }
+
     @Nonnull
     private Map<String, List<String>> collateSyncStrategyIds(
             String syncStrategy,
@@ -346,17 +366,7 @@ public class PermissionAccessChecker implements AccessChecker {
                 syncStrategyIds =
                         practitionerDetails != null
                                         && practitionerDetails.getFhirPractitionerDetails() != null
-                                ? PractitionerDetailsEndpointHelper.getAttributedLocations(
-                                        PractitionerDetailsEndpointHelper.getLocationsHierarchy(
-                                                practitionerDetails
-                                                        .getFhirPractitionerDetails()
-                                                        .getLocations()
-                                                        .stream()
-                                                        .map(
-                                                                location ->
-                                                                        location.getIdElement()
-                                                                                .getIdPart())
-                                                        .collect(Collectors.toList())))
+                                ? getPractitionerLocationHierarchyDescendants(practitionerDetails)
                                 : new HashSet<>();
 
             } else if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(
@@ -374,7 +384,6 @@ public class PermissionAccessChecker implements AccessChecker {
                             PractitionerDetailsEndpointHelper.getAttributedLocations(
                                     PractitionerDetailsEndpointHelper.getLocationsHierarchy(
                                             locationUuids));
-
                 } else {
 
                     // Assigned locations
@@ -382,10 +391,8 @@ public class PermissionAccessChecker implements AccessChecker {
                             practitionerDetails != null
                                             && practitionerDetails.getFhirPractitionerDetails()
                                                     != null
-                                    ? PractitionerDetailsEndpointHelper.getAttributedLocations(
-                                            practitionerDetails
-                                                    .getFhirPractitionerDetails()
-                                                    .getLocationHierarchyList())
+                                    ? getPractitionerLocationHierarchyDescendants(
+                                            practitionerDetails)
                                     : new HashSet<>();
                 }
 
