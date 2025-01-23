@@ -582,7 +582,8 @@ public class PractitionerDetailsEndpointHelperTest {
     }
 
     @Test
-    public void testGetPractitionerDetailsByPractitionerCorePopulatesPractitionerDetailsContainedField() {
+    public void
+            testGetPractitionerDetailsByPractitionerCorePopulatesPractitionerDetailsContainedField() {
         String practitionerId = "keycloak-uuid-1234-1234";
         Bundle careTeamBundle = getPractitionerBundle();
         List<CareTeam> careTeamList = new ArrayList<>();
@@ -625,7 +626,7 @@ public class PractitionerDetailsEndpointHelperTest {
                 .getManagingOrganizationsOfCareTeamIds(careTeamList);
         Mockito.doReturn(organizationList)
                 .when(mockPractitionerDetailsEndpointHelper)
-                        .mapBundleToOrganizations(mock(Bundle.class));
+                .mapBundleToOrganizations(mock(Bundle.class));
         Mockito.doReturn(practitionerRoleList)
                 .when(mockPractitionerDetailsEndpointHelper)
                 .getPractitionerRolesByPractitionerId(practitionerId);
@@ -649,16 +650,22 @@ public class PractitionerDetailsEndpointHelperTest {
                 .when(mockPractitionerDetailsEndpointHelper)
                 .getPractitionerDetailsByPractitionerCore(practitionerId, practitioner);
 
-        PractitionerDetails practitionerDetails = mockPractitionerDetailsEndpointHelper.getPractitionerDetailsByPractitionerCore(practitionerId, practitioner);
+        PractitionerDetails practitionerDetails =
+                mockPractitionerDetailsEndpointHelper.getPractitionerDetailsByPractitionerCore(
+                        practitionerId, practitioner);
         Assert.assertNotNull(practitionerDetails);
         CareTeam containedCareTeam = (CareTeam) practitionerDetails.getContained().get(0);
         Assert.assertEquals("CareTeam/1234", containedCareTeam.getId());
-        Practitioner containedPractitioner = (Practitioner) practitionerDetails.getContained().get(1);
+        Practitioner containedPractitioner =
+                (Practitioner) practitionerDetails.getContained().get(1);
         Assert.assertEquals("Practitioner/1234", containedPractitioner.getId());
-        PractitionerRole containedPractitionerRole= (PractitionerRole) practitionerDetails.getContained().get(2);
+        PractitionerRole containedPractitionerRole =
+                (PractitionerRole) practitionerDetails.getContained().get(2);
         Assert.assertEquals("PractitionerRole/1234", containedPractitionerRole.getId());
-        OrganizationAffiliation containedOrganizationAffiliation= (OrganizationAffiliation) practitionerDetails.getContained().get(3);
-        Assert.assertEquals("OrganizationAffiliation/1234", containedOrganizationAffiliation.getId());
+        OrganizationAffiliation containedOrganizationAffiliation =
+                (OrganizationAffiliation) practitionerDetails.getContained().get(3);
+        Assert.assertEquals(
+                "OrganizationAffiliation/1234", containedOrganizationAffiliation.getId());
         Location containedLocation = (Location) practitionerDetails.getContained().get(4);
         Assert.assertEquals("Location/1234", containedLocation.getId());
     }
