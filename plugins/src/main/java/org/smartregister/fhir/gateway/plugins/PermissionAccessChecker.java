@@ -347,9 +347,16 @@ public class PermissionAccessChecker implements AccessChecker {
                         practitionerDetails != null
                                         && practitionerDetails.getFhirPractitionerDetails() != null
                                 ? PractitionerDetailsEndpointHelper.getAttributedLocations(
-                                        practitionerDetails
-                                                .getFhirPractitionerDetails()
-                                                .getLocationHierarchyList())
+                                        PractitionerDetailsEndpointHelper.getLocationsHierarchy(
+                                                practitionerDetails
+                                                        .getFhirPractitionerDetails()
+                                                        .getLocations()
+                                                        .stream()
+                                                        .map(
+                                                                location ->
+                                                                        location.getIdElement()
+                                                                                .getIdPart())
+                                                        .collect(Collectors.toList())))
                                 : new HashSet<>();
 
             } else if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(
