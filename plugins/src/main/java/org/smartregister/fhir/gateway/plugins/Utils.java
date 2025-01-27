@@ -21,6 +21,7 @@ import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
+import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.StringType;
 import org.hl7.fhir.r4.model.UriType;
 
@@ -282,5 +283,22 @@ public class Utils {
         return originalUrl.indexOf('?') > -1
                 ? fhirServerBaseUrl + originalUrl.substring(originalUrl.indexOf('?'))
                 : fhirServerBaseUrl;
+    }
+
+    public static String extractLogicalId(ResourceType resourceType, String url) {
+        String prefix = resourceType.name() + "/";
+
+        int prefixIndex = url.indexOf(prefix);
+        if (prefixIndex == -1) {
+            return url;
+        }
+
+        int idStartIndex = prefixIndex + prefix.length();
+        int idEndIndex = url.indexOf('/', idStartIndex);
+        if (idEndIndex == -1) {
+            idEndIndex = url.length();
+        }
+
+        return url.substring(idStartIndex, idEndIndex);
     }
 }

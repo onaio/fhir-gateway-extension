@@ -14,13 +14,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.hl7.fhir.instance.model.api.IBaseBundle;
-import org.hl7.fhir.r4.model.Binary;
-import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.Composition;
-import org.hl7.fhir.r4.model.ListResource;
-import org.hl7.fhir.r4.model.Location;
-import org.hl7.fhir.r4.model.Resource;
-import org.hl7.fhir.r4.model.StringType;
+import org.hl7.fhir.r4.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartregister.model.location.LocationHierarchy;
@@ -204,7 +198,11 @@ public class LocationHierarchyEndpointHelper {
         try {
             location =
                     getFhirClientForR4()
-                            .fetchResourceFromUrl(Location.class, "Location/" + locationId);
+                            .fetchResourceFromUrl(
+                                    Location.class,
+                                    "Location/"
+                                            + Utils.extractLogicalId(
+                                                    ResourceType.Location, locationId));
         } catch (ResourceNotFoundException e) {
             logger.error(e.getMessage());
         }

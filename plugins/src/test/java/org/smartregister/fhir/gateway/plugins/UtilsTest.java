@@ -10,13 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.hl7.fhir.instance.model.api.IBaseBundle;
-import org.hl7.fhir.r4.model.Base64BinaryType;
-import org.hl7.fhir.r4.model.Binary;
-import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.Composition;
-import org.hl7.fhir.r4.model.Identifier;
-import org.hl7.fhir.r4.model.Meta;
-import org.hl7.fhir.r4.model.Reference;
+import org.hl7.fhir.r4.model.*;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -347,5 +341,20 @@ public class UtilsTest {
                         userId, syncStrategy, parameters);
 
         Assert.assertEquals(userId, result);
+    }
+
+    @Test
+    public void testExtractLogicalIdExtractsValueFromURL() {
+
+        String url = "http://my-fhir-server:8080/fhir/Location/6969/_history/2/";
+        String result = Utils.extractLogicalId(ResourceType.Location, url);
+
+        Assert.assertEquals("6969", result);
+    }
+
+    @Test
+    public void testExtractLogicalIdReturnsRawValue() {
+        String result = Utils.extractLogicalId(ResourceType.Location, "7777");
+        Assert.assertEquals("7777", result);
     }
 }
