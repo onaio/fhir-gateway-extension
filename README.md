@@ -361,10 +361,10 @@ Example:
 
    ###### Conditions for User Selected LocationsHierarchies
 
-   - The deployment/app user should have Related Entity Location as its sync
-     strategy
-   - The deployment/app user should have `ALL_LOCATIONS` role on keycloak.
-   - The request should have `_syncLocations` parameter set
+- The deployment/app user should have Related Entity Location as its sync
+  strategy
+- The deployment/app user should have `ALL_LOCATIONS` role on keycloak.
+- The request should have `_syncLocations` parameter set
 
 Example:
 
@@ -404,7 +404,7 @@ Example:
 [GET] /LocationHierarchy?_id=<some-location-id>&administrativeLevelMin=2&administrativeLevelMax=4&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
 ```
 
-##### Inventory Filters
+##### LocationHierarchy Inventory Filters
 
 The `LocationHierarchy` endpoint supports filtering by inventory availability,
 allowing users to specify whether they want to retrieve only locations that have
@@ -429,7 +429,7 @@ Example:
 [GET] /LocationHierarchy?_id=<some-location-id>&filterInventory=true&_count=<page-size>&_page=<page-number>&_sort=<some-sort>
 ```
 
-##### LastUpdated Filters
+##### LocationHierarchy LastUpdated Filters
 
 The `LocationHierarchy` endpoint supports filtering by the lastUpdated timestamp
 of locations. This filter allows users to retrieve locations based on the last
@@ -463,6 +463,37 @@ Example:
 
 ```
 GET /LocationHierarchy?_id=<some-location-id>&mode=list&_summary=count
+```
+
+##### LocationHierarchy Filter By Lineage Ids
+
+The `LocationHierarchy` endpoint supports filtering by the lineage ids of
+locations. This filter allows users to retrieve locations based on the location
+ids of all the ancestors of the location. This makes fetching descendants of
+locations highly efficient.
+
+The following search parameter is available:
+
+- `filter_mode_lineage`: A boolean parameter that specifies whether the response
+  should be filtered using location lineage ids.
+
+Behavior based on the lastUpdated parameter:
+
+- `filter_mode_lineage` Not Defined or **false**: The endpoint will include all
+  locations as before (without the feature added)
+- `filter_mode_lineage` Defined and **true**: The response will include only
+  those locations whose parent location passed is in the ancestry of the
+  location
+
+Note: This filter only works when in list mode i.e `mode=list` is set as one of
+the parameters. Also note, enabling this flag requires that you populate all
+relevant Location resources on your server with the location ids of all their
+ancestors. See https://github.com/onaio/fhir-gateway-extension/issues/110
+
+Example:
+
+```
+[GET] /LocationHierarchy?filter_mode_lineage=true&_syncLocations=<some-location-id>,<some-location-id>,<some-location-id>
 ```
 
 #### Important Note:
