@@ -325,6 +325,16 @@ public class PermissionAccessChecker implements AccessChecker {
                 .collect(Collectors.toSet());
     }
 
+    @Deprecated(since = "2.3.0", forRemoval = true)
+    private Set<String> getPractitionerLocationHierarchyDescendantsBackwardCompatibility(
+            PractitionerDetails practitionerDetails) {
+        return PractitionerDetailsEndpointHelper.getAttributedLocations(
+                PractitionerDetailsEndpointHelper.getLocationsHierarchy(
+                        practitionerDetails.getFhirPractitionerDetails().getLocations().stream()
+                                .map(location -> location.getIdElement().getIdPart())
+                                .collect(Collectors.toList())));
+    }
+
     @Nonnull
     private Map<String, List<String>> collateSyncStrategyIds(
             String syncStrategy,

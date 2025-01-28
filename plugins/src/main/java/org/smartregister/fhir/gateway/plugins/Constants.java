@@ -53,6 +53,8 @@ public class Constants {
     public static final String CORS_ALLOW_ORIGIN_ENV = "CORS_ALLOW_ORIGIN";
     public static final String UNDERSCORE = "_";
     public static final String[] CLIENT_ROLES = {ROLE_WEB_CLIENT, ROLE_ANDROID_CLIENT};
+    public static final String LOCATION_FILTER_MODE = "location_filter_mode";
+    public static final String LOCATION_FILTER_MODE_LINEAGE = "lineage";
 
     public interface Literals {
         String EQUALS = "=";

@@ -228,6 +228,7 @@ public class LocationHierarchyEndpointHelper {
         String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
         String mode = request.getParameter(Constants.MODE);
         Boolean filterInventory = Boolean.valueOf(request.getParameter(Constants.FILTER_INVENTORY));
+        String filterMode = request.getParameter(Constants.LOCATION_FILTER_MODE);
         String lastUpdated = "";
         List<String> preFetchAdminLevels =
                 generateAdminLevels(
@@ -236,7 +237,9 @@ public class LocationHierarchyEndpointHelper {
                 generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         if (Constants.LIST.equals(mode)) {
             List<String> locationIds = Collections.singletonList(identifier);
-            return getPaginatedLocations(request, locationIds);
+            return filterMode != null && filterMode.equals(Constants.LOCATION_FILTER_MODE_LINEAGE)
+                    ? getPaginatedLocations(request, locationIds)
+                    : getPaginatedLocationsBackwardCompatibility(request, locationIds);
         } else {
             LocationHierarchy locationHierarchy =
                     getLocationHierarchy(
@@ -258,6 +261,7 @@ public class LocationHierarchyEndpointHelper {
         String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
         String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
         Boolean filterInventory = Boolean.valueOf(request.getParameter(Constants.FILTER_INVENTORY));
+        String filterMode = request.getParameter(Constants.LOCATION_FILTER_MODE);
         List<String> preFetchAdminLevels =
                 generateAdminLevels(
                         String.valueOf(Constants.DEFAULT_MIN_ADMIN_LEVEL), administrativeLevelMax);
@@ -274,13 +278,21 @@ public class LocationHierarchyEndpointHelper {
             if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)
                     && userRoles.contains(Constants.ROLE_ALL_LOCATIONS)
                     && !selectedSyncLocations.isEmpty()) {
-                return getPaginatedLocations(request, selectedSyncLocations);
+                return filterMode != null
+                                && filterMode.equals(Constants.LOCATION_FILTER_MODE_LINEAGE)
+                        ? getPaginatedLocations(request, selectedSyncLocations)
+                        : getPaginatedLocationsBackwardCompatibility(
+                                request, selectedSyncLocations);
 
             } else {
                 List<String> locationIds =
                         practitionerDetailsEndpointHelper.getPractitionerLocationIdsByByKeycloakId(
                                 practitionerId);
-                return getPaginatedLocations(request, locationIds);
+                return filterMode != null
+                                && filterMode.equals(Constants.LOCATION_FILTER_MODE_LINEAGE)
+                        ? getPaginatedLocations(request, locationIds)
+                        : getPaginatedLocationsBackwardCompatibility(
+                                request, selectedSyncLocations);
             }
 
         } else {
@@ -421,6 +433,73 @@ public class LocationHierarchyEndpointHelper {
 
         int end = Math.min(start + count, resourceLocations.size());
         List<Location> paginatedResourceLocations = resourceLocations.subList(start, end);
+        Bundle resultBundle;
+        if (Constants.COUNT.equals(summary)) {
+            resultBundle =
+                    Utils.createEmptyBundle(
+                            request.getRequestURL() + "?" + request.getQueryString());
+            resultBundle.setTotal(totalEntries);
+            return resultBundle;
+        }
+
+        if (resourceLocations.isEmpty()) {
+            resultBundle =
+                    Utils.createEmptyBundle(
+                            request.getRequestURL() + "?" + request.getQueryString());
+        } else {
+            resultBundle = Utils.createBundle(paginatedResourceLocations);
+            StringBuilder urlBuilder = new StringBuilder(request.getRequestURL());
+            Utils.addPaginationLinks(
+                    urlBuilder, resultBundle, page, totalEntries, count, parameters);
+        }
+
+        return resultBundle;
+    }
+
+    @Deprecated(since = "2.3.0", forRemoval = true)
+    public Bundle getPaginatedLocationsBackwardCompatibility(
+            HttpServletRequest request, List<String> locationIds) {
+        String pageSize = request.getParameter(Constants.PAGINATION_PAGE_SIZE);
+        String pageNumber = request.getParameter(Constants.PAGINATION_PAGE_NUMBER);
+        String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
+        String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
+        Boolean filterInventory = Boolean.valueOf(request.getParameter(Constants.FILTER_INVENTORY));
+        String lastUpdated = request.getParameter(Constants.LAST_UPDATED);
+        String summary = request.getParameter(Constants.SUMMARY);
+        List<String> preFetchAdminLevels =
+                generateAdminLevels(
+                        String.valueOf(Constants.DEFAULT_MIN_ADMIN_LEVEL), administrativeLevelMax);
+        List<String> postFetchAdminLevels =
+                generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
+        Map<String, String[]> parameters = new HashMap<>(request.getParameterMap());
+
+        int count =
+                pageSize != null
+                        ? Integer.parseInt(pageSize)
+                        : Constants.PAGINATION_DEFAULT_PAGE_SIZE;
+        int page =
+                pageNumber != null
+                        ? Integer.parseInt(pageNumber)
+                        : Constants.PAGINATION_DEFAULT_PAGE_NUMBER;
+
+        int start = Math.max(0, (page - 1)) * count;
+
+        List<Resource> resourceLocations =
+                locationIds.parallelStream()
+                        .flatMap(
+                                identifier ->
+                                        getLocationHierarchyLocations(
+                                                identifier,
+                                                preFetchAdminLevels,
+                                                postFetchAdminLevels,
+                                                filterInventory,
+                                                lastUpdated)
+                                                .stream())
+                        .collect(Collectors.toList());
+        int totalEntries = resourceLocations.size();
+
+        int end = Math.min(start + count, resourceLocations.size());
+        List<Resource> paginatedResourceLocations = resourceLocations.subList(start, end);
         Bundle resultBundle;
         if (Constants.COUNT.equals(summary)) {
             resultBundle =

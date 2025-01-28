@@ -80,6 +80,7 @@ public class LocationHierarchyEndpointHelperTest {
         assertEquals("Location Resource : 12345", locationHierarchy.getId());
     }
 
+    @SuppressWarnings("removal")
     @Test
     public void testGetPaginatedLocationsPaginatesLocations() {
         HttpServletRequest request = mock(HttpServletRequest.class);
@@ -116,7 +117,7 @@ public class LocationHierarchyEndpointHelperTest {
                 .inventoryFilter(Mockito.any(Location.class));
         Mockito.doCallRealMethod()
                 .when(mockLocationHierarchyEndpointHelper)
-                .getPaginatedLocations(request, locationIds);
+                .getPaginatedLocationsBackwardCompatibility(request, locationIds);
         Mockito.doCallRealMethod()
                 .when(mockLocationHierarchyEndpointHelper)
                 .postFetchFilters(locations, adminLevels, false, "");
@@ -126,7 +127,8 @@ public class LocationHierarchyEndpointHelperTest {
                 .getLocationHierarchyLocations("12345", adminLevels, adminLevels, false, null);
 
         Bundle resultBundle =
-                mockLocationHierarchyEndpointHelper.getPaginatedLocations(request, locationIds);
+                mockLocationHierarchyEndpointHelper.getPaginatedLocationsBackwardCompatibility(
+                        request, locationIds);
 
         Assert.assertTrue(resultBundle.hasEntry());
         Assert.assertTrue(resultBundle.hasLink());
@@ -155,6 +157,7 @@ public class LocationHierarchyEndpointHelperTest {
         assertEquals("loc3", syncLocations.get(2));
     }
 
+    @SuppressWarnings("removal")
     @Test
     public void testHandleNonIdentifierRequestListModePaginatesLocations() {
         HttpServletRequest request = mock(HttpServletRequest.class);
@@ -185,7 +188,7 @@ public class LocationHierarchyEndpointHelperTest {
         Mockito.doReturn(parameters).when(request).getParameterMap();
         Mockito.doCallRealMethod()
                 .when(mockLocationHierarchyEndpointHelper)
-                .getPaginatedLocations(request, locationIds);
+                .getPaginatedLocationsBackwardCompatibility(request, locationIds);
         Mockito.doCallRealMethod()
                 .when(mockLocationHierarchyEndpointHelper)
                 .extractSyncLocations("1,2,3,4");
@@ -400,6 +403,7 @@ public class LocationHierarchyEndpointHelperTest {
     }
 
     @Test
+    @SuppressWarnings("removal")
     public void testGetPaginatedLocationsSummaryReturnsSummary() {
         HttpServletRequest request = mock(HttpServletRequest.class);
         Mockito.doReturn("12345").when(request).getParameter(Constants.IDENTIFIER);
@@ -436,7 +440,7 @@ public class LocationHierarchyEndpointHelperTest {
                 .inventoryFilter(Mockito.any(Location.class));
         Mockito.doCallRealMethod()
                 .when(mockLocationHierarchyEndpointHelper)
-                .getPaginatedLocations(request, locationIds);
+                .getPaginatedLocationsBackwardCompatibility(request, locationIds);
         Mockito.doCallRealMethod()
                 .when(mockLocationHierarchyEndpointHelper)
                 .postFetchFilters(locations, adminLevels, false, "");
@@ -446,7 +450,8 @@ public class LocationHierarchyEndpointHelperTest {
                 .getLocationHierarchyLocations("12345", adminLevels, adminLevels, false, null);
 
         Bundle resultBundle =
-                mockLocationHierarchyEndpointHelper.getPaginatedLocations(request, locationIds);
+                mockLocationHierarchyEndpointHelper.getPaginatedLocationsBackwardCompatibility(
+                        request, locationIds);
 
         Assert.assertFalse(resultBundle.hasEntry());
         Assert.assertTrue(resultBundle.hasType());
