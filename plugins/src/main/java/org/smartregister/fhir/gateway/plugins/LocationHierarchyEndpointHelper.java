@@ -20,6 +20,7 @@ import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.ListResource;
 import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.Resource;
+import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.StringType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -204,7 +205,11 @@ public class LocationHierarchyEndpointHelper {
         try {
             location =
                     getFhirClientForR4()
-                            .fetchResourceFromUrl(Location.class, "Location/" + locationId);
+                            .fetchResourceFromUrl(
+                                    Location.class,
+                                    "Location/"
+                                            + Utils.extractLogicalId(
+                                                    ResourceType.Location, locationId));
         } catch (ResourceNotFoundException e) {
             logger.error(e.getMessage());
         }
