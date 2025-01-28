@@ -228,7 +228,8 @@ public class LocationHierarchyEndpointHelper {
         String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
         String mode = request.getParameter(Constants.MODE);
         Boolean filterInventory = Boolean.valueOf(request.getParameter(Constants.FILTER_INVENTORY));
-        String filterMode = request.getParameter(Constants.LOCATION_FILTER_MODE);
+        Boolean filterModeLineage =
+                Boolean.valueOf(request.getParameter(Constants.FILTER_MODE_LINEAGE));
         String lastUpdated = "";
         List<String> preFetchAdminLevels =
                 generateAdminLevels(
@@ -237,7 +238,7 @@ public class LocationHierarchyEndpointHelper {
                 generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         if (Constants.LIST.equals(mode)) {
             List<String> locationIds = Collections.singletonList(identifier);
-            return filterMode != null && filterMode.equals(Constants.LOCATION_FILTER_MODE_LINEAGE)
+            return filterModeLineage
                     ? getPaginatedLocations(request, locationIds)
                     : getPaginatedLocationsBackwardCompatibility(request, locationIds);
         } else {
@@ -261,7 +262,8 @@ public class LocationHierarchyEndpointHelper {
         String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
         String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
         Boolean filterInventory = Boolean.valueOf(request.getParameter(Constants.FILTER_INVENTORY));
-        String filterMode = request.getParameter(Constants.LOCATION_FILTER_MODE);
+        Boolean filterModeLineage =
+                Boolean.valueOf(request.getParameter(Constants.FILTER_MODE_LINEAGE));
         List<String> preFetchAdminLevels =
                 generateAdminLevels(
                         String.valueOf(Constants.DEFAULT_MIN_ADMIN_LEVEL), administrativeLevelMax);
@@ -278,8 +280,7 @@ public class LocationHierarchyEndpointHelper {
             if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)
                     && userRoles.contains(Constants.ROLE_ALL_LOCATIONS)
                     && !selectedSyncLocations.isEmpty()) {
-                return filterMode != null
-                                && filterMode.equals(Constants.LOCATION_FILTER_MODE_LINEAGE)
+                return filterModeLineage
                         ? getPaginatedLocations(request, selectedSyncLocations)
                         : getPaginatedLocationsBackwardCompatibility(
                                 request, selectedSyncLocations);
@@ -288,8 +289,7 @@ public class LocationHierarchyEndpointHelper {
                 List<String> locationIds =
                         practitionerDetailsEndpointHelper.getPractitionerLocationIdsByByKeycloakId(
                                 practitionerId);
-                return filterMode != null
-                                && filterMode.equals(Constants.LOCATION_FILTER_MODE_LINEAGE)
+                return filterModeLineage
                         ? getPaginatedLocations(request, locationIds)
                         : getPaginatedLocationsBackwardCompatibility(
                                 request, selectedSyncLocations);
