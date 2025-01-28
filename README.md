@@ -470,9 +470,7 @@ GET /LocationHierarchy?_id=<some-location-id>&mode=list&_summary=count
 The `LocationHierarchy` endpoint supports filtering by the lineage ids of
 locations. This filter allows users to retrieve locations based on the location
 ids of all the ancestors of the location. This makes fetching descendants of
-locations highly efficient.
-
-The following search parameter is available:
+locations highly efficient. The following search parameter is available:
 
 - `filter_mode_lineage`: A boolean parameter that specifies whether the response
   should be filtered using location lineage ids.

@@ -343,6 +343,13 @@ public class PermissionAccessChecker implements AccessChecker {
         Map<String, List<String>> resultMap;
         Set<String> syncStrategyIds;
 
+        String[] lineageParameterArray =
+                requestDetailsReader.getParameters().get(Constants.FILTER_MODE_LINEAGE);
+        boolean filterModeLineage =
+                lineageParameterArray != null
+                        && lineageParameterArray.length >= 1
+                        && Boolean.parseBoolean(lineageParameterArray[0]);
+
         if (StringUtils.isNotBlank(syncStrategy)) {
             if (Constants.SyncStrategy.CARE_TEAM.equalsIgnoreCase(syncStrategy)) {
                 List<CareTeam> careTeams =
@@ -376,7 +383,11 @@ public class PermissionAccessChecker implements AccessChecker {
                 syncStrategyIds =
                         practitionerDetails != null
                                         && practitionerDetails.getFhirPractitionerDetails() != null
-                                ? getPractitionerLocationHierarchyDescendants(practitionerDetails)
+                                ? filterModeLineage
+                                        ? getPractitionerLocationHierarchyDescendants(
+                                                practitionerDetails)
+                                        : getPractitionerLocationHierarchyDescendantsBackwardCompatibility(
+                                                practitionerDetails)
                                 : new HashSet<>();
 
             } else if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(
@@ -401,8 +412,11 @@ public class PermissionAccessChecker implements AccessChecker {
                             practitionerDetails != null
                                             && practitionerDetails.getFhirPractitionerDetails()
                                                     != null
-                                    ? getPractitionerLocationHierarchyDescendants(
-                                            practitionerDetails)
+                                    ? filterModeLineage
+                                            ? getPractitionerLocationHierarchyDescendants(
+                                                    practitionerDetails)
+                                            : getPractitionerLocationHierarchyDescendantsBackwardCompatibility(
+                                                    practitionerDetails)
                                     : new HashSet<>();
                 }
 
