@@ -17,17 +17,19 @@ import java.util.List;
 import java.util.Map;
 
 import org.hl7.fhir.instance.model.api.IBaseBundle;
+import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
-import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.ListResource;
 import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.Meta;
+import org.hl7.fhir.r4.model.StringType;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.internal.stubbing.defaultanswers.ReturnsDeepStubs;
@@ -707,20 +709,154 @@ public class LocationHierarchyEndpointHelperTest {
                 result);
     }
 
-    private Bundle getLocationBundle() {
-        Bundle bundleLocation = new Bundle();
-        bundleLocation.setId("Location/1234");
-        Bundle.BundleEntryComponent bundleEntryComponent = new Bundle.BundleEntryComponent();
-        Location location = new Location();
-        location.setId("Location/1234");
-        Identifier identifier = new Identifier();
-        identifier.setValue("location-1234-abcd");
-        List<Identifier> identifiers = new ArrayList<Identifier>();
-        identifiers.add(identifier);
-        location.setIdentifier(identifiers);
-        bundleEntryComponent.setResource(location);
-        bundleLocation.addEntry(bundleEntryComponent);
-        return bundleLocation;
+    @Test
+    public void testGetLocationByIdGeneratesCorrectUrlQueryPath() {
+
+        Mockito.doReturn(null)
+                .when(client)
+                .fetchResourceFromUrl(ArgumentMatchers.any(), ArgumentMatchers.anyString());
+
+        ArgumentCaptor<String> urlQueryPathArgCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Class<IBaseResource>> classArgumentCaptor =
+                ArgumentCaptor.forClass(Class.class);
+
+        List<String> locationIds = Arrays.asList("location-test-1", "location-test-2");
+
+        locationHierarchyEndpointHelper.getLocationById(locationIds);
+
+        Mockito.verify(client)
+                .fetchResourceFromUrl(
+                        classArgumentCaptor.capture(), urlQueryPathArgCaptor.capture());
+
+        Class<IBaseResource> resourceType = classArgumentCaptor.getValue();
+        Assert.assertNotNull(resourceType);
+        Assert.assertEquals("Bundle", resourceType.getSimpleName());
+
+        String queryPath = urlQueryPathArgCaptor.getValue();
+
+        Assert.assertNotNull(queryPath);
+        Assert.assertEquals("Location?_id=location-test-1,location-test-2", queryPath);
+    }
+
+    @Test
+    public void testHandleIdentifierRequestNoListModePaginatesLocations() {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+
+        Mockito.doReturn("1,2,3,4")
+                .when(request)
+                .getParameter(Constants.SYNC_LOCATIONS_SEARCH_PARAM);
+
+        Mockito.doReturn(new StringBuffer("http://test:8080/LocationHierarchy"))
+                .when(request)
+                .getRequestURL();
+
+        Map<String, String[]> parameters = new HashMap<>();
+
+        parameters.put(Constants.FILTER_MODE_LINEAGE, new String[] {"true"});
+        parameters.put(Constants.LAST_UPDATED, new String[] {"2025-13-05"});
+
+        LocationHierarchyEndpointHelper mockLocationHierarchyEndpointHelper =
+                mock(LocationHierarchyEndpointHelper.class);
+
+        Mockito.doReturn(parameters).when(request).getParameterMap();
+
+        Mockito.doCallRealMethod()
+                .when(mockLocationHierarchyEndpointHelper)
+                .handleIdentifierRequest(request, "test-location-id");
+
+        Mockito.doCallRealMethod()
+                .when(mockLocationHierarchyEndpointHelper)
+                .handleIdentifierRequest(request, "test-location-id");
+
+        LocationHierarchy locationHierarchy = new LocationHierarchy();
+        locationHierarchy.setLocationId(new StringType("test-location-id"));
+
+        Mockito.doReturn(locationHierarchy)
+                .when(mockLocationHierarchyEndpointHelper)
+                .getLocationHierarchy(
+                        Mockito.anyString(),
+                        Mockito.any(),
+                        Mockito.any(),
+                        Mockito.any(),
+                        Mockito.any());
+
+        Bundle resultBundle =
+                mockLocationHierarchyEndpointHelper.handleIdentifierRequest(
+                        request, "test-location-id");
+
+        Mockito.verify(mockLocationHierarchyEndpointHelper)
+                .getLocationHierarchy(
+                        ArgumentMatchers.any(),
+                        ArgumentMatchers.any(),
+                        ArgumentMatchers.any(),
+                        ArgumentMatchers.any(),
+                        ArgumentMatchers.any());
+
+        Assert.assertTrue(resultBundle.hasTotal());
+        Assert.assertEquals(1, resultBundle.getTotal());
+        Assert.assertEquals(1, resultBundle.getEntry().size());
+
+        IBaseResource resource = resultBundle.getEntryFirstRep().getResource();
+
+        Assert.assertTrue(resource instanceof LocationHierarchy);
+        Assert.assertEquals(
+                new StringType("test-location-id").getValueAsString(),
+                ((LocationHierarchy) resource).getLocationId().getValueAsString());
+    }
+
+    @Test
+    public void testHandleIdentifierRequestListModePaginatesLocations() {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+
+        Mockito.doReturn("1,2,3,4")
+                .when(request)
+                .getParameter(Constants.SYNC_LOCATIONS_SEARCH_PARAM);
+
+        Mockito.doReturn("list").when(request).getParameter(Constants.MODE);
+
+        Mockito.doReturn(new StringBuffer("http://test:8080/LocationHierarchy"))
+                .when(request)
+                .getRequestURL();
+
+        Map<String, String[]> parameters = new HashMap<>();
+
+        parameters.put(Constants.FILTER_MODE_LINEAGE, new String[] {"true"});
+        parameters.put(Constants.MODE, new String[] {"list"});
+        parameters.put(Constants.LAST_UPDATED, new String[] {"2025-13-05"});
+
+        LocationHierarchyEndpointHelper mockLocationHierarchyEndpointHelper =
+                mock(LocationHierarchyEndpointHelper.class);
+
+        Mockito.doReturn(parameters).when(request).getParameterMap();
+
+        Mockito.doCallRealMethod()
+                .when(mockLocationHierarchyEndpointHelper)
+                .handleIdentifierRequest(request, "test-location-id");
+
+        Mockito.doCallRealMethod()
+                .when(mockLocationHierarchyEndpointHelper)
+                .handleIdentifierRequest(request, "test-location-id");
+
+        List<Location> locations = createTestLocationList(1, false, false);
+
+        Mockito.doReturn(Utils.createBundle(locations))
+                .when(mockLocationHierarchyEndpointHelper)
+                .getPaginatedLocations(Mockito.any(), Mockito.any());
+
+        mockLocationHierarchyEndpointHelper.handleIdentifierRequest(request, "test-location-id");
+
+        ArgumentCaptor<List<String>> listArgumentCaptor = ArgumentCaptor.forClass(List.class);
+
+        Mockito.verify(mockLocationHierarchyEndpointHelper)
+                .getPaginatedLocations(
+                        ArgumentMatchers.any(HttpServletRequest.class),
+                        listArgumentCaptor.capture());
+
+        List<String> locationIds = listArgumentCaptor.getValue();
+
+        Assert.assertNotNull(locationIds);
+        Assert.assertEquals(1, locationIds.size());
+        Assert.assertEquals("test-location-id", locationIds.get(0));
     }
 
     public static List<Location> createTestLocationList(
