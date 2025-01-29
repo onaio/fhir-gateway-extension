@@ -21,10 +21,12 @@ import org.apache.http.util.TextUtils;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.ListResource;
+import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.smartregister.helpers.LocationHelper;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.fhir.gateway.ExceptionUtil;
@@ -247,7 +249,35 @@ public class SyncAccessDecision implements AccessDecision {
             resultContent = this.fhirR4JsonParser.encodeResourceToString(practitionerDetailsBundle);
         }
 
+        String requestPath = request.getRequestPath();
+        String method = request.getRequestType().name();
+
+        if (requestPath.contains("/Location")) {
+            IBaseResource parsedResource = this.fhirR4JsonParser.parseResource(resultContent);
+
+            if ("POST".equals(method) || "PUT".equals(method)) {
+                String locationId = getLocationId(method, requestPath, parsedResource);
+
+                if (StringUtils.isNotBlank(locationId)) {
+                    LocationHelper.updateLocationLineage(locationId);
+                }
+            }
+        }
+
         return resultContent;
+    }
+
+    private static String getLocationId(
+            String method, String requestPath, IBaseResource parsedResource) {
+        String locationId = null;
+
+        if ("PUT".equals(method)) {
+            String[] pathParts = requestPath.split("/");
+            locationId = pathParts[pathParts.length - 1];
+        } else if (parsedResource instanceof Location) {
+            locationId = ((Location) parsedResource).getIdElement().getIdPart();
+        }
+        return locationId;
     }
 
     private IBaseResource processRelatedEntityLocationSyncStrategy(
