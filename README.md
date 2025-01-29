@@ -479,9 +479,10 @@ Behavior based on the lastUpdated parameter:
 
 - `filter_mode_lineage` Not Defined or **false**: The endpoint will include all
   locations as before (without the feature added)
-- `filter_mode_lineage` Defined and **true**: The response will include only
-  those locations whose parent location passed is in the ancestry of the
-  location
+- `filter_mode_lineage` Defined and **true** or _missing value_: The response
+  will
+- include only those locations whose parent location passed is in the ancestry
+  of the location.
 
 Note: This filter only works when in list mode i.e `mode=list` is set as one of
 the parameters. Also note, enabling this flag requires that you populate all

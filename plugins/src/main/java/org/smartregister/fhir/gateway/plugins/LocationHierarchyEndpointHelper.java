@@ -229,7 +229,10 @@ public class LocationHierarchyEndpointHelper {
         String mode = request.getParameter(Constants.MODE);
         Boolean filterInventory = Boolean.valueOf(request.getParameter(Constants.FILTER_INVENTORY));
         boolean filterModeLineage =
-                Boolean.parseBoolean(request.getParameter(Constants.FILTER_MODE_LINEAGE));
+                request.getParameterMap().containsKey(Constants.FILTER_MODE_LINEAGE)
+                        && (StringUtils.isBlank(request.getParameter(Constants.FILTER_MODE_LINEAGE))
+                                || Boolean.parseBoolean(
+                                        request.getParameter(Constants.FILTER_MODE_LINEAGE)));
         String lastUpdated = "";
         List<String> preFetchAdminLevels =
                 generateAdminLevels(
@@ -263,7 +266,10 @@ public class LocationHierarchyEndpointHelper {
         String administrativeLevelMax = request.getParameter(Constants.MAX_ADMIN_LEVEL);
         Boolean filterInventory = Boolean.valueOf(request.getParameter(Constants.FILTER_INVENTORY));
         boolean filterModeLineage =
-                Boolean.parseBoolean(request.getParameter(Constants.FILTER_MODE_LINEAGE));
+                request.getParameterMap().containsKey(Constants.FILTER_MODE_LINEAGE)
+                        && (StringUtils.isBlank(request.getParameter(Constants.FILTER_MODE_LINEAGE))
+                                || Boolean.parseBoolean(
+                                        request.getParameter(Constants.FILTER_MODE_LINEAGE)));
         List<String> preFetchAdminLevels =
                 generateAdminLevels(
                         String.valueOf(Constants.DEFAULT_MIN_ADMIN_LEVEL), administrativeLevelMax);

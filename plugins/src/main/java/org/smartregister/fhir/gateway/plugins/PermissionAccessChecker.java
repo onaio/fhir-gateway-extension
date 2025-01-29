@@ -343,12 +343,14 @@ public class PermissionAccessChecker implements AccessChecker {
         Map<String, List<String>> resultMap;
         Set<String> syncStrategyIds;
 
-        String[] lineageParameterArray =
-                requestDetailsReader.getParameters().get(Constants.FILTER_MODE_LINEAGE);
         boolean filterModeLineage =
-                lineageParameterArray != null
-                        && lineageParameterArray.length >= 1
-                        && Boolean.parseBoolean(lineageParameterArray[0]);
+                requestDetailsReader.getParameters().containsKey(Constants.FILTER_MODE_LINEAGE)
+                        && (StringUtils.isBlank(
+                                        requestDetailsReader.getParameters()
+                                                .get(Constants.FILTER_MODE_LINEAGE)[0])
+                                || Boolean.parseBoolean(
+                                        requestDetailsReader.getParameters()
+                                                .get(Constants.FILTER_MODE_LINEAGE)[0]));
 
         if (StringUtils.isNotBlank(syncStrategy)) {
             if (Constants.SyncStrategy.CARE_TEAM.equalsIgnoreCase(syncStrategy)) {
