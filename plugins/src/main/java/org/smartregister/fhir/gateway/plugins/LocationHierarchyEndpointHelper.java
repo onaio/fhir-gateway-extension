@@ -231,7 +231,6 @@ public class LocationHierarchyEndpointHelper {
                         && (StringUtils.isBlank(request.getParameter(Constants.FILTER_MODE_LINEAGE))
                                 || Boolean.parseBoolean(
                                         request.getParameter(Constants.FILTER_MODE_LINEAGE)));
-        String lastUpdated = "";
         List<String> preFetchAdminLevels =
                 generateAdminLevels(
                         String.valueOf(Constants.DEFAULT_MIN_ADMIN_LEVEL), administrativeLevelMax);
@@ -249,7 +248,7 @@ public class LocationHierarchyEndpointHelper {
                             preFetchAdminLevels,
                             postFetchAdminLevels,
                             filterInventory,
-                            lastUpdated);
+                            null);
             return Utils.createBundle(Collections.singletonList(locationHierarchy));
         }
     }
@@ -278,7 +277,6 @@ public class LocationHierarchyEndpointHelper {
         List<String> userRoles = JwtUtils.getUserRolesFromJWT(verifiedJwt);
         String applicationId = JwtUtils.getApplicationIdFromJWT(verifiedJwt);
         String syncStrategy = getSyncStrategyByAppId(applicationId);
-        String lastUpdated = "";
 
         if (Constants.LIST.equals(mode)) {
             if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)
@@ -308,7 +306,7 @@ public class LocationHierarchyEndpointHelper {
                                 preFetchAdminLevels,
                                 postFetchAdminLevels,
                                 filterInventory,
-                                lastUpdated);
+                                null);
                 List<Resource> resourceList =
                         locationHierarchies != null
                                 ? locationHierarchies.stream()
@@ -326,7 +324,7 @@ public class LocationHierarchyEndpointHelper {
                                 preFetchAdminLevels,
                                 postFetchAdminLevels,
                                 filterInventory,
-                                lastUpdated);
+                                null);
                 List<Resource> resourceList =
                         locationHierarchies != null
                                 ? locationHierarchies.stream()
