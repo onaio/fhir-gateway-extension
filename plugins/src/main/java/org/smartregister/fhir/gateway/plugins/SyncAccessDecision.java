@@ -254,7 +254,7 @@ public class SyncAccessDecision implements AccessDecision {
 
         String resourceType = request.getResourceName();
 
-        if ("Location".equals(resourceType)) {
+        if (Constants.SyncStrategy.LOCATION.equals(resourceType)) {
             IBaseResource parsedResource = this.fhirR4JsonParser.parseResource(resultContent);
             if ("POST".equals(method) || "PUT".equals(method)) {
                 String locationId = getLocationId(requestPath, parsedResource);
