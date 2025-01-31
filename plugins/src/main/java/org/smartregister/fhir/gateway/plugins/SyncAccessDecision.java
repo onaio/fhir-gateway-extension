@@ -252,13 +252,15 @@ public class SyncAccessDecision implements AccessDecision {
         String requestPath = request.getRequestPath();
         String method = request.getRequestType().name();
 
-        // todo need a better way to target requests to Location endpoint
-        if (requestPath.contains("Location")) {
+        String resourceType = request.getResourceName();
+
+        if ("Location".equals(resourceType)) {
             IBaseResource parsedResource = this.fhirR4JsonParser.parseResource(resultContent);
             if ("POST".equals(method) || "PUT".equals(method)) {
                 String locationId = getLocationId(method, requestPath, parsedResource);
                 if (StringUtils.isNotBlank(locationId)) {
-                    Location location = LocationHelper.updateLocationLineage(fhirR4Client, locationId);
+                    Location location =
+                            LocationHelper.updateLocationLineage(fhirR4Client, locationId);
                     resultContent = this.fhirR4JsonParser.encodeResourceToString(location);
                 }
             }
