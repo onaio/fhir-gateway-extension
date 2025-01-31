@@ -257,7 +257,7 @@ public class SyncAccessDecision implements AccessDecision {
         if ("Location".equals(resourceType)) {
             IBaseResource parsedResource = this.fhirR4JsonParser.parseResource(resultContent);
             if ("POST".equals(method) || "PUT".equals(method)) {
-                String locationId = getLocationId(method, requestPath, parsedResource);
+                String locationId = getLocationId(requestPath, parsedResource);
                 if (StringUtils.isNotBlank(locationId)) {
                     Location location =
                             LocationHelper.updateLocationLineage(fhirR4Client, locationId);
@@ -269,15 +269,14 @@ public class SyncAccessDecision implements AccessDecision {
         return resultContent;
     }
 
-    private static String getLocationId(
-            String method, String requestPath, IBaseResource parsedResource) {
-        String locationId = null;
+    private static String getLocationId(String requestPath, IBaseResource parsedResource) {
 
-        if ("PUT".equals(method)) {
+        String locationId;
+        if (parsedResource instanceof Location) {
+            locationId = ((Location) parsedResource).getIdElement().getIdPart();
+        } else {
             String[] pathParts = requestPath.split("/");
             locationId = pathParts[pathParts.length - 1];
-        } else if (parsedResource instanceof Location) {
-            locationId = ((Location) parsedResource).getIdElement().getIdPart();
         }
         return locationId;
     }
