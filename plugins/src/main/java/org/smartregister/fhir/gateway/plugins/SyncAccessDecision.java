@@ -21,10 +21,12 @@ import org.apache.http.util.TextUtils;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.ListResource;
+import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.smartregister.helpers.LocationHelper;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.fhir.gateway.ExceptionUtil;
@@ -251,7 +253,33 @@ public class SyncAccessDecision implements AccessDecision {
             resultContent = this.fhirR4JsonParser.encodeResourceToString(practitionerDetailsBundle);
         }
 
+        if (Constants.SyncStrategy.LOCATION.equals(request.getResourceName())
+                && ("POST".equals(request.getRequestType().name())
+                        || "PUT".equals(request.getRequestType().name()))) {
+            resultContent = new BasicResponseHandler().handleResponse(response);
+            String requestPath = request.getRequestPath();
+            String locationId = getLocationId(requestPath, resultContent);
+            if (StringUtils.isNotBlank(locationId)) {
+                Location location = LocationHelper.updateLocationLineage(fhirR4Client, locationId);
+                resultContent = this.fhirR4JsonParser.encodeResourceToString(location);
+            }
+        }
+
         return resultContent;
+    }
+
+    @VisibleForTesting
+    protected String getLocationId(String requestPath, String resultContent) {
+        String locationId;
+        IBaseResource parsedResource = this.fhirR4JsonParser.parseResource(resultContent);
+        if (parsedResource instanceof Location) {
+            return ((Location) parsedResource).getIdElement().getIdPart();
+        }
+
+        String[] pathParts = requestPath.split("/");
+        locationId = pathParts[pathParts.length - 1];
+
+        return locationId;
     }
 
     private IBaseResource processRelatedEntityLocationSyncStrategy(
