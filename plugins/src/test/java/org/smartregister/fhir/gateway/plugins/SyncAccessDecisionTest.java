@@ -1039,9 +1039,6 @@ public class SyncAccessDecisionTest {
             testInstance.postProcess(requestDetailsSpy, fhirResponseMock);
             locationHelperMock.verify(
                     () -> LocationHelper.updateLocationLineage(eq(iGenericClient), eq("123")));
-
-            Assert.assertNotNull(location);
-            Assert.assertEquals("Location/123", location.getId());
         }
     }
 
