@@ -1046,6 +1046,31 @@ public class SyncAccessDecisionTest {
     }
 
     @Test
+    public void testGetLocationId() {
+        String requestPath = "Location/123";
+        testInstance =
+                Mockito.spy(createSyncAccessDecisionTestInstance(Constants.SyncStrategy.LOCATION));
+        FhirContext fhirR4Context = mock(FhirContext.class);
+        IGenericClient iGenericClient = mock(IGenericClient.class);
+
+        testInstance.setFhirR4Context(fhirR4Context);
+        testInstance.setFhirR4Client(iGenericClient);
+
+        Location location = new Location();
+        location.setId("Location/123");
+        String validJson = FhirContext.forR4().newJsonParser().encodeResourceToString(location);
+
+        String locationId = testInstance.getLocationId(requestPath, validJson);
+        Assert.assertEquals("123", locationId);
+
+        locationId = testInstance.getLocationId(requestPath, null);
+        Assert.assertEquals("123", locationId);
+
+        locationId = testInstance.getLocationId(requestPath, "");
+        Assert.assertEquals("123", locationId);
+    }
+
+    @Test
     public void preProcessWhenRequestIsAnOperationRequestShouldAddFilters() {
         userRoles.add(Constants.ROLE_ANDROID_CLIENT);
         locationIds.add("locationid12");
