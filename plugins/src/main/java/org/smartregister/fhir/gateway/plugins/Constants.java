@@ -79,7 +79,7 @@ public class Constants {
     public interface Meta {
         interface Tag {
             String SYSTEM_LOCATION_HIERARCHY =
-                    "http://smartregister.org/CodeSystem/location-hierarchy";
+                    "http://smartregister.org/CodeSystem/location-lineage";
         }
     }
 }

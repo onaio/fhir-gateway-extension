@@ -705,7 +705,7 @@ public class LocationHierarchyEndpointHelperTest {
 
         Assert.assertNotNull(result);
         Assert.assertEquals(
-                "Location?&_tag=http://smartregister.org/CodeSystem/location-hierarchy%7Ctest-parent-location-id,&type=https://smartregister.org/codes/administrative-level%7C4,",
+                "Location?&_tag=http://smartregister.org/CodeSystem/location-lineage%7Ctest-parent-location-id,&type=https://smartregister.org/codes/administrative-level%7C4,",
                 result);
     }
 
