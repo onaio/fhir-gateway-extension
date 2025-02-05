@@ -1,6 +1,7 @@
 package org.smartregister.fhir.gateway.plugins;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 
 import java.io.IOException;
@@ -20,6 +21,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpResponse;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.ListResource;
+import org.hl7.fhir.r4.model.Location;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Assert;
@@ -30,6 +32,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.smartregister.helpers.LocationHelper;
 
 import com.google.common.collect.Maps;
 import com.google.common.io.Resources;
@@ -995,6 +998,51 @@ public class SyncAccessDecisionTest {
         Assert.assertEquals(
                 "{\"resourceType\":\"Bundle\",\"id\":\"bundle-result-id\",\"type\":\"batch-response\",\"total\":2,\"link\":[{\"relation\":\"self\",\"url\":\"http://test:8080/fhir/List?_page=2&_count=1\"},{\"relation\":\"previous\",\"url\":\"http://test:8080/fhir/List?_page=1&_count=1\"}]}",
                 resultContent);
+    }
+
+    @Test
+    public void testPostProcessCallsUpdateLocationLineage() throws IOException {
+        testInstance =
+                Mockito.spy(createSyncAccessDecisionTestInstance(Constants.SyncStrategy.LOCATION));
+        FhirContext fhirR4Context = mock(FhirContext.class);
+        IGenericClient iGenericClient = mock(IGenericClient.class);
+
+        testInstance.setFhirR4Context(fhirR4Context);
+        testInstance.setFhirR4Client(iGenericClient);
+
+        RequestDetailsReader requestDetailsSpy = Mockito.mock(RequestDetailsReader.class);
+        RequestTypeEnum requestTypeEnumMock = Mockito.mock(RequestTypeEnum.class);
+
+        Mockito.when(requestDetailsSpy.getRequestPath()).thenReturn("Location/123");
+        Mockito.when(requestDetailsSpy.getRequestType()).thenReturn(requestTypeEnumMock);
+        Mockito.when(requestTypeEnumMock.name()).thenReturn("POST");
+        Mockito.when(requestDetailsSpy.getResourceName())
+                .thenReturn(Constants.SyncStrategy.LOCATION);
+
+        Location location = new Location();
+        location.setId("Location/123");
+
+        String responseJson = FhirContext.forR4().newJsonParser().encodeResourceToString(location);
+        HttpResponse fhirResponseMock =
+                Mockito.mock(HttpResponse.class, Answers.RETURNS_DEEP_STUBS);
+        TestUtil.setUpFhirResponseMock(fhirResponseMock, responseJson);
+        Mockito.doReturn("123")
+                .when(testInstance)
+                .getLocationId(Mockito.anyString(), Mockito.any());
+
+        try (MockedStatic<LocationHelper> locationHelperMock =
+                Mockito.mockStatic(LocationHelper.class)) {
+            locationHelperMock
+                    .when(() -> LocationHelper.updateLocationLineage(any(), any()))
+                    .thenReturn(location);
+
+            testInstance.postProcess(requestDetailsSpy, fhirResponseMock);
+            locationHelperMock.verify(
+                    () -> LocationHelper.updateLocationLineage(eq(iGenericClient), eq("123")));
+
+            Assert.assertNotNull(location);
+            Assert.assertEquals("Location/123", location.getId());
+        }
     }
 
     @Test
