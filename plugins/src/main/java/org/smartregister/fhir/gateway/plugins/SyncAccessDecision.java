@@ -252,6 +252,7 @@ public class SyncAccessDecision implements AccessDecision {
         if (Constants.SyncStrategy.LOCATION.equals(request.getResourceName())
                 && ("POST".equals(request.getRequestType().name())
                         || "PUT".equals(request.getRequestType().name()))) {
+            resultContent = new BasicResponseHandler().handleResponse(response);
             String requestPath = request.getRequestPath();
             String locationId = getLocationId(requestPath, resultContent);
             if (StringUtils.isNotBlank(locationId)) {
@@ -265,13 +266,10 @@ public class SyncAccessDecision implements AccessDecision {
 
     @VisibleForTesting
     protected String getLocationId(String requestPath, String resultContent) {
-
         String locationId;
-        if (StringUtils.isNotBlank(resultContent)) {
-            IBaseResource parsedResource = this.fhirR4JsonParser.parseResource(resultContent);
-            if (parsedResource instanceof Location) {
-                return ((Location) parsedResource).getIdElement().getIdPart();
-            }
+        IBaseResource parsedResource = this.fhirR4JsonParser.parseResource(resultContent);
+        if (parsedResource instanceof Location) {
+            return ((Location) parsedResource).getIdElement().getIdPart();
         }
 
         String[] pathParts = requestPath.split("/");

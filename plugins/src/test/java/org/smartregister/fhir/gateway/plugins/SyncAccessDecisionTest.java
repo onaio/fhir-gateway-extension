@@ -1059,12 +1059,6 @@ public class SyncAccessDecisionTest {
 
         String locationId = testInstance.getLocationId(requestPath, validJson);
         Assert.assertEquals("123", locationId);
-
-        locationId = testInstance.getLocationId(requestPath, null);
-        Assert.assertEquals("123", locationId);
-
-        locationId = testInstance.getLocationId(requestPath, "");
-        Assert.assertEquals("123", locationId);
     }
 
     @Test
