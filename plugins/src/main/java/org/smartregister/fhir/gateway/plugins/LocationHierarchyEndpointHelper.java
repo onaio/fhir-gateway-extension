@@ -457,7 +457,7 @@ public class LocationHierarchyEndpointHelper {
         return resultBundle;
     }
 
-    @Deprecated(since = "2.3.0", forRemoval = true)
+    @Deprecated(since = "3.0.0", forRemoval = true)
     public Bundle getPaginatedLocationsBackwardCompatibility(
             HttpServletRequest request, List<String> locationIds) {
         String pageSize = request.getParameter(Constants.PAGINATION_PAGE_SIZE);
