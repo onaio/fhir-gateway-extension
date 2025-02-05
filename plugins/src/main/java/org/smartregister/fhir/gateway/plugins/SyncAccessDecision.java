@@ -249,13 +249,12 @@ public class SyncAccessDecision implements AccessDecision {
             resultContent = this.fhirR4JsonParser.encodeResourceToString(practitionerDetailsBundle);
         }
 
-        String requestPath = request.getRequestPath();
-        String method = request.getRequestType().name();
-
         String resourceType = request.getResourceName();
 
         if (Constants.SyncStrategy.LOCATION.equals(resourceType)) {
+            String method = request.getRequestType().name();
             if ("POST".equals(method) || "PUT".equals(method)) {
+                String requestPath = request.getRequestPath();
                 String locationId = getLocationId(requestPath, resultContent);
                 if (StringUtils.isNotBlank(locationId)) {
                     Location location =
