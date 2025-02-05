@@ -22,6 +22,7 @@ import org.apache.http.HttpResponse;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.ListResource;
 import org.hl7.fhir.r4.model.Location;
+import org.hl7.fhir.r4.model.Patient;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Assert;
@@ -1059,6 +1060,13 @@ public class SyncAccessDecisionTest {
 
         String locationId = testInstance.getLocationId(requestPath, validJson);
         Assert.assertEquals("123", locationId);
+
+        Patient patient = new Patient();
+        patient.setId("Patient/345");
+        String validPatientJson =
+                FhirContext.forR4().newJsonParser().encodeResourceToString(patient);
+        String locId = testInstance.getLocationId(requestPath, validPatientJson);
+        Assert.assertEquals("123", locId);
     }
 
     @Test
