@@ -162,6 +162,10 @@ public class SyncAccessDecision implements AccessDecision {
                             .build();
         }
 
+        // Needed to support backward compatibility of Lineage IDs filter from version 3.0.0
+        if (requestMutation != null)
+            requestMutation.getDiscardQueryParams().add(Constants.FILTER_MODE_LINEAGE);
+
         return requestMutation;
     }
 

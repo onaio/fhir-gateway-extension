@@ -1110,6 +1110,31 @@ public class SyncAccessDecisionTest {
         }
     }
 
+    @Test
+    public void getRequestMutationMarksFilterModeLinageQueryparamForRemoval() {
+        userRoles.add(Constants.ROLE_ANDROID_CLIENT);
+
+        locationIds.add("locationid12");
+        locationIds.add("locationid2");
+
+        testInstance = createSyncAccessDecisionTestInstance(Constants.SyncStrategy.LOCATION);
+
+        RequestDetails requestDetails = new ServletRequestDetails();
+        requestDetails.setRequestType(RequestTypeEnum.GET);
+        requestDetails.setRestOperationType(RestOperationTypeEnum.SEARCH_TYPE);
+        requestDetails.setResourceName("Patient");
+        requestDetails.setFhirServerBase("https://smartregister.org/fhir");
+        requestDetails.setCompleteUrl("https://smartregister.org/fhir/Patient");
+        requestDetails.setRequestPath("Patient");
+
+        RequestMutation mutatedRequest =
+                testInstance.getRequestMutation(new TestRequestDetailsToReader(requestDetails));
+
+        Assert.assertNotNull(mutatedRequest);
+        Assert.assertTrue(
+                mutatedRequest.getDiscardQueryParams().contains(Constants.FILTER_MODE_LINEAGE));
+    }
+
     @After
     public void cleanUp() {
         locationIds.clear();

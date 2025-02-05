@@ -305,6 +305,36 @@ public class PermissionAccessChecker implements AccessChecker {
         return locationUuids;
     }
 
+    private Set<String> getPractitionerLocationHierarchyDescendants(
+            PractitionerDetails practitionerDetails) {
+        List<String> locationIds =
+                practitionerDetails.getFhirPractitionerDetails().getLocations().stream()
+                        .map(location -> location.getIdElement().getIdPart())
+                        .collect(Collectors.toList());
+
+        return locationIds.stream()
+                .map(
+                        locationId ->
+                                (new LocationHierarchyEndpointHelper(
+                                                Utils.createFhirClientForR4(fhirContext)))
+                                        .fetchAllDescendants(locationId, null))
+                .flatMap(descendant -> descendant.getEntry().stream())
+                .map(
+                        bundleEntryComponent ->
+                                bundleEntryComponent.getResource().getIdElement().getIdPart())
+                .collect(Collectors.toSet());
+    }
+
+    @Deprecated(since = "3.0.0", forRemoval = true)
+    private Set<String> getPractitionerLocationHierarchyDescendantsBackwardCompatibility(
+            PractitionerDetails practitionerDetails) {
+        return PractitionerDetailsEndpointHelper.getAttributedLocations(
+                PractitionerDetailsEndpointHelper.getLocationsHierarchy(
+                        practitionerDetails.getFhirPractitionerDetails().getLocations().stream()
+                                .map(location -> location.getIdElement().getIdPart())
+                                .collect(Collectors.toList())));
+    }
+
     @Nonnull
     private Map<String, List<String>> collateSyncStrategyIds(
             String syncStrategy,
@@ -312,6 +342,15 @@ public class PermissionAccessChecker implements AccessChecker {
             RequestDetailsReader requestDetailsReader) {
         Map<String, List<String>> resultMap;
         Set<String> syncStrategyIds;
+
+        boolean filterModeLineage =
+                requestDetailsReader.getParameters().containsKey(Constants.FILTER_MODE_LINEAGE)
+                        && (StringUtils.isBlank(
+                                        requestDetailsReader.getParameters()
+                                                .get(Constants.FILTER_MODE_LINEAGE)[0])
+                                || Boolean.parseBoolean(
+                                        requestDetailsReader.getParameters()
+                                                .get(Constants.FILTER_MODE_LINEAGE)[0]));
 
         if (StringUtils.isNotBlank(syncStrategy)) {
             if (Constants.SyncStrategy.CARE_TEAM.equalsIgnoreCase(syncStrategy)) {
@@ -346,17 +385,11 @@ public class PermissionAccessChecker implements AccessChecker {
                 syncStrategyIds =
                         practitionerDetails != null
                                         && practitionerDetails.getFhirPractitionerDetails() != null
-                                ? PractitionerDetailsEndpointHelper.getAttributedLocations(
-                                        PractitionerDetailsEndpointHelper.getLocationsHierarchy(
-                                                practitionerDetails
-                                                        .getFhirPractitionerDetails()
-                                                        .getLocations()
-                                                        .stream()
-                                                        .map(
-                                                                location ->
-                                                                        location.getIdElement()
-                                                                                .getIdPart())
-                                                        .collect(Collectors.toList())))
+                                ? filterModeLineage
+                                        ? getPractitionerLocationHierarchyDescendants(
+                                                practitionerDetails)
+                                        : getPractitionerLocationHierarchyDescendantsBackwardCompatibility(
+                                                practitionerDetails)
                                 : new HashSet<>();
 
             } else if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(
@@ -382,10 +415,11 @@ public class PermissionAccessChecker implements AccessChecker {
                             practitionerDetails != null
                                             && practitionerDetails.getFhirPractitionerDetails()
                                                     != null
-                                    ? PractitionerDetailsEndpointHelper.getAttributedLocations(
-                                            practitionerDetails
-                                                    .getFhirPractitionerDetails()
-                                                    .getLocationHierarchyList())
+                                    ? filterModeLineage
+                                            ? getPractitionerLocationHierarchyDescendants(
+                                                    practitionerDetails)
+                                            : getPractitionerLocationHierarchyDescendantsBackwardCompatibility(
+                                                    practitionerDetails)
                                     : new HashSet<>();
                 }
 
