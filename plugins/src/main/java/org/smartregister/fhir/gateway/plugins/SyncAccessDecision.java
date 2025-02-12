@@ -239,7 +239,9 @@ public class SyncAccessDecision implements AccessDecision {
 
             resultContent = this.fhirR4JsonParser.encodeResourceToString(resultContentBundle);
 
-        } else if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equals(syncStrategy)) {
+        } else if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equals(syncStrategy)
+                && (Constants.HttpMethods.GET.equals(request.getRequestType().name())
+                        || Constants.HttpMethods.PATCH.equals(request.getRequestType().name()))) {
 
             IBaseResource responseResource =
                     processRelatedEntityLocationSyncStrategy(request, response);
@@ -253,9 +255,10 @@ public class SyncAccessDecision implements AccessDecision {
             resultContent = this.fhirR4JsonParser.encodeResourceToString(practitionerDetailsBundle);
         }
 
-        if (Constants.SyncStrategy.LOCATION.equals(request.getResourceName())
-                && ("POST".equals(request.getRequestType().name())
-                        || "PUT".equals(request.getRequestType().name()))) {
+        if (Constants.ResourceType.LOCATION.equals(request.getResourceName())
+                && (Constants.HttpMethods.POST.equals(request.getRequestType().name())
+                        || Constants.HttpMethods.PUT.equals(request.getRequestType().name()))) {
+
             resultContent = new BasicResponseHandler().handleResponse(response);
             String requestPath = request.getRequestPath();
             String locationId = getLocationId(requestPath, resultContent);

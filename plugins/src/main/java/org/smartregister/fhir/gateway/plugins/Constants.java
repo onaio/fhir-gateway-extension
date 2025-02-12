@@ -71,6 +71,17 @@ public class Constants {
         String CARE_TEAM = "CareTeam";
     }
 
+    public interface ResourceType {
+        String LOCATION = "Location";
+    }
+
+    public interface HttpMethods {
+        String POST = "POST";
+        String GET = "GET";
+        String PUT = "PUT";
+        String PATCH = "PATCH";
+    }
+
     public interface Header {
         @Deprecated String FHIR_GATEWAY_MODE = "fhir-gateway-mode";
         String MODE = "mode";
