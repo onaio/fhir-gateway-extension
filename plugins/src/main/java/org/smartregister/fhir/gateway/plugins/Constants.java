@@ -75,7 +75,7 @@ public class Constants {
         String LOCATION = "Location";
     }
 
-    public interface HttpMethods{
+    public interface HttpMethods {
         String POST = "POST";
         String GET = "GET";
         String PUT = "PUT";

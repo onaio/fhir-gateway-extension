@@ -1,26 +1,17 @@
 package org.smartregister.fhir.gateway.plugins;
 
-import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.parser.IParser;
-import ca.uhn.fhir.rest.api.RequestTypeEnum;
-import ca.uhn.fhir.rest.client.api.IGenericClient;
-import ca.uhn.fhir.rest.server.exceptions.ForbiddenOperationException;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.fhir.gateway.ExceptionUtil;
-import com.google.fhir.gateway.ProxyConstants;
-import com.google.fhir.gateway.interfaces.AccessDecision;
-import com.google.fhir.gateway.interfaces.RequestDetailsReader;
-import com.google.fhir.gateway.interfaces.RequestMutation;
-import com.google.gson.Gson;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
-import lombok.Getter;
+import static ca.uhn.fhir.rest.api.Constants.PARAM_SUMMARY;
+import static org.smartregister.fhir.gateway.plugins.EnvUtil.getEnvironmentVar;
+
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.*;
+import java.util.stream.Collectors;
+
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.impl.client.BasicResponseHandler;
-import org.apache.http.util.EntityUtils;
 import org.apache.http.util.TextUtils;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
@@ -28,14 +19,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartregister.helpers.LocationHelper;
 
-import java.io.FileReader;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.fhir.gateway.ExceptionUtil;
+import com.google.fhir.gateway.ProxyConstants;
+import com.google.fhir.gateway.interfaces.AccessDecision;
+import com.google.fhir.gateway.interfaces.RequestDetailsReader;
+import com.google.fhir.gateway.interfaces.RequestMutation;
+import com.google.gson.Gson;
 
-import static ca.uhn.fhir.rest.api.Constants.PARAM_SUMMARY;
-import static org.smartregister.fhir.gateway.plugins.EnvUtil.getEnvironmentVar;
+import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.parser.IParser;
+import ca.uhn.fhir.rest.api.RequestTypeEnum;
+import ca.uhn.fhir.rest.client.api.IGenericClient;
+import ca.uhn.fhir.rest.server.exceptions.ForbiddenOperationException;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import lombok.Getter;
 
 public class SyncAccessDecision implements AccessDecision {
     public static final String SYNC_FILTER_IGNORE_RESOURCES_FILE_ENV =
@@ -100,7 +99,7 @@ public class SyncAccessDecision implements AccessDecision {
             if (syncStrategyIdsMap.isEmpty()
                     || StringUtils.isBlank(syncStrategy)
                     || (syncStrategyIdsMap.containsKey(syncStrategy)
-                    && syncStrategyIdsMap.get(syncStrategy).isEmpty())) {
+                            && syncStrategyIdsMap.get(syncStrategy).isEmpty())) {
 
                 ForbiddenOperationException forbiddenOperationException =
                         new ForbiddenOperationException(
@@ -197,9 +196,7 @@ public class SyncAccessDecision implements AccessDecision {
         return paramValues;
     }
 
-    /**
-     * NOTE: Always return a null whenever you want to skip post-processing
-     */
+    /** NOTE: Always return a null whenever you want to skip post-processing */
     @Override
     public String postProcess(RequestDetailsReader request, HttpResponse response)
             throws IOException {
@@ -233,9 +230,9 @@ public class SyncAccessDecision implements AccessDecision {
 
             resultContent = this.fhirR4JsonParser.encodeResourceToString(resultContentBundle);
 
-        } else if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equals(syncStrategy) &&
-                (Constants.HttpMethods.GET.equals(request.getRequestType().name())
-                || Constants.HttpMethods.PATCH.equals(request.getRequestType().name()))) {
+        } else if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equals(syncStrategy)
+                && (Constants.HttpMethods.GET.equals(request.getRequestType().name())
+                        || Constants.HttpMethods.PATCH.equals(request.getRequestType().name()))) {
 
             IBaseResource responseResource =
                     processRelatedEntityLocationSyncStrategy(request, response);
@@ -251,7 +248,7 @@ public class SyncAccessDecision implements AccessDecision {
 
         if (Constants.ResourceType.LOCATION.equals(request.getResourceName())
                 && (Constants.HttpMethods.POST.equals(request.getRequestType().name())
-                || Constants.HttpMethods.PUT.equals(request.getRequestType().name()))) {
+                        || Constants.HttpMethods.PUT.equals(request.getRequestType().name()))) {
 
             resultContent = new BasicResponseHandler().handleResponse(response);
             String requestPath = request.getRequestPath();
@@ -294,11 +291,11 @@ public class SyncAccessDecision implements AccessDecision {
                         + getRequestParametersString(request.getParameters());
 
         for (int startIndex = SyncAccessDecisionConstants.REL_LOCATION_INITIAL_CHUNK_SIZE;
-             startIndex
-                     < syncStrategyIdsMap
-                     .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
-                     .size();
-             startIndex += SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE) {
+                startIndex
+                        < syncStrategyIdsMap
+                                .get(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                                .size();
+                startIndex += SyncAccessDecisionConstants.REL_LOCATION_CHUNK_SIZE) {
 
             int endIndex =
                     Math.min(
@@ -428,20 +425,20 @@ public class SyncAccessDecision implements AccessDecision {
         List<Bundle.BundleEntryComponent> bundleEntryComponentList =
                 ((Bundle) responseResource)
                         .getEntry().stream()
-                        .filter(it -> it.getResource() instanceof ListResource)
-                        .flatMap(
-                                bundleEntryComponent ->
-                                        ((ListResource) bundleEntryComponent.getResource())
-                                                .getEntry().stream())
-                        .skip(start)
-                        .limit(count)
-                        .map(
-                                listEntryComponent ->
-                                        createBundleEntryComponent(
-                                                Bundle.HTTPVerb.GET,
-                                                listEntryComponent.getItem().getReference(),
-                                                null))
-                        .collect(Collectors.toList());
+                                .filter(it -> it.getResource() instanceof ListResource)
+                                .flatMap(
+                                        bundleEntryComponent ->
+                                                ((ListResource) bundleEntryComponent.getResource())
+                                                        .getEntry().stream())
+                                .skip(start)
+                                .limit(count)
+                                .map(
+                                        listEntryComponent ->
+                                                createBundleEntryComponent(
+                                                        Bundle.HTTPVerb.GET,
+                                                        listEntryComponent.getItem().getReference(),
+                                                        null))
+                                .collect(Collectors.toList());
 
         return requestBundle.setEntry(bundleEntryComponentList);
     }
@@ -653,7 +650,7 @@ public class SyncAccessDecision implements AccessDecision {
 
             if (entry.getMethodType() != null
                     && !entry.getMethodType()
-                    .equals(requestDetailsReader.getRequestType().name())) {
+                            .equals(requestDetailsReader.getRequestType().name())) {
                 continue;
             }
 
@@ -703,14 +700,10 @@ public class SyncAccessDecision implements AccessDecision {
     }
 
     class IgnoredResourcesConfig {
-        @Getter
-        List<IgnoredResourcesConfig> entries;
-        @Getter
-        private String path;
-        @Getter
-        private String methodType;
-        @Getter
-        private Map<String, Object> queryParams;
+        @Getter List<IgnoredResourcesConfig> entries;
+        @Getter private String path;
+        @Getter private String methodType;
+        @Getter private Map<String, Object> queryParams;
 
         @Override
         public String toString() {
