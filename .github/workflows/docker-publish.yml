@@ -17,7 +17,7 @@ on:
 jobs:
   # Run image build test
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     if: github.event_name == 'pull_request'
 
     steps:
@@ -29,7 +29,7 @@ jobs:
         run: docker build . --file Dockerfile
 
   push:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
     steps:
