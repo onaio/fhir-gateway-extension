@@ -14,8 +14,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import ca.uhn.fhir.rest.server.exceptions.ForbiddenOperationException;
-import com.google.fhir.gateway.ExceptionUtil;
 import org.apache.commons.codec.binary.Hex;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Binary;
@@ -26,7 +24,9 @@ import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.StringType;
 import org.hl7.fhir.r4.model.UriType;
+import org.slf4j.Logger;
 
+import com.google.fhir.gateway.ExceptionUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -34,7 +34,7 @@ import com.google.gson.JsonObject;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.impl.GenericClient;
-import org.slf4j.Logger;
+import ca.uhn.fhir.rest.server.exceptions.ForbiddenOperationException;
 
 public class Utils {
 

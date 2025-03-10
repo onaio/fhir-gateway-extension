@@ -105,16 +105,11 @@ public class PermissionAccessChecker implements AccessChecker {
         Map<String, List<String>> syncStrategyIds;
         String clientRole = Utils.getClientRole(userRoles, logger);
 
-        if ( !clientRole.equals(Constants.ROLE_ANDROID_CLIENT )) {
+        if (!clientRole.equals(Constants.ROLE_ANDROID_CLIENT)) {
             syncStrategyIds = Collections.emptyMap();
             this.syncAccessDecision =
                     new SyncAccessDecision(
-                            fhirContext,
-                            jwt.getSubject(),
-                            true,
-                            syncStrategyIds,
-                            "",
-                            userRoles);
+                            fhirContext, jwt.getSubject(), true, syncStrategyIds, "", userRoles);
             return;
         }
         Composition composition = fetchComposition();
