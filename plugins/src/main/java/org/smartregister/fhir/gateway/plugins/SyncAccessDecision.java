@@ -97,7 +97,7 @@ public class SyncAccessDecision implements AccessDecision {
     public RequestMutation getRequestMutation(RequestDetailsReader requestDetailsReader) {
 
         RequestMutation requestMutation = null;
-        String clientRole = getClientRole();
+        String clientRole = Utils.getClientRole(roles, logger);
 
         // Check if it is the Sync URL and Skip app-wide
         if (isSyncUrl(requestDetailsReader)
@@ -167,25 +167,6 @@ public class SyncAccessDecision implements AccessDecision {
             requestMutation.getDiscardQueryParams().add(Constants.FILTER_MODE_LINEAGE);
 
         return requestMutation;
-    }
-
-    private String getClientRole() {
-        List<String> matchedRoles = new ArrayList<>();
-
-        for (String role : Constants.CLIENT_ROLES) {
-            if (roles.contains(role)) {
-                matchedRoles.add(role);
-            }
-        }
-        if (matchedRoles.size() != 1) {
-            ForbiddenOperationException forbiddenOperationException =
-                    new ForbiddenOperationException(
-                            "User must have at least one and at most one of these client roles "
-                                    + Arrays.toString(Constants.CLIENT_ROLES));
-            ExceptionUtil.throwRuntimeExceptionAndLog(
-                    logger, forbiddenOperationException.getMessage(), forbiddenOperationException);
-        }
-        return matchedRoles.get(0);
     }
 
     /**
