@@ -2,6 +2,7 @@ package org.smartregister.fhir.gateway.plugins;
 
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -102,7 +103,15 @@ public class PermissionAccessChecker implements AccessChecker {
 
     private void initSyncAccessDecision(RequestDetailsReader requestDetailsReader) {
         Map<String, List<String>> syncStrategyIds;
+        String clientRole = Utils.getClientRole(userRoles, logger);
 
+        if (!clientRole.equals(Constants.ROLE_ANDROID_CLIENT)) {
+            syncStrategyIds = Collections.emptyMap();
+            this.syncAccessDecision =
+                    new SyncAccessDecision(
+                            fhirContext, jwt.getSubject(), true, syncStrategyIds, "", userRoles);
+            return;
+        }
         Composition composition = fetchComposition();
         String syncStrategy = readSyncStrategyFromComposition(composition);
 

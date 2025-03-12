@@ -24,7 +24,9 @@ import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.StringType;
 import org.hl7.fhir.r4.model.UriType;
+import org.slf4j.Logger;
 
+import com.google.fhir.gateway.ExceptionUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -32,6 +34,7 @@ import com.google.gson.JsonObject;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.impl.GenericClient;
+import ca.uhn.fhir.rest.server.exceptions.ForbiddenOperationException;
 
 public class Utils {
 
@@ -300,5 +303,24 @@ public class Utils {
         }
 
         return url.substring(idStartIndex, idEndIndex);
+    }
+
+    public static String getClientRole(List<String> roles, Logger logger) {
+        List<String> matchedRoles = new ArrayList<>();
+
+        for (String role : Constants.CLIENT_ROLES) {
+            if (roles.contains(role)) {
+                matchedRoles.add(role);
+            }
+        }
+        if (matchedRoles.size() != 1) {
+            ForbiddenOperationException forbiddenOperationException =
+                    new ForbiddenOperationException(
+                            "User must have at least one and at most one of these client roles "
+                                    + Arrays.toString(Constants.CLIENT_ROLES));
+            ExceptionUtil.throwRuntimeExceptionAndLog(
+                    logger, forbiddenOperationException.getMessage(), forbiddenOperationException);
+        }
+        return matchedRoles.get(0);
     }
 }
