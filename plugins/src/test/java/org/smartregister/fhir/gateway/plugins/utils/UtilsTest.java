@@ -80,7 +80,7 @@ public class UtilsTest {
         Assert.assertEquals("", result);
     }
 
-    @Test(expected = ArrayIndexOutOfBoundsException.class)
+    @Test(expected = IndexOutOfBoundsException.class)
     public void testGetBinaryResourceReferenceWithNoMatchingSection() {
         Composition composition = new Composition();
         Composition.SectionComponent sectionComponent = new Composition.SectionComponent();
@@ -119,7 +119,7 @@ public class UtilsTest {
         Assert.assertNull(result);
     }
 
-    @Test(expected = ArrayIndexOutOfBoundsException.class)
+    @Test(expected = IndexOutOfBoundsException.class)
     public void testGetBinaryResourceReferenceWithNoIdentifier() {
         Composition composition = new Composition();
         Composition.SectionComponent sectionComponent = new Composition.SectionComponent();
