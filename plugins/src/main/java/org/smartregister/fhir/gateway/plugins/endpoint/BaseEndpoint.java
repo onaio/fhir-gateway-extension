@@ -8,7 +8,7 @@ import java.nio.charset.StandardCharsets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.smartregister.fhir.gateway.plugins.RestUtils;
+import org.smartregister.fhir.gateway.plugins.utils.RestUtils;
 
 import com.google.fhir.gateway.TokenVerifier;
 
@@ -38,7 +38,7 @@ public abstract class BaseEndpoint extends HttpServlet {
         RestUtils.addCorsHeaders(response);
     }
 
-    protected BaseEndpoint() throws IOException {}
+    protected BaseEndpoint() {}
 
     protected void writeUTF8StringToStream(OutputStream fileOutputStream, String content) {
         try (OutputStreamWriter outputStreamWriter =

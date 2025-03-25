@@ -1,8 +1,7 @@
-package org.smartregister.fhir.gateway.plugins;
+package org.smartregister.fhir.gateway.plugins.utils;
 
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
@@ -24,6 +23,8 @@ import org.junit.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.smartregister.fhir.gateway.plugins.Constants;
+import org.smartregister.fhir.gateway.plugins.PermissionAccessChecker;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -85,7 +86,7 @@ public class UtilsTest {
         Composition.SectionComponent sectionComponent = new Composition.SectionComponent();
         sectionComponent.setFocus(
                 new Reference().setIdentifier(new Identifier().setValue("otherValue")));
-        composition.setSection(Arrays.asList(sectionComponent));
+        composition.setSection(List.of(sectionComponent));
         Utils.getBinaryResourceReference(composition);
     }
 
@@ -99,7 +100,7 @@ public class UtilsTest {
         reference.setIdentifier(identifier);
         reference.setReference("Binary/1234");
         sectionComponent.setFocus(reference);
-        composition.setSection(Arrays.asList(sectionComponent));
+        composition.setSection(List.of(sectionComponent));
         String result = Utils.getBinaryResourceReference(composition);
         Assert.assertEquals("Binary/1234", result);
     }
@@ -113,7 +114,7 @@ public class UtilsTest {
                 new Reference()
                         .setIdentifier(
                                 new Identifier().setValue(Constants.AppConfigJsonKey.APPLICATION)));
-        composition.setSection(Arrays.asList(sectionComponent));
+        composition.setSection(List.of(sectionComponent));
         String result = Utils.getBinaryResourceReference(composition);
         Assert.assertNull(result);
     }
@@ -126,7 +127,7 @@ public class UtilsTest {
         reference.setReference("Binary/5678");
         sectionComponent.setFocus(reference);
         sectionComponent.setFocus(new Reference());
-        composition.setSection(Arrays.asList(sectionComponent));
+        composition.setSection(List.of(sectionComponent));
         Utils.getBinaryResourceReference(composition);
     }
 
@@ -138,7 +139,7 @@ public class UtilsTest {
                 new Reference()
                         .setIdentifier(
                                 new Identifier().setValue(Constants.AppConfigJsonKey.APPLICATION)));
-        composition.setSection(Arrays.asList(sectionComponent));
+        composition.setSection(List.of(sectionComponent));
         String result = Utils.getBinaryResourceReference(composition);
         Assert.assertNull(result);
     }

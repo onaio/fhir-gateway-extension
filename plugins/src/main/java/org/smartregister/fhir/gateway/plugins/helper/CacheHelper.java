@@ -1,4 +1,4 @@
-package org.smartregister.fhir.gateway.plugins;
+package org.smartregister.fhir.gateway.plugins.helper;
 
 import java.util.List;
 import java.util.Map;
@@ -13,15 +13,11 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 
 public enum CacheHelper {
     INSTANCE;
-    Cache<String, Map<String, List<String>>> cache;
-
-    Cache<String, DomainResource> resourceCache;
-
-    Cache<String, List<Location>> locationListCache;
-
-    Cache<String, String> stringCache;
-
-    Cache<String, List<String>> listStringCache;
+    public final Cache<String, Map<String, List<String>>> cache;
+    public final Cache<String, DomainResource> resourceCache;
+    public final Cache<String, List<Location>> locationListCache;
+    public final Cache<String, String> stringCache;
+    public final Cache<String, List<String>> listStringCache;
 
     CacheHelper() {
         cache =

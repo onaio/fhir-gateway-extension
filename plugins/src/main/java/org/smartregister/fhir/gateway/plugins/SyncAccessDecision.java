@@ -1,7 +1,7 @@
 package org.smartregister.fhir.gateway.plugins;
 
 import static ca.uhn.fhir.rest.api.Constants.PARAM_SUMMARY;
-import static org.smartregister.fhir.gateway.plugins.EnvUtil.getEnvironmentVar;
+import static org.smartregister.fhir.gateway.plugins.utils.EnvUtil.getEnvironmentVar;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -26,6 +26,8 @@ import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.smartregister.fhir.gateway.plugins.helper.PractitionerDetailsEndpointHelper;
+import org.smartregister.fhir.gateway.plugins.utils.Utils;
 import org.smartregister.helpers.LocationHelper;
 
 import com.google.common.annotations.VisibleForTesting;

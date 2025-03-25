@@ -1,7 +1,10 @@
-package org.smartregister.fhir.gateway.plugins;
+package org.smartregister.fhir.gateway.plugins.implementation;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
@@ -12,6 +15,7 @@ import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Resource;
 import org.junit.Before;
 import org.junit.Test;
+import org.smartregister.fhir.gateway.plugins.model.BundleResources;
 
 import com.google.fhir.gateway.interfaces.RequestDetailsReader;
 
@@ -19,23 +23,23 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.api.RequestTypeEnum;
 
-public class ResourceFinderImpTest {
+public class ResourceFinderTest {
 
     private FhirContext fhirContextMock;
     private IParser jsonParserMock;
     private RequestDetailsReader requestDetailsReaderMock;
-    private ResourceFinderImp resourceFinder;
+    private ResourceFinder resourceFinder;
 
     @Before
     public void setUp() throws Exception {
-        Field instanceField = ResourceFinderImp.class.getDeclaredField("instance");
+        Field instanceField = ResourceFinder.class.getDeclaredField("instance");
         instanceField.setAccessible(true);
         instanceField.set(null, null);
 
         fhirContextMock = mock(FhirContext.class);
         jsonParserMock = mock(IParser.class);
         requestDetailsReaderMock = mock(RequestDetailsReader.class);
-        resourceFinder = ResourceFinderImp.getInstance(fhirContextMock);
+        resourceFinder = ResourceFinder.getInstance(fhirContextMock);
         when(fhirContextMock.newJsonParser()).thenReturn(jsonParserMock);
     }
 

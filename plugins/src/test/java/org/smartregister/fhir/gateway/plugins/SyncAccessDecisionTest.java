@@ -33,6 +33,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.smartregister.fhir.gateway.plugins.helper.PractitionerDetailsEndpointHelper;
+import org.smartregister.fhir.gateway.plugins.utils.TestUtil;
 import org.smartregister.helpers.LocationHelper;
 
 import com.google.common.collect.Maps;
@@ -63,6 +65,23 @@ public class SyncAccessDecisionTest {
     private final List<String> relatedEntityLocationIds = new ArrayList<>();
 
     private SyncAccessDecision testInstance;
+
+    private static @NotNull RequestDetails getRequestDetails(String[] locations) {
+        Map<String, String[]> parameters = new HashMap<>();
+
+        // empty string
+        parameters.put(Constants.SYNC_LOCATIONS_SEARCH_PARAM, locations);
+
+        RequestDetails requestDetails = new ServletRequestDetails();
+        requestDetails.setRequestType(RequestTypeEnum.GET);
+        requestDetails.setRestOperationType(RestOperationTypeEnum.SEARCH_TYPE);
+        requestDetails.setResourceName("Patient");
+        requestDetails.setFhirServerBase("https://smartregister.org/fhir");
+        requestDetails.setCompleteUrl("https://smartregister.org/fhir/Patient");
+        requestDetails.setRequestPath("Patient");
+        requestDetails.setParameters(parameters);
+        return requestDetails;
+    }
 
     @Test
     public void preProcessShouldAddLocationIdFiltersWhenUserIsAssignedToLocationsOnly()
@@ -336,23 +355,6 @@ public class SyncAccessDecisionTest {
 
             testInstance.getRequestMutation(new TestRequestDetailsToReader(requestDetails));
         }
-    }
-
-    private static @NotNull RequestDetails getRequestDetails(String[] locations) {
-        Map<String, String[]> parameters = new HashMap<>();
-
-        // empty string
-        parameters.put(Constants.SYNC_LOCATIONS_SEARCH_PARAM, locations);
-
-        RequestDetails requestDetails = new ServletRequestDetails();
-        requestDetails.setRequestType(RequestTypeEnum.GET);
-        requestDetails.setRestOperationType(RestOperationTypeEnum.SEARCH_TYPE);
-        requestDetails.setResourceName("Patient");
-        requestDetails.setFhirServerBase("https://smartregister.org/fhir");
-        requestDetails.setCompleteUrl("https://smartregister.org/fhir/Patient");
-        requestDetails.setRequestPath("Patient");
-        requestDetails.setParameters(parameters);
-        return requestDetails;
     }
 
     @Test
@@ -798,7 +800,7 @@ public class SyncAccessDecisionTest {
         Bundle.BundleEntryComponent bundleEntryComponent = new Bundle.BundleEntryComponent();
         bundleEntryComponent.setResource(listResource);
         bundle.setType(Bundle.BundleType.BATCHRESPONSE);
-        bundle.setEntry(Arrays.asList(bundleEntryComponent));
+        bundle.setEntry(List.of(bundleEntryComponent));
 
         HttpResponse fhirResponseMock =
                 Mockito.mock(HttpResponse.class, Answers.RETURNS_DEEP_STUBS);
@@ -966,7 +968,7 @@ public class SyncAccessDecisionTest {
         Bundle.BundleEntryComponent bundleEntryComponent = new Bundle.BundleEntryComponent();
         bundleEntryComponent.setResource(listResource);
         bundle.setType(Bundle.BundleType.BATCHRESPONSE);
-        bundle.setEntry(Arrays.asList(bundleEntryComponent));
+        bundle.setEntry(List.of(bundleEntryComponent));
 
         HttpResponse fhirResponseMock =
                 Mockito.mock(HttpResponse.class, Answers.RETURNS_DEEP_STUBS);

@@ -1,4 +1,4 @@
-package org.smartregister.fhir.gateway.plugins;
+package org.smartregister.fhir.gateway.plugins.utils;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -25,6 +25,7 @@ import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.StringType;
 import org.hl7.fhir.r4.model.UriType;
 import org.slf4j.Logger;
+import org.smartregister.fhir.gateway.plugins.Constants;
 
 import com.google.fhir.gateway.ExceptionUtil;
 import com.google.gson.Gson;
@@ -163,7 +164,7 @@ public class Utils {
                                             composition.getSection().indexOf(sectionComponent))
                             .findFirst();
 
-            Integer result = firstIndex.orElse(-1);
+            Integer result = firstIndex.orElse(Integer.valueOf(-1));
             Composition.SectionComponent sectionComponent = composition.getSection().get(result);
             Reference focus = sectionComponent != null ? sectionComponent.getFocus() : null;
             id = focus != null ? focus.getReference() : null;

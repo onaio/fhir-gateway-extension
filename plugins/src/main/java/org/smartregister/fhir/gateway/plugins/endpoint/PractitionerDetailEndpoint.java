@@ -7,9 +7,9 @@ import java.util.Collections;
 
 import org.apache.http.HttpStatus;
 import org.smartregister.fhir.gateway.plugins.Constants;
-import org.smartregister.fhir.gateway.plugins.PractitionerDetailsEndpointHelper;
-import org.smartregister.fhir.gateway.plugins.RestUtils;
-import org.smartregister.fhir.gateway.plugins.Utils;
+import org.smartregister.fhir.gateway.plugins.helper.PractitionerDetailsEndpointHelper;
+import org.smartregister.fhir.gateway.plugins.utils.RestUtils;
+import org.smartregister.fhir.gateway.plugins.utils.Utils;
 import org.smartregister.model.practitioner.PractitionerDetails;
 
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;

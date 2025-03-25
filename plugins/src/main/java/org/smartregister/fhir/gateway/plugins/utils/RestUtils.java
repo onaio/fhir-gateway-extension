@@ -1,9 +1,10 @@
-package org.smartregister.fhir.gateway.plugins;
+package org.smartregister.fhir.gateway.plugins.utils;
 
 import static org.smartregister.fhir.gateway.plugins.Constants.AUTHORIZATION;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.smartregister.fhir.gateway.plugins.Constants;
 
 import com.google.fhir.gateway.ExceptionUtil;
 import com.google.fhir.gateway.TokenVerifier;
@@ -13,7 +14,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 public class RestUtils {
-
     private static final Logger logger = LoggerFactory.getLogger(RestUtils.class);
 
     public static void checkAuthentication(

@@ -1,4 +1,4 @@
-package org.smartregister.fhir.gateway.plugins;
+package org.smartregister.fhir.gateway.plugins.helper;
 
 import static org.smartregister.utils.Constants.LOCATION_RESOURCE;
 import static org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND;
@@ -25,6 +25,10 @@ import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.StringType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.smartregister.fhir.gateway.plugins.Constants;
+import org.smartregister.fhir.gateway.plugins.SyncAccessDecision;
+import org.smartregister.fhir.gateway.plugins.utils.JwtUtils;
+import org.smartregister.fhir.gateway.plugins.utils.Utils;
 import org.smartregister.model.location.LocationHierarchy;
 import org.smartregister.model.location.LocationHierarchyTree;
 
