@@ -159,9 +159,9 @@ public class Utils {
                 if (section.getFocus().hasReference()) {
                     return section.getFocus().getReference();
                 }
-                // Found the right identifier but no reference? Stop searching this branch.
-                // Or should we continue searching for nested sections? Assuming stop for now.
-                return null;
+                // Found the right identifier but no reference? Continue searching nested sections.
+                // This ensures that valid references in nested sections are not missed.
+                continue;
             }
 
             // If not found in the current section, check nested sections
