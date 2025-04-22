@@ -24,6 +24,8 @@ import org.junit.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -38,7 +40,7 @@ import ca.uhn.fhir.rest.gclient.IQuery;
 import ca.uhn.fhir.rest.gclient.IUntypedQuery;
 
 public class UtilsTest {
-
+    private static final Logger logger = LoggerFactory.getLogger(UtilsTest.class);
     private FhirContext fhirContextMock;
     private GenericClient genericClientMock;
 
@@ -65,28 +67,25 @@ public class UtilsTest {
         Assert.assertEquals(requestURL, result.getLink().get(0).getUrl());
     }
 
-    @Test
+    @Test(expected = RuntimeException.class)
     public void testGetBinaryResourceReferenceWithNullComposition() {
-        String result = Utils.getBinaryResourceReference(null);
-
-        Assert.assertEquals("", result);
+        Utils.getBinaryResourceReference(null, logger);
     }
 
-    @Test(expected = IndexOutOfBoundsException.class)
+    @Test(expected = RuntimeException.class)
     public void testGetBinaryResourceReferenceWithEmptySection() {
         Composition composition = new Composition();
-        String result = Utils.getBinaryResourceReference(composition);
-        Assert.assertEquals("", result);
+        Utils.getBinaryResourceReference(composition, logger);
     }
 
-    @Test(expected = ArrayIndexOutOfBoundsException.class)
+    @Test(expected = RuntimeException.class)
     public void testGetBinaryResourceReferenceWithNoMatchingSection() {
         Composition composition = new Composition();
         Composition.SectionComponent sectionComponent = new Composition.SectionComponent();
         sectionComponent.setFocus(
                 new Reference().setIdentifier(new Identifier().setValue("otherValue")));
         composition.setSection(Arrays.asList(sectionComponent));
-        Utils.getBinaryResourceReference(composition);
+        Utils.getBinaryResourceReference(composition, logger);
     }
 
     @Test
@@ -103,7 +102,7 @@ public class UtilsTest {
 
         composition.setSection(List.of(sectionComponent));
 
-        String result = Utils.getBinaryResourceReference(composition);
+        String result = Utils.getBinaryResourceReference(composition, logger);
         Assert.assertEquals("Binary/1234", result);
     }
 
@@ -135,11 +134,11 @@ public class UtilsTest {
 
         composition.setSection(Arrays.asList(binarySectionComponent, listsSectionComponent));
 
-        String result = Utils.getBinaryResourceReference(composition);
+        String result = Utils.getBinaryResourceReference(composition, logger);
         Assert.assertEquals("Binary/1234", result);
     }
 
-    @Test
+    @Test(expected = RuntimeException.class)
     public void testGetBinaryResourceReferenceWithNullFocus() {
         Composition composition = new Composition();
         Composition.SectionComponent sectionComponent = new Composition.SectionComponent();
@@ -149,11 +148,10 @@ public class UtilsTest {
                         .setIdentifier(
                                 new Identifier().setValue(Constants.AppConfigJsonKey.APPLICATION)));
         composition.setSection(Arrays.asList(sectionComponent));
-        String result = Utils.getBinaryResourceReference(composition);
-        Assert.assertNull(result);
+        Utils.getBinaryResourceReference(composition, logger);
     }
 
-    @Test(expected = ArrayIndexOutOfBoundsException.class)
+    @Test(expected = RuntimeException.class)
     public void testGetBinaryResourceReferenceWithNoIdentifier() {
         Composition composition = new Composition();
         Composition.SectionComponent sectionComponent = new Composition.SectionComponent();
@@ -162,10 +160,10 @@ public class UtilsTest {
         sectionComponent.setFocus(reference);
         sectionComponent.setFocus(new Reference());
         composition.setSection(Arrays.asList(sectionComponent));
-        Utils.getBinaryResourceReference(composition);
+        Utils.getBinaryResourceReference(composition, logger);
     }
 
-    @Test
+    @Test(expected = RuntimeException.class)
     public void testGetBinaryResourceReferenceWithNoFocusReference() {
         Composition composition = new Composition();
         Composition.SectionComponent sectionComponent = new Composition.SectionComponent();
@@ -174,7 +172,7 @@ public class UtilsTest {
                         .setIdentifier(
                                 new Identifier().setValue(Constants.AppConfigJsonKey.APPLICATION)));
         composition.setSection(Arrays.asList(sectionComponent));
-        String result = Utils.getBinaryResourceReference(composition);
+        String result = Utils.getBinaryResourceReference(composition, logger);
         Assert.assertNull(result);
     }
 

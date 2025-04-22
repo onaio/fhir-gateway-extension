@@ -33,6 +33,7 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.impl.GenericClient;
 import ca.uhn.fhir.rest.server.exceptions.ForbiddenOperationException;
+import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
 
 public class Utils {
 
@@ -135,12 +136,28 @@ public class Utils {
         return fhirContext.newRestfulGenericClient(fhirServer);
     }
 
-    public static String getBinaryResourceReference(Composition composition) {
+    public static String getBinaryResourceReference(Composition composition, Logger logger) {
         if (composition == null || !composition.hasSection()) {
-            return "";
+            InternalErrorException internalErrorException =
+                    new InternalErrorException(
+                            "The composition resource does not contain any sections. It must"
+                                    + " contain at least one section with the identifier "
+                                    + Constants.AppConfigJsonKey.APPLICATION);
+            ExceptionUtil.throwRuntimeExceptionAndLog(
+                    logger, internalErrorException.getMessage(), internalErrorException);
         }
         String reference = findApplicationBinaryReferenceRecursive(composition.getSection());
-        return reference != null ? reference : "";
+        if (reference == null) {
+            InternalErrorException internalErrorException =
+                    new InternalErrorException(
+                            "The composition resource does not contain a section with the"
+                                    + " identifier "
+                                    + Constants.AppConfigJsonKey.APPLICATION);
+            ExceptionUtil.throwRuntimeExceptionAndLog(
+                    logger, internalErrorException.getMessage(), internalErrorException);
+        }
+
+        return reference;
     }
 
     private static String findApplicationBinaryReferenceRecursive(
@@ -150,21 +167,25 @@ public class Utils {
         }
 
         for (Composition.SectionComponent section : sections) {
+            boolean idMatch =
+                    section.hasFocus()
+                            && section.getFocus().hasIdentifier()
+                            && section.getFocus().getIdentifier().hasValue()
+                            && Constants.AppConfigJsonKey.APPLICATION.equals(
+                                    section.getFocus().getIdentifier().getValue());
+
             // Check the current section's focus
-            if (section.hasFocus()
-                    && section.getFocus().hasIdentifier()
-                    && section.getFocus().getIdentifier().hasValue()
-                    && Constants.AppConfigJsonKey.APPLICATION.equals(
-                            section.getFocus().getIdentifier().getValue())) {
+            if (idMatch) {
                 if (section.getFocus().hasReference()) {
                     return section.getFocus().getReference();
                 }
-                // Found the right identifier but no reference? Continue searching nested sections.
-                // This ensures that valid references in nested sections are not missed.
-                continue;
+                // ID matches, but no reference here. Prioritize searching children of this section.
+                // Fall through to the nested section check below.
+                // If children don't have it, the loop will continue to the next sibling section.
             }
 
-            // If not found in the current section, check nested sections
+            // Check nested sections (either if ID didn't match, or if ID matched but reference
+            // wasn't present)
             if (section.hasSection()) {
                 String nestedReference =
                         findApplicationBinaryReferenceRecursive(section.getSection());
@@ -172,6 +193,8 @@ public class Utils {
                     return nestedReference; // Found in a nested section
                 }
             }
+            // If idMatch was true but no reference found here or in children,
+            // the loop continues to the next sibling section.
         }
 
         return null; // Not found in this list or any nested lists
