@@ -92,6 +92,7 @@ public class UtilsTest {
     @Test
     public void testGetBinaryResourceReferenceWithMatchingSection() {
         Composition composition = new Composition();
+
         Composition.SectionComponent sectionComponent = new Composition.SectionComponent();
         Identifier identifier = new Identifier();
         identifier.setValue(Constants.AppConfigJsonKey.APPLICATION);
@@ -99,7 +100,41 @@ public class UtilsTest {
         reference.setIdentifier(identifier);
         reference.setReference("Binary/1234");
         sectionComponent.setFocus(reference);
-        composition.setSection(Arrays.asList(sectionComponent));
+
+        composition.setSection(List.of(sectionComponent));
+
+        String result = Utils.getBinaryResourceReference(composition);
+        Assert.assertEquals("Binary/1234", result);
+    }
+
+    @Test
+    public void testGetBinaryResourceReferenceWithMatchingNestedSection() {
+        Composition composition = new Composition();
+        Composition.SectionComponent binarySectionComponent = new Composition.SectionComponent();
+        Composition.SectionComponent listsSectionComponent = new Composition.SectionComponent();
+
+        // Sets the binary
+        Composition.SectionComponent sectionComponent = new Composition.SectionComponent();
+        Identifier identifier = new Identifier();
+        identifier.setValue(Constants.AppConfigJsonKey.APPLICATION);
+        Reference reference = new Reference();
+        reference.setIdentifier(identifier);
+        reference.setReference("Binary/1234");
+        sectionComponent.setFocus(reference);
+        binarySectionComponent.addSection(sectionComponent);
+
+        // sets a list
+        Composition.SectionComponent listSectionComponent = new Composition.SectionComponent();
+        Identifier listIdentifier = new Identifier();
+        listIdentifier.setValue("myList");
+        Reference listReference = new Reference();
+        listReference.setIdentifier(listIdentifier);
+        listReference.setReference("List/1234");
+        listSectionComponent.setFocus(listReference);
+        listsSectionComponent.addSection(listSectionComponent);
+
+        composition.setSection(Arrays.asList(binarySectionComponent, listsSectionComponent));
+
         String result = Utils.getBinaryResourceReference(composition);
         Assert.assertEquals("Binary/1234", result);
     }

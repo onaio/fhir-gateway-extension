@@ -9,7 +9,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -19,7 +18,6 @@ import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Binary;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Composition;
-import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.StringType;
@@ -138,37 +136,45 @@ public class Utils {
     }
 
     public static String getBinaryResourceReference(Composition composition) {
-
-        String id = "";
-        if (composition != null && composition.getSection() != null) {
-            Optional<Integer> firstIndex =
-                    composition.getSection().stream()
-                            .filter(
-                                    sectionComponent ->
-                                            sectionComponent.getFocus().getIdentifier() != null
-                                                    && sectionComponent
-                                                                    .getFocus()
-                                                                    .getIdentifier()
-                                                                    .getValue()
-                                                            != null
-                                                    && sectionComponent
-                                                            .getFocus()
-                                                            .getIdentifier()
-                                                            .getValue()
-                                                            .equals(
-                                                                    Constants.AppConfigJsonKey
-                                                                            .APPLICATION))
-                            .map(
-                                    sectionComponent ->
-                                            composition.getSection().indexOf(sectionComponent))
-                            .findFirst();
-
-            Integer result = firstIndex.orElse(-1);
-            Composition.SectionComponent sectionComponent = composition.getSection().get(result);
-            Reference focus = sectionComponent != null ? sectionComponent.getFocus() : null;
-            id = focus != null ? focus.getReference() : null;
+        if (composition == null || !composition.hasSection()) {
+            return "";
         }
-        return id;
+        String reference = findApplicationBinaryReferenceRecursive(composition.getSection());
+        return reference != null ? reference : "";
+    }
+
+    private static String findApplicationBinaryReferenceRecursive(
+            List<Composition.SectionComponent> sections) {
+        if (sections == null || sections.isEmpty()) {
+            return null;
+        }
+
+        for (Composition.SectionComponent section : sections) {
+            // Check the current section's focus
+            if (section.hasFocus()
+                    && section.getFocus().hasIdentifier()
+                    && section.getFocus().getIdentifier().hasValue()
+                    && Constants.AppConfigJsonKey.APPLICATION.equals(
+                            section.getFocus().getIdentifier().getValue())) {
+                if (section.getFocus().hasReference()) {
+                    return section.getFocus().getReference();
+                }
+                // Found the right identifier but no reference? Stop searching this branch.
+                // Or should we continue searching for nested sections? Assuming stop for now.
+                return null;
+            }
+
+            // If not found in the current section, check nested sections
+            if (section.hasSection()) {
+                String nestedReference =
+                        findApplicationBinaryReferenceRecursive(section.getSection());
+                if (nestedReference != null) {
+                    return nestedReference; // Found in a nested section
+                }
+            }
+        }
+
+        return null; // Not found in this list or any nested lists
     }
 
     public static Binary readApplicationConfigBinaryResource(
