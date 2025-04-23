@@ -253,7 +253,7 @@ public class UtilsTest {
         String json = jsonObject.toString();
         String encodedJson = Base64.getEncoder().encodeToString(json.getBytes());
         binary.setDataElement(new Base64BinaryType(encodedJson));
-                             
+
         String result = Utils.findSyncStrategy(binary);
         Assert.assertEquals("PUSH", result);
     }
