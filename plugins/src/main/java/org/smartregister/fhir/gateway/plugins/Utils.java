@@ -9,7 +9,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -19,7 +18,6 @@ import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Binary;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Composition;
-import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.StringType;
@@ -35,6 +33,7 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.impl.GenericClient;
 import ca.uhn.fhir.rest.server.exceptions.ForbiddenOperationException;
+import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
 
 public class Utils {
 
@@ -137,38 +136,68 @@ public class Utils {
         return fhirContext.newRestfulGenericClient(fhirServer);
     }
 
-    public static String getBinaryResourceReference(Composition composition) {
-
-        String id = "";
-        if (composition != null && composition.getSection() != null) {
-            Optional<Integer> firstIndex =
-                    composition.getSection().stream()
-                            .filter(
-                                    sectionComponent ->
-                                            sectionComponent.getFocus().getIdentifier() != null
-                                                    && sectionComponent
-                                                                    .getFocus()
-                                                                    .getIdentifier()
-                                                                    .getValue()
-                                                            != null
-                                                    && sectionComponent
-                                                            .getFocus()
-                                                            .getIdentifier()
-                                                            .getValue()
-                                                            .equals(
-                                                                    Constants.AppConfigJsonKey
-                                                                            .APPLICATION))
-                            .map(
-                                    sectionComponent ->
-                                            composition.getSection().indexOf(sectionComponent))
-                            .findFirst();
-
-            Integer result = firstIndex.orElse(-1);
-            Composition.SectionComponent sectionComponent = composition.getSection().get(result);
-            Reference focus = sectionComponent != null ? sectionComponent.getFocus() : null;
-            id = focus != null ? focus.getReference() : null;
+    public static String getBinaryResourceReference(Composition composition, Logger logger) {
+        if (composition == null || !composition.hasSection()) {
+            InternalErrorException internalErrorException =
+                    new InternalErrorException(
+                            "The composition resource does not contain any sections. It must"
+                                    + " contain at least one section with the identifier "
+                                    + Constants.AppConfigJsonKey.APPLICATION);
+            ExceptionUtil.throwRuntimeExceptionAndLog(
+                    logger, internalErrorException.getMessage(), internalErrorException);
         }
-        return id;
+        String reference = findApplicationBinaryReferenceRecursive(composition.getSection());
+        if (reference == null) {
+            InternalErrorException internalErrorException =
+                    new InternalErrorException(
+                            "The composition resource does not contain a section with the"
+                                    + " identifier "
+                                    + Constants.AppConfigJsonKey.APPLICATION);
+            ExceptionUtil.throwRuntimeExceptionAndLog(
+                    logger, internalErrorException.getMessage(), internalErrorException);
+        }
+
+        return reference;
+    }
+
+    private static String findApplicationBinaryReferenceRecursive(
+            List<Composition.SectionComponent> sections) {
+        if (sections == null || sections.isEmpty()) {
+            return null;
+        }
+
+        for (Composition.SectionComponent section : sections) {
+            boolean idMatch =
+                    section.hasFocus()
+                            && section.getFocus().hasIdentifier()
+                            && section.getFocus().getIdentifier().hasValue()
+                            && Constants.AppConfigJsonKey.APPLICATION.equals(
+                                    section.getFocus().getIdentifier().getValue());
+
+            // Check the current section's focus
+            if (idMatch) {
+                if (section.getFocus().hasReference()) {
+                    return section.getFocus().getReference();
+                }
+                // ID matches, but no reference here. Prioritize searching children of this section.
+                // Fall through to the nested section check below.
+                // If children don't have it, the loop will continue to the next sibling section.
+            }
+
+            // Check nested sections (either if ID didn't match, or if ID matched but reference
+            // wasn't present)
+            if (section.hasSection()) {
+                String nestedReference =
+                        findApplicationBinaryReferenceRecursive(section.getSection());
+                if (nestedReference != null) {
+                    return nestedReference; // Found in a nested section
+                }
+            }
+            // If idMatch was true but no reference found here or in children,
+            // the loop continues to the next sibling section.
+        }
+
+        return null; // Not found in this list or any nested lists
     }
 
     public static Binary readApplicationConfigBinaryResource(

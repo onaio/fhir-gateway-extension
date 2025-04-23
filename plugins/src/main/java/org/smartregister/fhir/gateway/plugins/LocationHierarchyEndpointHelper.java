@@ -367,7 +367,7 @@ public class LocationHierarchyEndpointHelper {
         } else {
             composition = null;
         }
-        String binaryResourceReference = Utils.getBinaryResourceReference(composition);
+        String binaryResourceReference = Utils.getBinaryResourceReference(composition, logger);
         Binary binary =
                 Utils.readApplicationConfigBinaryResource(binaryResourceReference, fhirContext);
         return Utils.findSyncStrategy(binary);
