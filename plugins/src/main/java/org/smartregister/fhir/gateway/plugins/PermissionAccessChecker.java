@@ -284,7 +284,7 @@ public class PermissionAccessChecker implements AccessChecker {
     }
 
     private String readSyncStrategyFromComposition(Composition composition) {
-        String binaryResourceReference = Utils.getBinaryResourceReference(composition);
+        String binaryResourceReference = Utils.getBinaryResourceReference(composition, logger);
         Binary binary =
                 Utils.readApplicationConfigBinaryResource(binaryResourceReference, fhirContext);
         return Utils.findSyncStrategy(binary);

@@ -2,6 +2,7 @@ package org.smartregister.fhir.gateway.plugins.utils;
 
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
@@ -23,6 +24,8 @@ import org.junit.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.smartregister.fhir.gateway.plugins.Constants;
 import org.smartregister.fhir.gateway.plugins.PermissionAccessChecker;
 
@@ -39,7 +42,7 @@ import ca.uhn.fhir.rest.gclient.IQuery;
 import ca.uhn.fhir.rest.gclient.IUntypedQuery;
 
 public class UtilsTest {
-
+    private static final Logger logger = LoggerFactory.getLogger(UtilsTest.class);
     private FhirContext fhirContextMock;
     private GenericClient genericClientMock;
 
@@ -66,33 +69,39 @@ public class UtilsTest {
         Assert.assertEquals(requestURL, result.getLink().get(0).getUrl());
     }
 
-    @Test
+    @Test(expected = RuntimeException.class)
     public void testGetBinaryResourceReferenceWithNullComposition() {
-        String result = Utils.getBinaryResourceReference(null);
-
-        Assert.assertEquals("", result);
+        Utils.getBinaryResourceReference(null, logger);
     }
 
-    @Test(expected = IndexOutOfBoundsException.class)
+    @Test(expected = RuntimeException.class)
+    public void testGetBinaryResourceReferenceWithNoSection() {
+        Composition composition = new Composition();
+        Utils.getBinaryResourceReference(composition, logger);
+    }
+
+    @Test(expected = RuntimeException.class)
     public void testGetBinaryResourceReferenceWithEmptySection() {
         Composition composition = new Composition();
-        String result = Utils.getBinaryResourceReference(composition);
-        Assert.assertEquals("", result);
+        Composition.SectionComponent sectionComponent = new Composition.SectionComponent();
+        composition.setSection(List.of(sectionComponent));
+        Utils.getBinaryResourceReference(composition, logger);
     }
 
-    @Test(expected = IndexOutOfBoundsException.class)
+    @Test(expected = RuntimeException.class)
     public void testGetBinaryResourceReferenceWithNoMatchingSection() {
         Composition composition = new Composition();
         Composition.SectionComponent sectionComponent = new Composition.SectionComponent();
         sectionComponent.setFocus(
                 new Reference().setIdentifier(new Identifier().setValue("otherValue")));
-        composition.setSection(List.of(sectionComponent));
-        Utils.getBinaryResourceReference(composition);
+        composition.setSection(Arrays.asList(sectionComponent));
+        Utils.getBinaryResourceReference(composition, logger);
     }
 
     @Test
     public void testGetBinaryResourceReferenceWithMatchingSection() {
         Composition composition = new Composition();
+
         Composition.SectionComponent sectionComponent = new Composition.SectionComponent();
         Identifier identifier = new Identifier();
         identifier.setValue(Constants.AppConfigJsonKey.APPLICATION);
@@ -100,12 +109,84 @@ public class UtilsTest {
         reference.setIdentifier(identifier);
         reference.setReference("Binary/1234");
         sectionComponent.setFocus(reference);
+
         composition.setSection(List.of(sectionComponent));
-        String result = Utils.getBinaryResourceReference(composition);
+
+        String result = Utils.getBinaryResourceReference(composition, logger);
         Assert.assertEquals("Binary/1234", result);
     }
 
     @Test
+    public void testGetBinaryResourceReferenceWithMatchingNestedSection() {
+        Composition composition = new Composition();
+        Composition.SectionComponent binarySectionComponent = new Composition.SectionComponent();
+        Composition.SectionComponent listsSectionComponent = new Composition.SectionComponent();
+
+        // Sets the binary
+        Composition.SectionComponent sectionComponent = new Composition.SectionComponent();
+        Identifier identifier = new Identifier();
+        identifier.setValue(Constants.AppConfigJsonKey.APPLICATION);
+        Reference reference = new Reference();
+        reference.setIdentifier(identifier);
+        reference.setReference("Binary/1234");
+        sectionComponent.setFocus(reference);
+        binarySectionComponent.addSection(sectionComponent);
+
+        // sets a list
+        Composition.SectionComponent listSectionComponent = new Composition.SectionComponent();
+        Identifier listIdentifier = new Identifier();
+        listIdentifier.setValue("myList");
+        Reference listReference = new Reference();
+        listReference.setIdentifier(listIdentifier);
+        listReference.setReference("List/1234");
+        listSectionComponent.setFocus(listReference);
+        listsSectionComponent.addSection(listSectionComponent);
+
+        composition.setSection(Arrays.asList(binarySectionComponent, listsSectionComponent));
+
+        String result = Utils.getBinaryResourceReference(composition, logger);
+        Assert.assertEquals("Binary/1234", result);
+    }
+
+    @Test
+    public void testGetBinaryResourceReferenceWithMatchingNestedSectionAndInvalidReference() {
+        Composition composition = new Composition();
+        Composition.SectionComponent binarySectionComponent = new Composition.SectionComponent();
+        Composition.SectionComponent listsSectionComponent = new Composition.SectionComponent();
+
+        // Sets the binary with an invalid reference
+        Composition.SectionComponent invalidSectionComponent = new Composition.SectionComponent();
+        Identifier invalidIdentifier = new Identifier();
+        invalidIdentifier.setValue(Constants.AppConfigJsonKey.APPLICATION);
+        binarySectionComponent.addSection(invalidSectionComponent);
+
+        // Sets the binary
+        Composition.SectionComponent sectionComponent = new Composition.SectionComponent();
+        Identifier identifier = new Identifier();
+        identifier.setValue(Constants.AppConfigJsonKey.APPLICATION);
+        Reference reference = new Reference();
+        reference.setIdentifier(identifier);
+        reference.setReference("Binary/1234");
+        sectionComponent.setFocus(reference);
+        binarySectionComponent.addSection(sectionComponent);
+
+        // sets a list
+        Composition.SectionComponent listSectionComponent = new Composition.SectionComponent();
+        Identifier listIdentifier = new Identifier();
+        listIdentifier.setValue("myList");
+        Reference listReference = new Reference();
+        listReference.setIdentifier(listIdentifier);
+        listReference.setReference("List/1234");
+        listSectionComponent.setFocus(listReference);
+        listsSectionComponent.addSection(listSectionComponent);
+
+        composition.setSection(Arrays.asList(binarySectionComponent, listsSectionComponent));
+
+        String result = Utils.getBinaryResourceReference(composition, logger);
+        Assert.assertEquals("Binary/1234", result);
+    }
+
+    @Test(expected = RuntimeException.class)
     public void testGetBinaryResourceReferenceWithNullFocus() {
         Composition composition = new Composition();
         Composition.SectionComponent sectionComponent = new Composition.SectionComponent();
@@ -114,12 +195,11 @@ public class UtilsTest {
                 new Reference()
                         .setIdentifier(
                                 new Identifier().setValue(Constants.AppConfigJsonKey.APPLICATION)));
-        composition.setSection(List.of(sectionComponent));
-        String result = Utils.getBinaryResourceReference(composition);
-        Assert.assertNull(result);
+        composition.setSection(Arrays.asList(sectionComponent));
+        Utils.getBinaryResourceReference(composition, logger);
     }
 
-    @Test(expected = IndexOutOfBoundsException.class)
+    @Test(expected = RuntimeException.class)
     public void testGetBinaryResourceReferenceWithNoIdentifier() {
         Composition composition = new Composition();
         Composition.SectionComponent sectionComponent = new Composition.SectionComponent();
@@ -127,11 +207,12 @@ public class UtilsTest {
         reference.setReference("Binary/5678");
         sectionComponent.setFocus(reference);
         sectionComponent.setFocus(new Reference());
-        composition.setSection(List.of(sectionComponent));
-        Utils.getBinaryResourceReference(composition);
+
+        composition.setSection(Arrays.asList(sectionComponent));
+        Utils.getBinaryResourceReference(composition, logger);
     }
 
-    @Test
+    @Test(expected = RuntimeException.class)
     public void testGetBinaryResourceReferenceWithNoFocusReference() {
         Composition composition = new Composition();
         Composition.SectionComponent sectionComponent = new Composition.SectionComponent();
@@ -139,8 +220,8 @@ public class UtilsTest {
                 new Reference()
                         .setIdentifier(
                                 new Identifier().setValue(Constants.AppConfigJsonKey.APPLICATION)));
-        composition.setSection(List.of(sectionComponent));
-        String result = Utils.getBinaryResourceReference(composition);
+        composition.setSection(Arrays.asList(sectionComponent));
+        String result = Utils.getBinaryResourceReference(composition, logger);
         Assert.assertNull(result);
     }
 
