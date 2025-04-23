@@ -7,9 +7,9 @@ import java.io.IOException;
 import org.apache.http.HttpStatus;
 import org.hl7.fhir.r4.model.Bundle;
 import org.smartregister.fhir.gateway.plugins.Constants;
-import org.smartregister.fhir.gateway.plugins.LocationHierarchyEndpointHelper;
-import org.smartregister.fhir.gateway.plugins.PractitionerDetailsEndpointHelper;
-import org.smartregister.fhir.gateway.plugins.RestUtils;
+import org.smartregister.fhir.gateway.plugins.helper.LocationHierarchyEndpointHelper;
+import org.smartregister.fhir.gateway.plugins.helper.PractitionerDetailsEndpointHelper;
+import org.smartregister.fhir.gateway.plugins.utils.RestUtils;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
 

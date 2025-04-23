@@ -20,7 +20,13 @@ import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.Organization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.smartregister.fhir.gateway.plugins.interfaces.ResourceFinder;
+import org.smartregister.fhir.gateway.plugins.helper.CacheHelper;
+import org.smartregister.fhir.gateway.plugins.helper.LocationHierarchyEndpointHelper;
+import org.smartregister.fhir.gateway.plugins.helper.PractitionerDetailsEndpointHelper;
+import org.smartregister.fhir.gateway.plugins.implementation.ResourceFinder;
+import org.smartregister.fhir.gateway.plugins.model.BundleResources;
+import org.smartregister.fhir.gateway.plugins.utils.JwtUtils;
+import org.smartregister.fhir.gateway.plugins.utils.Utils;
 import org.smartregister.model.practitioner.PractitionerDetails;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
@@ -44,7 +50,7 @@ import jakarta.annotation.Nonnull;
 
 public class PermissionAccessChecker implements AccessChecker {
     private static final Logger logger = LoggerFactory.getLogger(PermissionAccessChecker.class);
-    private final ResourceFinder resourceFinder;
+    private final org.smartregister.fhir.gateway.plugins.interfaces.ResourceFinder resourceFinder;
     private final List<String> userRoles;
     private SyncAccessDecision syncAccessDecision;
     private final String applicationId;
@@ -55,7 +61,7 @@ public class PermissionAccessChecker implements AccessChecker {
             FhirContext fhirContext,
             DecodedJWT jwt,
             List<String> userRoles,
-            ResourceFinderImp resourceFinder,
+            ResourceFinder resourceFinder,
             String applicationId) {
         Preconditions.checkNotNull(userRoles);
         Preconditions.checkNotNull(resourceFinder);
@@ -140,33 +146,25 @@ public class PermissionAccessChecker implements AccessChecker {
                         userRoles);
     }
 
-    @VisibleForTesting
-    protected static String generateSyncStrategyIdsCacheKey(
+    public static String generateSyncStrategyIdsCacheKey(
             String userId, String syncStrategy, Map<String, String[]> parameters) {
 
         String key = null;
-        switch (syncStrategy) {
-            case Constants.SyncStrategy.RELATED_ENTITY_LOCATION:
-                try {
-
-                    String[] syncLocations =
-                            parameters.getOrDefault(
-                                    Constants.SYNC_LOCATIONS_SEARCH_PARAM, new String[] {});
-
-                    if (syncLocations.length == 0) {
-                        key = userId;
-                    } else {
-                        key = Utils.generateHash(Utils.getSortedInput(syncLocations[0], ","));
-                    }
-
-                } catch (NoSuchAlgorithmException exception) {
-                    logger.error(exception.getMessage());
+        if (syncStrategy.equals(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)) {
+            try {
+                String[] syncLocations =
+                        parameters.getOrDefault(
+                                Constants.SYNC_LOCATIONS_SEARCH_PARAM, new String[] {});
+                if (syncLocations.length == 0) {
+                    key = userId;
+                } else {
+                    key = Utils.generateHash(Utils.getSortedInput(syncLocations[0], ","));
                 }
-
-                break;
-
-            default:
-                key = userId;
+            } catch (NoSuchAlgorithmException exception) {
+                logger.error(exception.getMessage());
+            }
+        } else {
+            key = userId;
         }
 
         return key;
@@ -469,7 +467,7 @@ public class PermissionAccessChecker implements AccessChecker {
                     fhirContext,
                     jwt,
                     userRoles,
-                    ResourceFinderImp.getInstance(fhirContext),
+                    ResourceFinder.getInstance(fhirContext),
                     applicationId);
         }
     }

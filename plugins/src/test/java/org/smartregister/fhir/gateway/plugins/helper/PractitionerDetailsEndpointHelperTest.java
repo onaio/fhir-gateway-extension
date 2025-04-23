@@ -1,10 +1,11 @@
-package org.smartregister.fhir.gateway.plugins;
+package org.smartregister.fhir.gateway.plugins.helper;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.smartregister.fhir.gateway.plugins.PractitionerDetailsEndpointHelper.EMPTY_BUNDLE;
+import static org.smartregister.fhir.gateway.plugins.helper.PractitionerDetailsEndpointHelper.EMPTY_BUNDLE;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,8 +41,8 @@ import ca.uhn.fhir.rest.gclient.ICriterion;
 
 public class PractitionerDetailsEndpointHelperTest {
 
-    private PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
     IGenericClient client;
+    private PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
 
     @Before
     public void setUp() {
@@ -121,7 +122,7 @@ public class PractitionerDetailsEndpointHelperTest {
         LocationHierarchy locationHierarchy =
                 (LocationHierarchy) parser.parseResource(locationHierarchyNoParentChildren);
 
-        List<LocationHierarchy> hierarchies = Arrays.asList(locationHierarchy);
+        List<LocationHierarchy> hierarchies = Collections.singletonList(locationHierarchy);
         Set<String> attributedLocationIds =
                 PractitionerDetailsEndpointHelper.getAttributedLocations(hierarchies);
         Assert.assertNotNull(attributedLocationIds);
@@ -288,13 +289,13 @@ public class PractitionerDetailsEndpointHelperTest {
         List<String> organizationIds = Arrays.asList("1", "2", "3");
         CareTeam careTeam1 = new CareTeam();
         careTeam1.setId("CareTeam/1");
-        careTeam1.setManagingOrganization(Arrays.asList(new Reference("Organization/1")));
+        careTeam1.setManagingOrganization(List.of(new Reference("Organization/1")));
         CareTeam careTeam2 = new CareTeam();
         careTeam2.setId("CareTeam/2");
-        careTeam2.setManagingOrganization(Arrays.asList(new Reference("Organization/2")));
+        careTeam2.setManagingOrganization(List.of(new Reference("Organization/2")));
         CareTeam careTeam3 = new CareTeam();
         careTeam3.setId("CareTeam/3");
-        careTeam3.setManagingOrganization(Arrays.asList(new Reference("Organization/3")));
+        careTeam3.setManagingOrganization(List.of(new Reference("Organization/3")));
         Bundle bundle = new Bundle();
         bundle.addEntry(new Bundle.BundleEntryComponent().setResource(careTeam1));
         bundle.addEntry(new Bundle.BundleEntryComponent().setResource(careTeam2));

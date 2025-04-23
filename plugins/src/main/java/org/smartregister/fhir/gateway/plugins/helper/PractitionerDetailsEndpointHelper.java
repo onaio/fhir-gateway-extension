@@ -1,4 +1,4 @@
-package org.smartregister.fhir.gateway.plugins;
+package org.smartregister.fhir.gateway.plugins.helper;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,6 +25,7 @@ import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.PractitionerRole;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.smartregister.fhir.gateway.plugins.Constants;
 import org.smartregister.model.location.LocationHierarchy;
 import org.smartregister.model.location.ParentChildrenMap;
 import org.smartregister.model.practitioner.FhirPractitionerDetails;
@@ -47,7 +48,7 @@ public class PractitionerDetailsEndpointHelper {
     private static IGenericClient r4FHIRClient;
 
     public PractitionerDetailsEndpointHelper(IGenericClient fhirClient) {
-        this.r4FHIRClient = fhirClient;
+        r4FHIRClient = fhirClient;
     }
 
     private static IGenericClient getFhirClientForR4() {

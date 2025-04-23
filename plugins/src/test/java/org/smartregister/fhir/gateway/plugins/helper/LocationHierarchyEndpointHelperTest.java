@@ -1,4 +1,4 @@
-package org.smartregister.fhir.gateway.plugins;
+package org.smartregister.fhir.gateway.plugins.helper;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,6 +33,10 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.internal.stubbing.defaultanswers.ReturnsDeepStubs;
+import org.smartregister.fhir.gateway.plugins.Constants;
+import org.smartregister.fhir.gateway.plugins.SyncAccessDecision;
+import org.smartregister.fhir.gateway.plugins.utils.JwtUtils;
+import org.smartregister.fhir.gateway.plugins.utils.Utils;
 import org.smartregister.model.location.LocationHierarchy;
 import org.smartregister.model.location.LocationHierarchyTree;
 
@@ -48,8 +52,41 @@ import jakarta.servlet.http.HttpServletRequest;
 
 public class LocationHierarchyEndpointHelperTest {
 
-    private LocationHierarchyEndpointHelper locationHierarchyEndpointHelper;
     IGenericClient client;
+    private LocationHierarchyEndpointHelper locationHierarchyEndpointHelper;
+
+    public static List<Location> createTestLocationList(
+            int numLocations, boolean setAdminLevel, boolean setLastUpdated) {
+        List<Location> locations = new ArrayList<>();
+        for (int i = 0; i < numLocations; i++) {
+            Location location = new Location();
+            location.setId(Integer.toString(i));
+            locations.add(location);
+            if (setAdminLevel) {
+                CodeableConcept type = new CodeableConcept();
+                Coding coding = new Coding();
+                coding.setSystem(Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL);
+                coding.setCode(Integer.toString(i));
+                coding.setDisplay(String.format("Level %d", i));
+                type.addCoding(coding);
+                location.addType(type);
+            }
+            if (setLastUpdated) {
+                Meta meta = new Meta();
+                meta.setLastUpdated(Date.from(OffsetDateTime.now().toInstant()));
+                location.setMeta(meta);
+            }
+        }
+        return locations;
+    }
+
+    public static LocationHierarchy createLocationHierarchy(List<Location> locations) {
+        LocationHierarchy locationHierarchy = new LocationHierarchy();
+        LocationHierarchyTree locationHierarchyTree = new LocationHierarchyTree();
+        locationHierarchyTree.buildTreeFromList(locations);
+        locationHierarchy.setLocationHierarchyTree(locationHierarchyTree);
+        return locationHierarchy;
+    }
 
     @Before
     public void setUp() {
@@ -857,38 +894,5 @@ public class LocationHierarchyEndpointHelperTest {
         Assert.assertNotNull(locationIds);
         Assert.assertEquals(1, locationIds.size());
         Assert.assertEquals("test-location-id", locationIds.get(0));
-    }
-
-    public static List<Location> createTestLocationList(
-            int numLocations, boolean setAdminLevel, boolean setLastUpdated) {
-        List<Location> locations = new ArrayList<>();
-        for (int i = 0; i < numLocations; i++) {
-            Location location = new Location();
-            location.setId(Integer.toString(i));
-            locations.add(location);
-            if (setAdminLevel) {
-                CodeableConcept type = new CodeableConcept();
-                Coding coding = new Coding();
-                coding.setSystem(Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL);
-                coding.setCode(Integer.toString(i));
-                coding.setDisplay(String.format("Level %d", i));
-                type.addCoding(coding);
-                location.addType(type);
-            }
-            if (setLastUpdated) {
-                Meta meta = new Meta();
-                meta.setLastUpdated(Date.from(OffsetDateTime.now().toInstant()));
-                location.setMeta(meta);
-            }
-        }
-        return locations;
-    }
-
-    public static LocationHierarchy createLocationHierarchy(List<Location> locations) {
-        LocationHierarchy locationHierarchy = new LocationHierarchy();
-        LocationHierarchyTree locationHierarchyTree = new LocationHierarchyTree();
-        locationHierarchyTree.buildTreeFromList(locations);
-        locationHierarchy.setLocationHierarchyTree(locationHierarchyTree);
-        return locationHierarchy;
     }
 }

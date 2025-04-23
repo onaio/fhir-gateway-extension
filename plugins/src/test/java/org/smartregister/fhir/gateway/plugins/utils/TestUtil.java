@@ -1,4 +1,4 @@
-package org.smartregister.fhir.gateway.plugins;
+package org.smartregister.fhir.gateway.plugins.utils;
 
 import static org.mockito.Mockito.when;
 
@@ -12,7 +12,7 @@ import org.mockito.Mockito;
 
 import com.google.common.base.Preconditions;
 
-class TestUtil {
+public class TestUtil {
 
     public static void setUpFhirResponseMock(HttpResponse fhirResponseMock, String responseJson) {
         Preconditions.checkNotNull(responseJson);

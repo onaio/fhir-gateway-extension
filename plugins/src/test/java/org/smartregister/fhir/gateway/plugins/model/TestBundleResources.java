@@ -1,4 +1,4 @@
-package org.smartregister.fhir.gateway.plugins;
+package org.smartregister.fhir.gateway.plugins.model;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
