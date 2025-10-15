@@ -13,7 +13,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 
 public enum CacheHelper {
     INSTANCE;
-    final Cache<String, Map<String, List<String>>> cache;
+    public final Cache<String, Map<String, List<String>>> cache;
     final Cache<String, DomainResource> resourceCache;
     final Cache<String, List<Location>> locationListCache;
     final Cache<String, String> stringCache;

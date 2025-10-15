@@ -146,7 +146,7 @@ public class PermissionAccessChecker implements AccessChecker {
                         userRoles);
     }
 
-    protected static String generateSyncStrategyIdsCacheKey(
+    public static String generateSyncStrategyIdsCacheKey(
             String userId, String syncStrategy, Map<String, String[]> parameters) {
 
         String key = null;
