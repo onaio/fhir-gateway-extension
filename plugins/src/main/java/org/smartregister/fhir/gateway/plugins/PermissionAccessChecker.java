@@ -77,7 +77,7 @@ public class PermissionAccessChecker implements AccessChecker {
 
         initSyncAccessDecision(requestDetails);
 
-        //  For a Bundle requestDetails.getResourceName() returns null
+        // For a Bundle requestDetails.getResourceName() returns null
         if (requestDetails.getRequestType() == RequestTypeEnum.POST
                 && requestDetails.getResourceName() == null) {
             return processBundle(requestDetails);
@@ -332,8 +332,11 @@ public class PermissionAccessChecker implements AccessChecker {
     @Deprecated(since = "3.0.0", forRemoval = true)
     private Set<String> getPractitionerLocationHierarchyDescendantsBackwardCompatibility(
             PractitionerDetails practitionerDetails) {
+        IGenericClient client = Utils.createFhirClientForR4(FhirContext.forR4());
+        PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper =
+                new PractitionerDetailsEndpointHelper(client);
         return PractitionerDetailsEndpointHelper.getAttributedLocations(
-                PractitionerDetailsEndpointHelper.getLocationsHierarchy(
+                practitionerDetailsEndpointHelper.getLocationsHierarchy(
                         practitionerDetails.getFhirPractitionerDetails().getLocations().stream()
                                 .map(location -> location.getIdElement().getIdPart())
                                 .collect(Collectors.toList())));
@@ -407,9 +410,12 @@ public class PermissionAccessChecker implements AccessChecker {
                         && syncLocations != null) {
                     // Selected locations
                     List<String> locationUuids = getLocationUuids(syncLocations);
+                    IGenericClient client = Utils.createFhirClientForR4(FhirContext.forR4());
+                    PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper =
+                            new PractitionerDetailsEndpointHelper(client);
                     syncStrategyIds =
                             PractitionerDetailsEndpointHelper.getAttributedLocations(
-                                    PractitionerDetailsEndpointHelper.getLocationsHierarchy(
+                                    practitionerDetailsEndpointHelper.getLocationsHierarchy(
                                             locationUuids));
 
                 } else {

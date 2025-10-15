@@ -310,8 +310,7 @@ public class LocationHierarchyEndpointHelperTest {
                 .extractSyncLocations("1,2,3,4");
         Mockito.doCallRealMethod()
                 .when(mockLocationHierarchyEndpointHelper)
-                .handleNonIdentifierRequest(
-                        request, mockPractitionerDetailsEndpointHelper, mockDecodedJWT);
+                .handleNonIdentifierRequest(request, mockDecodedJWT);
         Mockito.doReturn(false)
                 .when(mockLocationHierarchyEndpointHelper)
                 .adminLevelFilter(Mockito.any(), Mockito.any());
@@ -342,7 +341,7 @@ public class LocationHierarchyEndpointHelperTest {
 
         Bundle resultBundle =
                 mockLocationHierarchyEndpointHelper.handleNonIdentifierRequest(
-                        request, mockPractitionerDetailsEndpointHelper, mockDecodedJWT);
+                        request, mockDecodedJWT);
 
         Assert.assertTrue(resultBundle.hasEntry());
         Assert.assertTrue(resultBundle.hasLink());
@@ -609,8 +608,7 @@ public class LocationHierarchyEndpointHelperTest {
                 .extractSyncLocations("1,2,3,4");
         Mockito.doCallRealMethod()
                 .when(mockLocationHierarchyEndpointHelper)
-                .handleNonIdentifierRequest(
-                        request, mockPractitionerDetailsEndpointHelper, mockDecodedJWT);
+                .handleNonIdentifierRequest(request, mockDecodedJWT);
         Mockito.doReturn(locationHierarchies)
                 .when(mockLocationHierarchyEndpointHelper)
                 .getLocationHierarchies(
@@ -623,7 +621,7 @@ public class LocationHierarchyEndpointHelperTest {
                 .thenReturn(userRoles);
         Bundle resultBundle =
                 mockLocationHierarchyEndpointHelper.handleNonIdentifierRequest(
-                        request, mockPractitionerDetailsEndpointHelper, mockDecodedJWT);
+                        request, mockDecodedJWT);
         Assert.assertEquals(1, resultBundle.getTotal());
         Assert.assertEquals(1, resultBundle.getEntry().size());
         mockJwtUtils.close();
@@ -658,8 +656,7 @@ public class LocationHierarchyEndpointHelperTest {
                 .extractSyncLocations(Mockito.any());
         Mockito.doCallRealMethod()
                 .when(mockLocationHierarchyEndpointHelper)
-                .handleNonIdentifierRequest(
-                        request, mockPractitionerDetailsEndpointHelper, mockDecodedJWT);
+                .handleNonIdentifierRequest(request, mockDecodedJWT);
         Mockito.doReturn(locationHierarchies)
                 .when(mockLocationHierarchyEndpointHelper)
                 .getLocationHierarchies(
@@ -678,7 +675,7 @@ public class LocationHierarchyEndpointHelperTest {
 
         Bundle resultBundle =
                 mockLocationHierarchyEndpointHelper.handleNonIdentifierRequest(
-                        request, mockPractitionerDetailsEndpointHelper, mockDecodedJWT);
+                        request, mockDecodedJWT);
 
         Assert.assertEquals(1, resultBundle.getTotal());
         Assert.assertEquals(1, resultBundle.getEntry().size());
@@ -833,7 +830,8 @@ public class LocationHierarchyEndpointHelperTest {
         Assert.assertEquals(4, resultBundle.getEntry().size());
 
         // Verify that fetchAllDescendants was called with the correct parameters
-        // Note: The actual admin levels will be the default range [0,1,2,3,4,5,6,7,8,9,10]
+        // Note: The actual admin levels will be the default range
+        // [0,1,2,3,4,5,6,7,8,9,10]
         // since no specific admin levels are provided in the request
         Mockito.verify(mockLocationHierarchyEndpointHelper).fetchAllDescendants(any(), any());
     }
