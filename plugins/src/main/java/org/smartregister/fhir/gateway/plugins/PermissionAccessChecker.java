@@ -319,13 +319,10 @@ public class PermissionAccessChecker implements AccessChecker {
                         .map(location -> location.getIdElement().getIdPart())
                         .collect(Collectors.toList());
 
-        return locationIds.stream()
-                .map(
-                        locationId ->
-                                (new LocationHierarchyEndpointHelper(
-                                                Utils.createFhirClientForR4(fhirContext)))
-                                        .fetchAllDescendants(locationId, null))
-                .flatMap(descendant -> descendant.getEntry().stream())
+        Bundle allDescendantsBundle =
+                (new LocationHierarchyEndpointHelper(Utils.createFhirClientForR4(fhirContext)))
+                        .fetchAllDescendants(locationIds, null);
+        return allDescendantsBundle.getEntry().stream()
                 .map(
                         bundleEntryComponent ->
                                 bundleEntryComponent.getResource().getIdElement().getIdPart())

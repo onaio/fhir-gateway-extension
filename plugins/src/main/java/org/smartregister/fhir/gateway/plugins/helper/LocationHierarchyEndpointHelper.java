@@ -411,10 +411,10 @@ public class LocationHierarchyEndpointHelper {
 
         int start = Math.max(0, (page - 1)) * count;
 
+        // Fetch all descendants for all location IDs in a single query
+        Bundle allDescendantsBundle = fetchAllDescendants(locationIds, preFetchAdminLevels);
         List<Location> resourceLocations =
-                locationIds.stream()
-                        .map(locationId -> fetchAllDescendants(locationId, preFetchAdminLevels))
-                        .flatMap(descendant -> descendant.getEntry().stream())
+                allDescendantsBundle.getEntry().stream()
                         .map(bundleEntryComponent -> (Location) bundleEntryComponent.getResource())
                         .collect(Collectors.toList());
 
@@ -528,15 +528,19 @@ public class LocationHierarchyEndpointHelper {
         return resultBundle;
     }
 
-    public Bundle fetchAllDescendants(String locationId, List<String> preFetchAdminLevels) {
+    public Bundle fetchAllDescendants(List<String> locationIds, List<String> preFetchAdminLevels) {
         StringBuilder queryStringFilter = new StringBuilder("Location?");
-        if (StringUtils.isNotBlank(locationId)) {
-            queryStringFilter
-                    .append("&_tag=")
-                    .append(Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY)
-                    .append("%7C")
-                    .append(locationId)
-                    .append(',');
+        if (locationIds != null && !locationIds.isEmpty()) {
+            queryStringFilter.append("&_tag=");
+            for (String locationId : locationIds) {
+                if (StringUtils.isNotBlank(locationId)) {
+                    queryStringFilter
+                            .append(Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY)
+                            .append("%7C")
+                            .append(locationId)
+                            .append(',');
+                }
+            }
         }
 
         if (preFetchAdminLevels != null && !preFetchAdminLevels.isEmpty()) {

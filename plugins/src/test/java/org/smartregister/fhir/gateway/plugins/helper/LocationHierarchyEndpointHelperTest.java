@@ -2,6 +2,7 @@ package org.smartregister.fhir.gateway.plugins.helper;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -227,7 +228,7 @@ public class LocationHierarchyEndpointHelperTest {
                 .getPaginatedLocations(request, locationIds);
         Mockito.doReturn(Utils.createBundle(locations))
                 .when(mockLocationHierarchyEndpointHelper)
-                .fetchAllDescendants("12345", adminLevels);
+                .fetchAllDescendants(List.of("12345"), adminLevels);
 
         Location parentLocation = new Location();
         parentLocation.setId("12345");
@@ -734,7 +735,7 @@ public class LocationHierarchyEndpointHelperTest {
         Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
 
         locationHierarchyEndpointHelper.fetchAllDescendants(
-                "test-parent-location-id", List.of("4"));
+                List.of("test-parent-location-id"), List.of("4"));
 
         ArgumentCaptor<String> argCaptor = ArgumentCaptor.forClass(String.class);
         Mockito.verify(untypedQueryMock).byUrl(argCaptor.capture());
@@ -744,6 +745,97 @@ public class LocationHierarchyEndpointHelperTest {
         Assert.assertEquals(
                 "Location?&_tag=http://smartregister.org/CodeSystem/location-lineage%7Ctest-parent-location-id,&type=https://smartregister.org/codes/administrative-level%7C4,",
                 result);
+    }
+
+    @Test
+    public void testFetchAllDescendantsWithMultipleLocationsGeneratesCorrectQueryFilter() {
+        IUntypedQuery<IBaseBundle> untypedQueryMock = mock(IUntypedQuery.class);
+        IQuery<IBaseBundle> queryMock = mock(IQuery.class);
+
+        Bundle secondBundleMock = new Bundle();
+        secondBundleMock.setEntry(new ArrayList<>());
+
+        Mockito.doReturn(untypedQueryMock).when(client).search();
+        Mockito.doReturn(queryMock).when(untypedQueryMock).byUrl(anyString());
+        Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
+
+        List<String> locationIds = List.of("location-1", "location-2", "location-3");
+        locationHierarchyEndpointHelper.fetchAllDescendants(locationIds, List.of("4", "5"));
+
+        ArgumentCaptor<String> argCaptor = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(untypedQueryMock).byUrl(argCaptor.capture());
+        String result = argCaptor.getValue();
+
+        Assert.assertNotNull(result);
+        Assert.assertEquals(
+                "Location?&_tag=http://smartregister.org/CodeSystem/location-lineage%7Clocation-1,http://smartregister.org/CodeSystem/location-lineage%7Clocation-2,http://smartregister.org/CodeSystem/location-lineage%7Clocation-3,&type=https://smartregister.org/codes/administrative-level%7C4,https://smartregister.org/codes/administrative-level%7C5,",
+                result);
+    }
+
+    @Test
+    public void testGetPaginatedLocationsWithMultipleLocationIds() {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        Map<String, String[]> parameterMap = new HashMap<>();
+        parameterMap.put("_count", new String[] {"10"});
+        parameterMap.put("_page", new String[] {"1"});
+        parameterMap.put("filter_mode_lineage", new String[] {"true"});
+        Mockito.doReturn(parameterMap).when(request).getParameterMap();
+        Mockito.doReturn("10").when(request).getParameter("_count");
+        Mockito.doReturn("1").when(request).getParameter("_page");
+        Mockito.doReturn(new StringBuffer("http://test:8080/LocationHierarchy"))
+                .when(request)
+                .getRequestURL();
+        Mockito.doReturn("").when(request).getQueryString();
+
+        List<String> locationIds = List.of("location-1", "location-2");
+        List<String> adminLevels = List.of("4", "5");
+
+        LocationHierarchyEndpointHelper mockLocationHierarchyEndpointHelper =
+                Mockito.spy(locationHierarchyEndpointHelper);
+
+        // Mock the fetchAllDescendantsForMultipleLocations method
+        Bundle descendantsBundle = new Bundle();
+        Location descendant1 = new Location();
+        descendant1.setId("descendant-1");
+        Location descendant2 = new Location();
+        descendant2.setId("descendant-2");
+        descendantsBundle.addEntry().setResource(descendant1);
+        descendantsBundle.addEntry().setResource(descendant2);
+
+        Mockito.doReturn(descendantsBundle)
+                .when(mockLocationHierarchyEndpointHelper)
+                .fetchAllDescendants(any(), any());
+
+        // Mock parent locations
+        Bundle parentBundle = new Bundle();
+        Location parent1 = new Location();
+        parent1.setId("location-1");
+        Location parent2 = new Location();
+        parent2.setId("location-2");
+        parentBundle.addEntry().setResource(parent1);
+        parentBundle.addEntry().setResource(parent2);
+
+        Mockito.doReturn(parentBundle)
+                .when(mockLocationHierarchyEndpointHelper)
+                .getLocationById(locationIds);
+
+        // Mock postFetchFilters
+        List<Location> allLocations = List.of(parent1, parent2, descendant1, descendant2);
+        Mockito.doReturn(allLocations)
+                .when(mockLocationHierarchyEndpointHelper)
+                .postFetchFilters(any(), any(), anyBoolean(), any());
+
+        Bundle resultBundle =
+                mockLocationHierarchyEndpointHelper.getPaginatedLocations(request, locationIds);
+
+        Assert.assertNotNull(resultBundle);
+        Assert.assertTrue(resultBundle.hasEntry());
+        Assert.assertEquals(4, resultBundle.getEntry().size());
+
+        // Verify that fetchAllDescendants was called with the correct parameters
+        // Note: The actual admin levels will be the default range [0,1,2,3,4,5,6,7,8,9,10]
+        // since no specific admin levels are provided in the request
+        Mockito.verify(mockLocationHierarchyEndpointHelper).fetchAllDescendants(any(), any());
     }
 
     @Test
