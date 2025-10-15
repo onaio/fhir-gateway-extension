@@ -120,12 +120,13 @@ public class StreamingResponseHelper {
             printWriter.println("  \"link\": [");
             printWriter.println("    {");
             printWriter.println("      \"relation\": \"self\",");
-            printWriter.println(
-                    "      \"url\": \""
-                            + request.getRequestURL()
-                            + "?"
-                            + request.getQueryString()
-                            + "\"");
+            StringBuilder selfUrlBuilder = new StringBuilder();
+            selfUrlBuilder.append(request.getRequestURL());
+            String queryString = request.getQueryString();
+            if (queryString != null && !queryString.isEmpty()) {
+                selfUrlBuilder.append("?").append(queryString);
+            }
+            printWriter.println("      \"url\": \"" + selfUrlBuilder.toString() + "\"");
             printWriter.println("    }");
 
             // Add pagination links
