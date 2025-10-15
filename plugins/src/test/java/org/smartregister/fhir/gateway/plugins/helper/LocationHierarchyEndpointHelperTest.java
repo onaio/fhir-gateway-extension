@@ -740,7 +740,7 @@ public class LocationHierarchyEndpointHelperTest {
 
         Assert.assertNotNull(result);
         Assert.assertEquals(
-                "Location?&_tag=http://smartregister.org/CodeSystem/location-lineage%7Ctest-parent-location-id,&type=https://smartregister.org/codes/administrative-level%7C4,",
+                "Location?_tag=http://smartregister.org/CodeSystem/location-lineage%7Ctest-parent-location-id&type=https://smartregister.org/codes/administrative-level%7C4",
                 result);
     }
 
@@ -765,7 +765,7 @@ public class LocationHierarchyEndpointHelperTest {
 
         Assert.assertNotNull(result);
         Assert.assertEquals(
-                "Location?&_tag=http://smartregister.org/CodeSystem/location-lineage%7Clocation-1,http://smartregister.org/CodeSystem/location-lineage%7Clocation-2,http://smartregister.org/CodeSystem/location-lineage%7Clocation-3,&type=https://smartregister.org/codes/administrative-level%7C4,https://smartregister.org/codes/administrative-level%7C5,",
+                "Location?_tag=http://smartregister.org/CodeSystem/location-lineage%7Clocation-1,http://smartregister.org/CodeSystem/location-lineage%7Clocation-2,http://smartregister.org/CodeSystem/location-lineage%7Clocation-3&type=https://smartregister.org/codes/administrative-level%7C4,https://smartregister.org/codes/administrative-level%7C5",
                 result);
     }
 

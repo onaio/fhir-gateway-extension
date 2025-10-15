@@ -294,7 +294,7 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         List<String> postFetchAdminLevels =
                 generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         List<String> selectedSyncLocations = extractSyncLocations(syncLocationsParam);
-        String practitionerId = verifiedJwt.getSubject();
+        String keyCloakPractitionerId = verifiedJwt.getSubject();
         List<String> userRoles = JwtUtils.getUserRolesFromJWT(verifiedJwt);
         String applicationId = JwtUtils.getApplicationIdFromJWT(verifiedJwt);
         String syncStrategy = getSyncStrategyByAppId(applicationId);
@@ -308,7 +308,8 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                         : getPaginatedLocationsBackwardCompatibility(
                                 request, selectedSyncLocations);
             } else {
-                List<String> locationIds = getPractitionerLocationIdsByKeycloakId(practitionerId);
+                List<String> locationIds =
+                        getPractitionerLocationIdsByKeycloakId(keyCloakPractitionerId);
                 return filterModeLineage
                         ? getPaginatedLocations(request, locationIds)
                         : getPaginatedLocationsBackwardCompatibility(
@@ -334,7 +335,8 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                                 : Collections.emptyList();
                 return Utils.createBundle(resourceList);
             } else {
-                List<String> locationIds = getPractitionerLocationIdsByKeycloakId(practitionerId);
+                List<String> locationIds =
+                        getPractitionerLocationIdsByKeycloakId(keyCloakPractitionerId);
                 List<LocationHierarchy> locationHierarchies =
                         getLocationHierarchies(
                                 locationIds,
@@ -579,8 +581,8 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         logger.info("Total locations to stream: {}", totalCount);
 
         // Create a data provider function that fetches data in chunks
-        java.util.function.Function<Integer, List<Location>> dataProvider =
-                (chunkSize) -> {
+        java.util.function.BiFunction<Integer, Integer, List<Location>> dataProvider =
+                (offset, limit) -> {
                     try {
                         return fetchLocationChunk(
                                 locationIds,
@@ -588,7 +590,8 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                                 postFetchAdminLevels,
                                 filterInventory,
                                 lastUpdated,
-                                chunkSize);
+                                offset,
+                                limit);
                     } catch (Exception e) {
                         logger.error("Error fetching location chunk", e);
                         return new ArrayList<>();
@@ -609,29 +612,22 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
             String lastUpdated) {
         try {
             // Use a count query to get total without loading data
-            StringBuilder queryStringFilter = new StringBuilder("Location?_count=0&");
-            if (locationIds != null && !locationIds.isEmpty()) {
-                queryStringFilter.append("&_tag=");
-                for (String locationId : locationIds) {
-                    if (StringUtils.isNotBlank(locationId)) {
-                        queryStringFilter
-                                .append(Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY)
-                                .append("%7C")
-                                .append(locationId)
-                                .append(',');
-                    }
-                }
+            StringBuilder queryStringFilter = new StringBuilder("Location?_count=0");
+
+            // Add location IDs parameter
+            String locationIdsParam =
+                    buildCommaSeparatedValues(
+                            locationIds, Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY);
+            if (!locationIdsParam.isEmpty()) {
+                queryStringFilter.append("&_tag=").append(locationIdsParam);
             }
 
-            if (preFetchAdminLevels != null && !preFetchAdminLevels.isEmpty()) {
-                queryStringFilter.append("&type=");
-                for (String adminLevel : preFetchAdminLevels) {
-                    queryStringFilter
-                            .append(Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL)
-                            .append("%7C")
-                            .append(adminLevel)
-                            .append(',');
-                }
+            // Add admin levels parameter
+            String adminLevelsParam =
+                    buildCommaSeparatedValues(
+                            preFetchAdminLevels, Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL);
+            if (!adminLevelsParam.isEmpty()) {
+                queryStringFilter.append("&type=").append(adminLevelsParam);
             }
 
             Bundle countBundle =
@@ -647,6 +643,26 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         }
     }
 
+    /** Helper method to build comma-separated parameter values without trailing commas */
+    private String buildCommaSeparatedValues(List<String> values, String prefix) {
+        if (values == null || values.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder result = new StringBuilder();
+        boolean first = true;
+        for (String value : values) {
+            if (StringUtils.isNotBlank(value)) {
+                if (!first) {
+                    result.append(',');
+                }
+                result.append(prefix).append("%7C").append(value);
+                first = false;
+            }
+        }
+        return result.toString();
+    }
+
     /** Fetch a chunk of locations for streaming. */
     private List<Location> fetchLocationChunk(
             List<String> locationIds,
@@ -654,34 +670,28 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
             List<String> postFetchAdminLevels,
             Boolean filterInventory,
             String lastUpdated,
-            int chunkSize) {
+            int offset,
+            int limit) {
         try {
-            // Fetch only a small chunk of data
+            // Fetch only a small chunk of data with proper offset and limit
             StringBuilder queryStringFilter = new StringBuilder("Location?");
-            queryStringFilter.append("_count=").append(chunkSize);
+            queryStringFilter.append("_count=").append(limit);
+            queryStringFilter.append("&_offset=").append(offset);
 
-            if (locationIds != null && !locationIds.isEmpty()) {
-                queryStringFilter.append("&_tag=");
-                for (String locationId : locationIds) {
-                    if (StringUtils.isNotBlank(locationId)) {
-                        queryStringFilter
-                                .append(Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY)
-                                .append("%7C")
-                                .append(locationId)
-                                .append(',');
-                    }
-                }
+            // Add location IDs parameter
+            String locationIdsParam =
+                    buildCommaSeparatedValues(
+                            locationIds, Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY);
+            if (!locationIdsParam.isEmpty()) {
+                queryStringFilter.append("&_tag=").append(locationIdsParam);
             }
 
-            if (preFetchAdminLevels != null && !preFetchAdminLevels.isEmpty()) {
-                queryStringFilter.append("&type=");
-                for (String adminLevel : preFetchAdminLevels) {
-                    queryStringFilter
-                            .append(Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL)
-                            .append("%7C")
-                            .append(adminLevel)
-                            .append(',');
-                }
+            // Add admin levels parameter
+            String adminLevelsParam =
+                    buildCommaSeparatedValues(
+                            preFetchAdminLevels, Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL);
+            if (!adminLevelsParam.isEmpty()) {
+                queryStringFilter.append("&type=").append(adminLevelsParam);
             }
 
             Bundle chunkBundle =
@@ -774,28 +784,24 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
 
     public Bundle fetchAllDescendants(List<String> locationIds, List<String> preFetchAdminLevels) {
         StringBuilder queryStringFilter = new StringBuilder("Location?");
-        if (locationIds != null && !locationIds.isEmpty()) {
-            queryStringFilter.append("&_tag=");
-            for (String locationId : locationIds) {
-                if (StringUtils.isNotBlank(locationId)) {
-                    queryStringFilter
-                            .append(Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY)
-                            .append("%7C")
-                            .append(locationId)
-                            .append(',');
-                }
-            }
+
+        // Add location IDs parameter
+        String locationIdsParam =
+                buildCommaSeparatedValues(
+                        locationIds, Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY);
+        if (!locationIdsParam.isEmpty()) {
+            queryStringFilter.append("_tag=").append(locationIdsParam);
         }
 
-        if (preFetchAdminLevels != null && !preFetchAdminLevels.isEmpty()) {
-            queryStringFilter.append("&type=");
-            for (String adminLevel : preFetchAdminLevels) {
-                queryStringFilter
-                        .append(Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL)
-                        .append("%7C")
-                        .append(adminLevel)
-                        .append(',');
+        // Add admin levels parameter
+        String adminLevelsParam =
+                buildCommaSeparatedValues(
+                        preFetchAdminLevels, Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL);
+        if (!adminLevelsParam.isEmpty()) {
+            if (queryStringFilter.length() > "Location?".length()) {
+                queryStringFilter.append("&");
             }
+            queryStringFilter.append("type=").append(adminLevelsParam);
         }
 
         return (Bundle) getFhirClientForR4().search().byUrl(queryStringFilter.toString()).execute();

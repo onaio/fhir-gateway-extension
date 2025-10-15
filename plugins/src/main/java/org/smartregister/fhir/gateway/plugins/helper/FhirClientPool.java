@@ -11,6 +11,7 @@ import org.smartregister.fhir.gateway.plugins.Constants;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.interceptor.LoggingInterceptor;
+import lombok.Getter;
 
 /**
  * Connection pool manager for FHIR clients to improve performance and resource utilization. This
@@ -40,7 +41,7 @@ public class FhirClientPool {
         }
     }
 
-    /** Get singleton instance of the FHIR client pool */
+    /** Get a singleton instance of the FHIR client pool */
     public static FhirClientPool getInstance(FhirContext fhirContext) {
         if (instance == null) {
             synchronized (FhirClientPool.class) {
@@ -54,7 +55,7 @@ public class FhirClientPool {
         return instance;
     }
 
-    /** Initialize the client pool with minimum number of clients */
+    /** Initialize the client pool with a minimum number of clients */
     private void initializePool() {
         for (int i = 0; i < MIN_POOL_SIZE; i++) {
             createAndAddClient();
@@ -221,18 +222,14 @@ public class FhirClientPool {
         }
     }
 
-    /** Wrapper for pooled FHIR client with acquisition tracking and lease timeout */
+    /** Wrapper for a pooled FHIR client with acquisition tracking and lease timeout */
     private static class PooledFhirClient {
-        private final IGenericClient client;
-        private volatile boolean inUse = false;
+        @Getter private final IGenericClient client;
+        @Getter private volatile boolean inUse = false;
         private volatile long acquiredAt = 0;
 
         public PooledFhirClient(IGenericClient client) {
             this.client = client;
-        }
-
-        public IGenericClient getClient() {
-            return client;
         }
 
         public synchronized boolean tryAcquire() {
@@ -256,10 +253,6 @@ public class FhirClientPool {
 
         public boolean isAvailable() {
             return !inUse;
-        }
-
-        public boolean isInUse() {
-            return inUse;
         }
 
         public boolean hasExceededLeaseTimeout(long currentTime, long leaseTimeoutMs) {

@@ -6,7 +6,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 import org.hl7.fhir.r4.model.Location;
 import org.slf4j.Logger;
@@ -95,7 +95,7 @@ public class StreamingResponseHelper {
     public void streamLocationBundleWithChunking(
             HttpServletRequest request,
             HttpServletResponse response,
-            Function<Integer, List<Location>> locationProvider,
+            BiFunction<Integer, Integer, List<Location>> locationProvider,
             int totalCount,
             int page,
             int pageSize)
@@ -169,7 +169,7 @@ public class StreamingResponseHelper {
     /** Stream location entries using chunked data provider */
     private void streamLocationEntriesWithChunking(
             PrintWriter printWriter,
-            Function<Integer, List<Location>> locationProvider,
+            BiFunction<Integer, Integer, List<Location>> locationProvider,
             int page,
             int pageSize)
             throws IOException {
@@ -181,8 +181,12 @@ public class StreamingResponseHelper {
         int currentIndex = start;
 
         while (currentIndex < end) {
-            // Get chunk of data
-            List<Location> chunk = locationProvider.apply(currentIndex);
+            // Calculate remaining items to fetch
+            int remainingItems = end - currentIndex;
+            int chunkSize = Math.min(remainingItems, getOptimalChunkSize(remainingItems));
+
+            // Get chunk of data using offset and limit
+            List<Location> chunk = locationProvider.apply(currentIndex, chunkSize);
             if (chunk == null || chunk.isEmpty()) {
                 break;
             }

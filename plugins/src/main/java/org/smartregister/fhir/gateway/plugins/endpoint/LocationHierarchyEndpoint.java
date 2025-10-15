@@ -21,27 +21,30 @@ import jakarta.servlet.http.HttpServletResponse;
 
 @WebServlet("/LocationHierarchy")
 public class LocationHierarchyEndpoint extends BaseEndpoint {
-    private final LocationHierarchyEndpointHelper locationHierarchyEndpointHelper;
 
     public LocationHierarchyEndpoint() throws IOException {
-        // Use connection pool for better resource management
-        IGenericClient sharedFhirClient = fhirClientPool.getClient();
-        this.locationHierarchyEndpointHelper =
-                new LocationHierarchyEndpointHelper(sharedFhirClient);
+        // No need to acquire client in constructor - will acquire per request
     }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
         RestUtils.addCorsHeaders(response);
+
+        // Acquire client from pool for this request
+        IGenericClient fhirClient = fhirClientPool.getClient();
         try {
+            // Create helper with the acquired client
+            LocationHierarchyEndpointHelper locationHierarchyEndpointHelper =
+                    new LocationHierarchyEndpointHelper(fhirClient);
+
             RestUtils.checkAuthentication(request, tokenVerifier);
             String identifier = request.getParameter(Constants.IDENTIFIER);
             String authHeader = request.getHeader(AUTHORIZATION);
             DecodedJWT verifiedJwt = tokenVerifier.decodeAndVerifyBearerToken(authHeader);
 
-            // Check if streaming is requested via query parameter
-            boolean useStreaming = Boolean.parseBoolean(request.getParameter("stream"));
+            // Always enable streaming when mode=list for better performance
+            boolean useStreaming = Constants.LIST.equals(request.getParameter(Constants.MODE));
 
             if (identifier != null && !identifier.isEmpty()) {
                 Bundle resultBundle =
@@ -50,12 +53,12 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
                 String resultContent = fhirR4JsonParser.encodeResourceToString(resultBundle);
                 response.setContentType("application/json");
                 writeUTF8StringToStream(response.getOutputStream(), resultContent);
-            } else if (useStreaming
-                    && Constants.LIST.equals(request.getParameter(Constants.MODE))) {
-                // Use streaming for list mode when explicitly requested
+            } else if (useStreaming) {
+                // Use streaming for list mode (automatically enabled when mode=list)
                 // Extract location IDs as in the non-streaming path
                 java.util.List<String> locationIds =
-                        getLocationIdsFromRequest(request, verifiedJwt);
+                        getLocationIdsFromRequest(
+                                request, verifiedJwt, locationHierarchyEndpointHelper);
                 locationHierarchyEndpointHelper.streamPaginatedLocations(
                         request, response, locationIds);
             } else {
@@ -76,13 +79,18 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
             response.setContentType("application/json");
             writeUTF8StringToStream(response.getOutputStream(), exception.getMessage());
             response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+        } finally {
+            // Always return the client to the pool
+            fhirClientPool.returnClient(fhirClient);
         }
     }
 
     private List<String> getLocationIdsFromRequest(
-            HttpServletRequest request, DecodedJWT verifiedJwt) {
+            HttpServletRequest request,
+            DecodedJWT verifiedJwt,
+            LocationHierarchyEndpointHelper locationHierarchyEndpointHelper) {
         try {
-            // Get location IDs from sync locations parameter if available
+            // Get location IDs from the sync locations parameter if available
             String syncLocationsParam = request.getParameter(Constants.SYNC_LOCATIONS_SEARCH_PARAM);
             if (syncLocationsParam != null && !syncLocationsParam.isEmpty()) {
                 return java.util.Arrays.asList(syncLocationsParam.split(","));
