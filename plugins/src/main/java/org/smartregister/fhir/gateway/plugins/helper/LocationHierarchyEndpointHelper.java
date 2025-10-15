@@ -50,12 +50,10 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
     private static final Logger logger =
             LoggerFactory.getLogger(LocationHierarchyEndpointHelper.class);
 
-    private final IGenericClient r4FHIRClient;
     private final StreamingResponseHelper streamingHelper;
 
     public LocationHierarchyEndpointHelper(IGenericClient fhirClient) {
         super(fhirClient);
-        this.r4FHIRClient = fhirClient;
         this.streamingHelper =
                 new StreamingResponseHelper(
                         FhirContext.forR4Cached().newJsonParser().setPrettyPrint(true));
