@@ -48,7 +48,7 @@ public class PractitionerDetailsEndpointHelper {
     private static IGenericClient r4FHIRClient;
 
     public PractitionerDetailsEndpointHelper(IGenericClient fhirClient) {
-        r4FHIRClient = fhirClient;
+        PractitionerDetailsEndpointHelper.r4FHIRClient = fhirClient;
     }
 
     private static IGenericClient getFhirClientForR4() {
