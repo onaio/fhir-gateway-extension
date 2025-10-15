@@ -85,7 +85,7 @@ public abstract class BaseFhirEndpointHelper {
 
     /** Get multiple locations by IDs */
     @Nullable
-    public Bundle getLocationById(List<String> ids) {
+    public Bundle getLocationsById(List<String> ids) {
         if (ids == null || ids.isEmpty()) {
             return null;
         }

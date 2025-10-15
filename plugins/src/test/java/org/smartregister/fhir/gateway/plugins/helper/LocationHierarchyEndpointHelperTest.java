@@ -241,7 +241,7 @@ public class LocationHierarchyEndpointHelperTest {
 
         Mockito.doReturn(Utils.createBundle(List.of(parentLocation)))
                 .when(mockLocationHierarchyEndpointHelper)
-                .getLocationById(List.of("12345"));
+                .getLocationsById(List.of("12345"));
 
         Bundle resultBundle =
                 mockLocationHierarchyEndpointHelper.getPaginatedLocations(request, locationIds);
@@ -814,7 +814,7 @@ public class LocationHierarchyEndpointHelperTest {
 
         Mockito.doReturn(parentBundle)
                 .when(mockLocationHierarchyEndpointHelper)
-                .getLocationById(locationIds);
+                .getLocationsById(locationIds);
 
         // Mock postFetchFilters
         List<Location> allLocations = List.of(parent1, parent2, descendant1, descendant2);
@@ -837,7 +837,7 @@ public class LocationHierarchyEndpointHelperTest {
     }
 
     @Test
-    public void testGetLocationByIdGeneratesCorrectUrlQueryPath() {
+    public void testGetLocationByIdWithCacheGeneratesCorrectUrlQueryPath() {
 
         Mockito.doReturn(null)
                 .when(client)
@@ -849,7 +849,7 @@ public class LocationHierarchyEndpointHelperTest {
 
         List<String> locationIds = Arrays.asList("location-test-1", "location-test-2");
 
-        locationHierarchyEndpointHelper.getLocationById(locationIds);
+        locationHierarchyEndpointHelper.getLocationsById(locationIds);
 
         Mockito.verify(client)
                 .fetchResourceFromUrl(

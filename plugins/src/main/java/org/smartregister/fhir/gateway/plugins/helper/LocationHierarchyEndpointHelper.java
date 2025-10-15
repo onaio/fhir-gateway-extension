@@ -1,7 +1,32 @@
 package org.smartregister.fhir.gateway.plugins.helper;
 
-import static org.smartregister.utils.Constants.LOCATION_RESOURCE;
-import static org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND;
+import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.rest.api.SearchStyleEnum;
+import ca.uhn.fhir.rest.client.api.IGenericClient;
+import ca.uhn.fhir.rest.gclient.IQuery;
+import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
+import ca.uhn.fhir.rest.gclient.TokenClientParam;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import jakarta.annotation.Nullable;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.commons.lang3.StringUtils;
+import org.hl7.fhir.instance.model.api.IBaseBundle;
+import org.hl7.fhir.r4.model.Binary;
+import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Composition;
+import org.hl7.fhir.r4.model.ListResource;
+import org.hl7.fhir.r4.model.Location;
+import org.hl7.fhir.r4.model.Resource;
+import org.hl7.fhir.r4.model.StringType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.smartregister.fhir.gateway.plugins.Constants;
+import org.smartregister.fhir.gateway.plugins.SyncAccessDecision;
+import org.smartregister.fhir.gateway.plugins.utils.JwtUtils;
+import org.smartregister.fhir.gateway.plugins.utils.Utils;
+import org.smartregister.model.location.LocationHierarchy;
+import org.smartregister.model.location.LocationHierarchyTree;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -15,37 +40,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
-import org.hl7.fhir.instance.model.api.IBaseBundle;
-import org.hl7.fhir.r4.model.Binary;
-import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.Composition;
-import org.hl7.fhir.r4.model.ListResource;
-import org.hl7.fhir.r4.model.Location;
-import org.hl7.fhir.r4.model.Resource;
-import org.hl7.fhir.r4.model.ResourceType;
-import org.hl7.fhir.r4.model.StringType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.smartregister.fhir.gateway.plugins.Constants;
-import org.smartregister.fhir.gateway.plugins.SyncAccessDecision;
-import org.smartregister.fhir.gateway.plugins.utils.JwtUtils;
-import org.smartregister.fhir.gateway.plugins.utils.Utils;
-import org.smartregister.model.location.LocationHierarchy;
-import org.smartregister.model.location.LocationHierarchyTree;
-
-import com.auth0.jwt.interfaces.DecodedJWT;
-
-import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.rest.api.SearchStyleEnum;
-import ca.uhn.fhir.rest.client.api.IGenericClient;
-import ca.uhn.fhir.rest.gclient.IQuery;
-import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
-import ca.uhn.fhir.rest.gclient.TokenClientParam;
-import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
-import jakarta.annotation.Nullable;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import static org.smartregister.utils.Constants.LOCATION_RESOURCE;
+import static org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND;
 
 public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
 
@@ -69,13 +65,32 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
             List<String> postFetchAdminLevels,
             Boolean filterInventory,
             String lastUpdated) {
-        // TODO: implement correct caching
-        return getLocationHierarchyCore(
+        // Create cache key that includes all parameters
+        String cacheKey = String.format("%s_%s_%s_%s_%s",
                 locationId,
-                preFetchAdminLevels,
-                postFetchAdminLevels,
+                String.join(",", preFetchAdminLevels != null ? preFetchAdminLevels : java.util.Collections.emptyList()),
+                String.join(",", postFetchAdminLevels != null ? postFetchAdminLevels : java.util.Collections.emptyList()),
                 filterInventory,
-                lastUpdated);
+                lastUpdated != null ? lastUpdated : "null");
+
+        if (CacheHelper.INSTANCE.skipCache()) {
+            return getLocationHierarchyCore(
+                    locationId,
+                    preFetchAdminLevels,
+                    postFetchAdminLevels,
+                    filterInventory,
+                    lastUpdated);
+        } else {
+            // Use resourceCache for LocationHierarchy objects
+            return (LocationHierarchy) CacheHelper.INSTANCE.resourceCache.get(
+                    cacheKey,
+                    key -> getLocationHierarchyCore(
+                            locationId,
+                            preFetchAdminLevels,
+                            postFetchAdminLevels,
+                            filterInventory,
+                            lastUpdated));
+        }
     }
 
     public List<LocationHierarchy> getLocationHierarchies(
@@ -105,7 +120,7 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
             List<String> postFetchAdminLevels,
             Boolean filterInventory,
             String lastUpdated) {
-        Location location = getLocationById(locationId);
+        Location location = getLocationByIdWithCache(locationId);
 
         LocationHierarchyTree locationHierarchyTree = new LocationHierarchyTree();
         LocationHierarchy locationHierarchy = new LocationHierarchy();
@@ -138,7 +153,7 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
             Boolean filterInventory,
             String lastUpdated) {
         List<Location> descendants;
-        Location parentLocation = getLocationById(locationId);
+        Location parentLocation = getLocationByIdWithCache(locationId);
         if (CacheHelper.INSTANCE.skipCache()) {
             descendants = getDescendants(locationId, parentLocation, preFetchAdminLevels);
         } else {
@@ -206,25 +221,14 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         return allLocations;
     }
 
-    public @Nullable Location getLocationById(String locationId) {
-        Location location = null;
-        try {
-            location =
-                    getFhirClientForR4()
-                            .fetchResourceFromUrl(
-                                    Location.class,
-                                    "Location/"
-                                            + Utils.extractLogicalId(
-                                                    ResourceType.Location, locationId));
-        } catch (ResourceNotFoundException e) {
-            logger.error(e.getMessage());
+    public @Nullable Location getLocationByIdWithCache(String locationId) {
+        if (CacheHelper.INSTANCE.skipCache()) {
+            return getLocationById(locationId);
+        } else {
+            return (Location) CacheHelper.INSTANCE.resourceCache.get(
+                    "location_" + locationId,
+                    key -> getLocationById(locationId));
         }
-        return location;
-    }
-
-    public @Nullable Bundle getLocationById(List<String> ids) {
-        return getFhirClientForR4()
-                .fetchResourceFromUrl(Bundle.class, "Location?_id=" + StringUtils.join(ids, ","));
     }
 
     public Bundle handleIdentifierRequest(HttpServletRequest request, String identifier) {
@@ -406,7 +410,7 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                         .collect(Collectors.toList());
 
         // Get the parents
-        Bundle parentLocation = getLocationById(locationIds);
+        Bundle parentLocation = getLocationsById(locationIds);
         if (parentLocation != null) {
             List<Bundle.BundleEntryComponent> locationBundleEntryComponents =
                     parentLocation.getEntry();
@@ -486,7 +490,7 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                         .collect(Collectors.toList());
 
         // Get the parents
-        Bundle parentLocation = getLocationById(locationIds);
+        Bundle parentLocation = getLocationsById(locationIds);
         if (parentLocation != null) {
             List<Bundle.BundleEntryComponent> locationBundleEntryComponents =
                     parentLocation.getEntry();

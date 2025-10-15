@@ -52,7 +52,7 @@ public enum CacheHelper {
         if (StringUtils.isNotBlank(duration)) {
             return Integer.parseInt(duration);
         }
-        return 60;
+        return 300; // Increased from 60 to 300 seconds (5 minutes) for better performance
     }
 
     public boolean skipCache() {
@@ -60,6 +60,6 @@ public enum CacheHelper {
         return StringUtils.isNotBlank(duration) && "0".equals(duration.trim());
     }
 
-    public static final String OPENSRP_CACHE_EXPIRY_SECONDS = "openrsp_cache_timeout_seconds";
-    private static final int DEFAULT_CACHE_SIZE = 1_000;
+    public static final String OPENSRP_CACHE_EXPIRY_SECONDS = "opensrp_cache_timeout_seconds"; // Fixed typo
+    private static final int DEFAULT_CACHE_SIZE = 5_000; // Increased from 1,000 to 5,000 for better performance
 }
