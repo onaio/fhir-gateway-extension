@@ -93,16 +93,17 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                     filterInventory,
                     lastUpdated);
         } else {
-            // Use locationHierarchyCache for LocationHierarchy objects
-            return CacheHelper.INSTANCE.locationHierarchyCache.get(
-                    cacheKey,
-                    key ->
-                            getLocationHierarchyCore(
-                                    locationId,
-                                    preFetchAdminLevels,
-                                    postFetchAdminLevels,
-                                    filterInventory,
-                                    lastUpdated));
+            // Use resourceCache for LocationHierarchy objects
+            return (LocationHierarchy)
+                    CacheHelper.INSTANCE.resourceCache.get(
+                            cacheKey,
+                            key ->
+                                    getLocationHierarchyCore(
+                                            locationId,
+                                            preFetchAdminLevels,
+                                            postFetchAdminLevels,
+                                            filterInventory,
+                                            lastUpdated));
         }
     }
 
@@ -859,9 +860,13 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         logger.info("Getting practitioner location IDs for practitioner: {}", practitionerId);
         try {
             // Delegate to PractitionerDetailsEndpointHelper to get practitioner locations
-            return practitionerDetailsEndpointHelper.getPractitionerLocationIdsByKeycloakId(practitionerId);
+            return practitionerDetailsEndpointHelper.getPractitionerLocationIdsByKeycloakId(
+                    practitionerId);
         } catch (Exception e) {
-            logger.error("Error getting practitioner location IDs for practitioner: {}", practitionerId, e);
+            logger.error(
+                    "Error getting practitioner location IDs for practitioner: {}",
+                    practitionerId,
+                    e);
             return List.of();
         }
     }

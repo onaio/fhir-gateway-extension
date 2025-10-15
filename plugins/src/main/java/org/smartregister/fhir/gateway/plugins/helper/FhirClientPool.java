@@ -2,8 +2,6 @@ package org.smartregister.fhir.gateway.plugins.helper;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
@@ -123,7 +121,7 @@ public class FhirClientPool {
     private IGenericClient waitForAvailableClientWithTimeout() {
         long startTime = System.currentTimeMillis();
         long timeoutMs = ACQUISITION_TIMEOUT_SECONDS * 1000;
-        
+
         while (System.currentTimeMillis() - startTime < timeoutMs) {
             // Try to acquire any available client
             for (PooledFhirClient pooledClient : clientPool.values()) {
@@ -131,17 +129,17 @@ public class FhirClientPool {
                     return pooledClient.getClient();
                 }
             }
-            
+
             // Check for clients that have exceeded their lease timeout
             cleanupExpiredClients();
-            
+
             // Try to acquire again after cleanup
             for (PooledFhirClient pooledClient : clientPool.values()) {
                 if (pooledClient.tryAcquire()) {
                     return pooledClient.getClient();
                 }
             }
-            
+
             // Wait before retrying
             try {
                 Thread.sleep(50); // Short sleep before retry
@@ -150,27 +148,35 @@ public class FhirClientPool {
                 throw new RuntimeException("Interrupted while waiting for FHIR client", e);
             }
         }
-        
+
         // Timeout reached - throw exception instead of creating temporary client
         throw new RuntimeException(
-            String.format("Timeout waiting for FHIR client after %d seconds. Pool stats: %s", 
-                ACQUISITION_TIMEOUT_SECONDS, getStats()));
+                String.format(
+                        "Timeout waiting for FHIR client after %d seconds. Pool stats: %s",
+                        ACQUISITION_TIMEOUT_SECONDS, getStats()));
     }
 
     /** Clean up clients that have exceeded their lease timeout */
     private void cleanupExpiredClients() {
         long currentTime = System.currentTimeMillis();
         long leaseTimeoutMs = CLIENT_LEASE_TIMEOUT_SECONDS * 1000;
-        
-        clientPool.entrySet().removeIf(entry -> {
-            PooledFhirClient pooledClient = entry.getValue();
-            if (pooledClient.isInUse() && pooledClient.hasExceededLeaseTimeout(currentTime, leaseTimeoutMs)) {
-                logger.warn("Force releasing client {} due to lease timeout", entry.getKey());
-                pooledClient.forceRelease();
-                return false; // Don't remove from pool, just release it
-            }
-            return false;
-        });
+
+        clientPool
+                .entrySet()
+                .removeIf(
+                        entry -> {
+                            PooledFhirClient pooledClient = entry.getValue();
+                            if (pooledClient.isInUse()
+                                    && pooledClient.hasExceededLeaseTimeout(
+                                            currentTime, leaseTimeoutMs)) {
+                                logger.warn(
+                                        "Force releasing client {} due to lease timeout",
+                                        entry.getKey());
+                                pooledClient.forceRelease();
+                                return false; // Don't remove from pool, just release it
+                            }
+                            return false;
+                        });
     }
 
     /** Get pool statistics for monitoring */

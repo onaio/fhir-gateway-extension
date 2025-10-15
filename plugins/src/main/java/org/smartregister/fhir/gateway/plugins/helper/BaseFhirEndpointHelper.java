@@ -13,9 +13,10 @@ import org.slf4j.LoggerFactory;
 import org.smartregister.fhir.gateway.plugins.Constants;
 import org.smartregister.fhir.gateway.plugins.utils.Utils;
 
+import com.google.fhir.gateway.ExceptionUtil;
+
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.ForbiddenOperationException;
-import com.google.fhir.gateway.ExceptionUtil;
 import jakarta.annotation.Nullable;
 
 /**
@@ -146,8 +147,9 @@ public abstract class BaseFhirEndpointHelper {
         int max = maxLevel != null ? Integer.parseInt(maxLevel) : Constants.DEFAULT_MAX_ADMIN_LEVEL;
 
         if (min > max) {
-            ForbiddenOperationException forbiddenException = new ForbiddenOperationException(
-                    "administrativeLevelMin cannot be greater than administrativeLevelMax");
+            ForbiddenOperationException forbiddenException =
+                    new ForbiddenOperationException(
+                            "administrativeLevelMin cannot be greater than administrativeLevelMax");
             ExceptionUtil.throwRuntimeExceptionAndLog(
                     logger, forbiddenException.getMessage(), forbiddenException);
         }

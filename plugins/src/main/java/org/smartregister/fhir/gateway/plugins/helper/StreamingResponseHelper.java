@@ -67,7 +67,9 @@ public class StreamingResponseHelper {
             printWriter.println(
                     "      \"url\": \""
                             + request.getRequestURL()
-                            + (queryString != null && !queryString.isEmpty() ? "?" + queryString : "")
+                            + (queryString != null && !queryString.isEmpty()
+                                    ? "?" + queryString
+                                    : "")
                             + "\"");
             printWriter.println("    }");
 

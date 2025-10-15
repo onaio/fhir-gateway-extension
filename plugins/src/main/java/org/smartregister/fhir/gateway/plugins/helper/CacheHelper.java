@@ -53,13 +53,13 @@ public enum CacheHelper {
         if (StringUtils.isNotBlank(duration)) {
             return Integer.parseInt(duration);
         }
-        
+
         // Fallback to legacy environment variable for backward compatibility
         duration = System.getenv(OPENSRP_CACHE_EXPIRY_SECONDS_LEGACY);
         if (StringUtils.isNotBlank(duration)) {
             return Integer.parseInt(duration);
         }
-        
+
         return 300; // Increased from 60 to 300 seconds (5 minutes) for better performance
     }
 
@@ -69,13 +69,13 @@ public enum CacheHelper {
         if (StringUtils.isNotBlank(duration)) {
             return "0".equals(duration.trim());
         }
-        
+
         // Fallback to legacy environment variable for backward compatibility
         duration = System.getenv(OPENSRP_CACHE_EXPIRY_SECONDS_LEGACY);
         if (StringUtils.isNotBlank(duration)) {
             return "0".equals(duration.trim());
         }
-        
+
         return false; // Default to not skipping cache
     }
 

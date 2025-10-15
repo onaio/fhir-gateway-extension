@@ -3,6 +3,7 @@ package org.smartregister.fhir.gateway.plugins.endpoint;
 import static org.smartregister.fhir.gateway.plugins.Constants.AUTHORIZATION;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.apache.http.HttpStatus;
 import org.hl7.fhir.r4.model.Bundle;
@@ -53,11 +54,10 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
                     && Constants.LIST.equals(request.getParameter(Constants.MODE))) {
                 // Use streaming for list mode when explicitly requested
                 // Extract location IDs as in the non-streaming path
-                java.util.List<String> locationIds = locationHierarchyEndpointHelper.extractLocationIds(request, verifiedJwt);
+                java.util.List<String> locationIds =
+                        getLocationIdsFromRequest(request, verifiedJwt);
                 locationHierarchyEndpointHelper.streamPaginatedLocations(
-                        request,
-                        response,
-                        locationIds);
+                        request, response, locationIds);
             } else {
                 Bundle resultBundle =
                         locationHierarchyEndpointHelper.handleNonIdentifierRequest(
@@ -76,6 +76,31 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
             response.setContentType("application/json");
             writeUTF8StringToStream(response.getOutputStream(), exception.getMessage());
             response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private List<String> getLocationIdsFromRequest(
+            HttpServletRequest request, DecodedJWT verifiedJwt) {
+        try {
+            // Get location IDs from sync locations parameter if available
+            String syncLocationsParam = request.getParameter(Constants.SYNC_LOCATIONS_SEARCH_PARAM);
+            if (syncLocationsParam != null && !syncLocationsParam.isEmpty()) {
+                return java.util.Arrays.asList(syncLocationsParam.split(","));
+            }
+
+            // If no sync locations, get practitioner's assigned locations
+            String practitionerId = verifiedJwt.getSubject();
+            if (practitionerId != null && !practitionerId.isEmpty()) {
+                // Use the helper to get practitioner's location IDs
+                return locationHierarchyEndpointHelper.getPractitionerLocationIdsByKeycloakId(
+                        practitionerId);
+            }
+
+            // Fallback to empty list if no location IDs can be determined
+            return java.util.Collections.emptyList();
+        } catch (Exception e) {
+            // Log error and return empty list as fallback
+            return java.util.Collections.emptyList();
         }
     }
 }
