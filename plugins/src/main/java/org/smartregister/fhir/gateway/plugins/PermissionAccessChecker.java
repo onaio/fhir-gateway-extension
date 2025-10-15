@@ -61,7 +61,7 @@ public class PermissionAccessChecker implements AccessChecker {
             FhirContext fhirContext,
             DecodedJWT jwt,
             List<String> userRoles,
-            ResourceFinder resourceFinder,
+            org.smartregister.fhir.gateway.plugins.interfaces.ResourceFinder resourceFinder,
             String applicationId) {
         Preconditions.checkNotNull(userRoles);
         Preconditions.checkNotNull(resourceFinder);
