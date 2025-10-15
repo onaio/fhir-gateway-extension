@@ -60,6 +60,8 @@ public enum CacheHelper {
         return StringUtils.isNotBlank(duration) && "0".equals(duration.trim());
     }
 
-    public static final String OPENSRP_CACHE_EXPIRY_SECONDS = "opensrp_cache_timeout_seconds"; // Fixed typo
-    private static final int DEFAULT_CACHE_SIZE = 5_000; // Increased from 1,000 to 5,000 for better performance
+    public static final String OPENSRP_CACHE_EXPIRY_SECONDS =
+            "opensrp_cache_timeout_seconds"; // Fixed typo
+    private static final int DEFAULT_CACHE_SIZE =
+            5_000; // Increased from 1,000 to 5,000 for better performance
 }

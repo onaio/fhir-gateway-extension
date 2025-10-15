@@ -1,15 +1,20 @@
 package org.smartregister.fhir.gateway.plugins.helper;
 
-import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.rest.api.SearchStyleEnum;
-import ca.uhn.fhir.rest.client.api.IGenericClient;
-import ca.uhn.fhir.rest.gclient.IQuery;
-import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
-import ca.uhn.fhir.rest.gclient.TokenClientParam;
-import com.auth0.jwt.interfaces.DecodedJWT;
-import jakarta.annotation.Nullable;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import static org.smartregister.utils.Constants.LOCATION_RESOURCE;
+import static org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Binary;
@@ -28,20 +33,17 @@ import org.smartregister.fhir.gateway.plugins.utils.Utils;
 import org.smartregister.model.location.LocationHierarchy;
 import org.smartregister.model.location.LocationHierarchyTree;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import com.auth0.jwt.interfaces.DecodedJWT;
 
-import static org.smartregister.utils.Constants.LOCATION_RESOURCE;
-import static org.smartregister.utils.Constants.LOCATION_RESOURCE_NOT_FOUND;
+import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.rest.api.SearchStyleEnum;
+import ca.uhn.fhir.rest.client.api.IGenericClient;
+import ca.uhn.fhir.rest.gclient.IQuery;
+import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
+import ca.uhn.fhir.rest.gclient.TokenClientParam;
+import jakarta.annotation.Nullable;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
 
@@ -66,12 +68,22 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
             Boolean filterInventory,
             String lastUpdated) {
         // Create cache key that includes all parameters
-        String cacheKey = String.format("%s_%s_%s_%s_%s",
-                locationId,
-                String.join(",", preFetchAdminLevels != null ? preFetchAdminLevels : java.util.Collections.emptyList()),
-                String.join(",", postFetchAdminLevels != null ? postFetchAdminLevels : java.util.Collections.emptyList()),
-                filterInventory,
-                lastUpdated != null ? lastUpdated : "null");
+        String cacheKey =
+                String.format(
+                        "%s_%s_%s_%s_%s",
+                        locationId,
+                        String.join(
+                                ",",
+                                preFetchAdminLevels != null
+                                        ? preFetchAdminLevels
+                                        : java.util.Collections.emptyList()),
+                        String.join(
+                                ",",
+                                postFetchAdminLevels != null
+                                        ? postFetchAdminLevels
+                                        : java.util.Collections.emptyList()),
+                        filterInventory,
+                        lastUpdated != null ? lastUpdated : "null");
 
         if (CacheHelper.INSTANCE.skipCache()) {
             return getLocationHierarchyCore(
@@ -82,14 +94,16 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                     lastUpdated);
         } else {
             // Use resourceCache for LocationHierarchy objects
-            return (LocationHierarchy) CacheHelper.INSTANCE.resourceCache.get(
-                    cacheKey,
-                    key -> getLocationHierarchyCore(
-                            locationId,
-                            preFetchAdminLevels,
-                            postFetchAdminLevels,
-                            filterInventory,
-                            lastUpdated));
+            return (LocationHierarchy)
+                    CacheHelper.INSTANCE.resourceCache.get(
+                            cacheKey,
+                            key ->
+                                    getLocationHierarchyCore(
+                                            locationId,
+                                            preFetchAdminLevels,
+                                            postFetchAdminLevels,
+                                            filterInventory,
+                                            lastUpdated));
         }
     }
 
@@ -225,9 +239,9 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         if (CacheHelper.INSTANCE.skipCache()) {
             return getLocationById(locationId);
         } else {
-            return (Location) CacheHelper.INSTANCE.resourceCache.get(
-                    "location_" + locationId,
-                    key -> getLocationById(locationId));
+            return (Location)
+                    CacheHelper.INSTANCE.resourceCache.get(
+                            "location_" + locationId, key -> getLocationById(locationId));
         }
     }
 
