@@ -210,7 +210,7 @@ public class PractitionerDetailsEndpointHelperTest {
                 mockStaticPractitionerDetailsEndpointHelper =
                         Mockito.mockStatic(PractitionerDetailsEndpointHelper.class);
         mockStaticPractitionerDetailsEndpointHelper
-                .when(() -> PractitionerDetailsEndpointHelper.getLocationsHierarchy(stringIds))
+                .when(() -> mockPractitionerDetailsEndpointHelper.getLocationsHierarchy(stringIds))
                 .thenReturn(locationHierarchies);
         mockStaticPractitionerDetailsEndpointHelper
                 .when(
@@ -572,14 +572,14 @@ public class PractitionerDetailsEndpointHelperTest {
 
         Mockito.doCallRealMethod()
                 .when(mockPractitionerDetailsEndpointHelper)
-                .getPractitionerLocationIdsByByKeycloakIdCore(practitionerId);
+                .getPractitionerLocationIdsByKeycloakId(practitionerId);
         List<String> resultLocationIds =
-                mockPractitionerDetailsEndpointHelper.getPractitionerLocationIdsByByKeycloakIdCore(
+                mockPractitionerDetailsEndpointHelper.getPractitionerLocationIdsByKeycloakId(
                         practitionerId);
 
         Assert.assertNotNull(resultLocationIds);
-        Assert.assertEquals(1, resultLocationIds.size());
-        Assert.assertEquals("Location/1234", resultLocationIds.get(0));
+        assertEquals(1, resultLocationIds.size());
+        assertEquals("Location/1234", resultLocationIds.get(0));
     }
 
     @Test

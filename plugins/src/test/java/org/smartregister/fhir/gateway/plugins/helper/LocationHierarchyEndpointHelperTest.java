@@ -663,7 +663,7 @@ public class LocationHierarchyEndpointHelperTest {
                         Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
         Mockito.doReturn(Arrays.asList("1", "2", "3", "4"))
                 .when(mockPractitionerDetailsEndpointHelper)
-                .getPractitionerLocationIdsByByKeycloakId(Mockito.any());
+                .getPractitionerLocationIdsByKeycloakId(Mockito.any());
 
         Mockito.doReturn(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
                 .when(mockLocationHierarchyEndpointHelper)

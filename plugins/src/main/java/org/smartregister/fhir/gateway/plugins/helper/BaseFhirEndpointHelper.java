@@ -43,12 +43,7 @@ public abstract class BaseFhirEndpointHelper {
                     getFhirClientForR4()
                             .search()
                             .forResource(Practitioner.class)
-                            .where(
-                                    Practitioner.IDENTIFIER
-                                            .exactly()
-                                            .systemAndIdentifier(
-                                                    Constants.DEFAULT_LOCATION_TAG_URL,
-                                                    keycloakUUID))
+                            .where(Practitioner.IDENTIFIER.exactly().identifier(keycloakUUID))
                             .returnBundle(Bundle.class)
                             .execute();
 
@@ -61,21 +56,12 @@ public abstract class BaseFhirEndpointHelper {
         return null;
     }
 
-    /** Get practitioner identifier from practitioner resource */
-    public String getPractitionerIdentifier(Practitioner practitioner) {
-        String practitionerId = null;
-        if (practitioner != null && practitioner.hasIdentifier()) {
-            practitionerId =
-                    practitioner.getIdentifier().stream()
-                            .filter(
-                                    identifier ->
-                                            Constants.DEFAULT_LOCATION_TAG_URL.equals(
-                                                    identifier.getSystem()))
-                            .findFirst()
-                            .map(identifier -> identifier.getValue())
-                            .orElse(null);
+    /** Get practitioner Id from the practitioner resource */
+    public String getPractitionerId(Practitioner practitioner) {
+        if (practitioner != null && practitioner.hasIdElement()) {
+            return practitioner.getIdElement().getIdPart();
         }
-        return practitionerId;
+        return null;
     }
 
     /** Get location by ID */
@@ -123,7 +109,7 @@ public abstract class BaseFhirEndpointHelper {
         List<String> locationIds = new ArrayList<>();
 
         if (practitioner != null) {
-            String practitionerId = getPractitionerIdentifier(practitioner);
+            String practitionerId = getPractitionerId(practitioner);
             if (CacheHelper.INSTANCE.skipCache()) {
                 locationIds = getPractitionerLocationIdsByKeycloakIdCore(practitionerId);
             } else {

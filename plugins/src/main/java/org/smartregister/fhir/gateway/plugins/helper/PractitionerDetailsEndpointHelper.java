@@ -220,7 +220,7 @@ public class PractitionerDetailsEndpointHelper extends BaseFhirEndpointHelper {
     }
 
     public PractitionerDetails getPractitionerDetailsByPractitioner(Practitioner practitioner) {
-        String practitionerId = getPractitionerIdentifier(practitioner);
+        String practitionerId = getPractitionerId(practitioner);
 
         PractitionerDetails practitionerDetails;
 
@@ -238,28 +238,6 @@ public class PractitionerDetailsEndpointHelper extends BaseFhirEndpointHelper {
         }
 
         return practitionerDetails;
-    }
-
-    public List<String> getPractitionerLocationIdsByByKeycloakId(String keycloakUUID) {
-        logger.info("Searching for Practitioner with user id: " + keycloakUUID);
-        Practitioner practitioner = getPractitionerByIdentifier(keycloakUUID);
-        List<String> locationIds = new ArrayList<>();
-
-        if (practitioner != null) {
-            String practitionerId = getPractitionerIdentifier(practitioner);
-            if (CacheHelper.INSTANCE.skipCache()) {
-                locationIds = getPractitionerLocationIdsByKeycloakIdCore(practitionerId);
-            } else {
-                locationIds =
-                        CacheHelper.INSTANCE.listStringCache.get(
-                                keycloakUUID,
-                                key -> getPractitionerLocationIdsByKeycloakIdCore(practitionerId));
-            }
-
-        } else {
-            logger.error("Practitioner with KC identifier : " + keycloakUUID + " not found");
-        }
-        return locationIds;
     }
 
     @Override

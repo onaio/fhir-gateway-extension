@@ -35,7 +35,6 @@ import org.smartregister.model.location.LocationHierarchy;
 import org.smartregister.model.location.LocationHierarchyTree;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.google.fhir.gateway.ExceptionUtil;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.api.SearchStyleEnum;
@@ -43,13 +42,12 @@ import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.IQuery;
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
 import ca.uhn.fhir.rest.gclient.TokenClientParam;
-import ca.uhn.fhir.rest.server.exceptions.ForbiddenOperationException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import jakarta.annotation.Nullable;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-public class LocationHierarchyEndpointHelper {
+public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
 
     private static final Logger logger =
             LoggerFactory.getLogger(LocationHierarchyEndpointHelper.class);
@@ -58,14 +56,11 @@ public class LocationHierarchyEndpointHelper {
     private final StreamingResponseHelper streamingHelper;
 
     public LocationHierarchyEndpointHelper(IGenericClient fhirClient) {
+        super(fhirClient);
         this.r4FHIRClient = fhirClient;
         this.streamingHelper =
                 new StreamingResponseHelper(
                         FhirContext.forR4Cached().newJsonParser().setPrettyPrint(true));
-    }
-
-    private IGenericClient getFhirClientForR4() {
-        return r4FHIRClient;
     }
 
     public LocationHierarchy getLocationHierarchy(
@@ -377,14 +372,6 @@ public class LocationHierarchyEndpointHelper {
         return Utils.findSyncStrategy(binary);
     }
 
-    public List<String> extractSyncLocations(String syncLocationsParam) {
-        List<String> selectedSyncLocations = new ArrayList<>();
-        if (syncLocationsParam != null && !syncLocationsParam.isEmpty()) {
-            Collections.addAll(selectedSyncLocations, syncLocationsParam.split(","));
-        }
-        return selectedSyncLocations;
-    }
-
     public Bundle getPaginatedLocations(HttpServletRequest request, List<String> locationIds) {
         String pageSize = request.getParameter(Constants.PAGINATION_PAGE_SIZE);
         String pageNumber = request.getParameter(Constants.PAGINATION_PAGE_NUMBER);
@@ -634,45 +621,6 @@ public class LocationHierarchyEndpointHelper {
         return (Bundle) getFhirClientForR4().search().byUrl(queryStringFilter.toString()).execute();
     }
 
-    public List<String> generateAdminLevels(
-            String administrativeLevelMin, String administrativeLevelMax) {
-        List<String> adminLevels = new ArrayList<>();
-
-        int max = Constants.DEFAULT_MAX_ADMIN_LEVEL;
-
-        if (administrativeLevelMin != null && !administrativeLevelMin.isEmpty()) {
-            int min = Integer.parseInt(administrativeLevelMin);
-
-            if (administrativeLevelMax != null && !administrativeLevelMax.isEmpty()) {
-                int maxLevel = Integer.parseInt(administrativeLevelMax);
-                if (min > maxLevel) {
-                    ForbiddenOperationException forbiddenOperationException =
-                            new ForbiddenOperationException(
-                                    "administrativeLevelMin cannot be greater than"
-                                            + " administrativeLevelMax");
-                    ExceptionUtil.throwRuntimeExceptionAndLog(
-                            logger,
-                            forbiddenOperationException.getMessage(),
-                            forbiddenOperationException);
-                }
-                for (int i = min; i <= maxLevel; i++) {
-                    adminLevels.add(String.valueOf(i));
-                }
-            } else {
-                for (int i = min; i <= max; i++) {
-                    adminLevels.add(String.valueOf(i));
-                }
-            }
-        } else if (administrativeLevelMax != null && !administrativeLevelMax.isEmpty()) {
-            int maxLevel = Integer.parseInt(administrativeLevelMax);
-            for (int i = 0; i <= maxLevel; i++) {
-                adminLevels.add(String.valueOf(i));
-            }
-        }
-
-        return adminLevels;
-    }
-
     public List<Location> postFetchFilters(
             List<Location> locations,
             List<String> postFetchAdminLevels,
@@ -727,14 +675,8 @@ public class LocationHierarchyEndpointHelper {
         return listBundle != null && !listBundle.getEntry().isEmpty();
     }
 
-    /**
-     * Get practitioner location IDs by Keycloak ID. This is a simplified implementation that
-     * returns an empty list. In a real implementation, this would query the practitioner's
-     * locations.
-     */
-    public List<String> getPractitionerLocationIdsByKeycloakId(String practitionerId) {
-        // Simplified implementation - returns empty list
-        // In practice, this would query the practitioner's assigned locations
-        return new ArrayList<>();
+    @Override
+    protected List<String> getPractitionerLocationIdsByKeycloakIdCore(String practitionerId) {
+        return List.of();
     }
 }
