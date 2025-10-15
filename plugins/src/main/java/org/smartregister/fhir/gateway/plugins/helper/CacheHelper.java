@@ -48,20 +48,41 @@ public enum CacheHelper {
     }
 
     private int getCacheExpiryDurationInSeconds() {
+        // Check new environment variable first (preferred)
         String duration = System.getenv(OPENSRP_CACHE_EXPIRY_SECONDS);
         if (StringUtils.isNotBlank(duration)) {
             return Integer.parseInt(duration);
         }
+        
+        // Fallback to legacy environment variable for backward compatibility
+        duration = System.getenv(OPENSRP_CACHE_EXPIRY_SECONDS_LEGACY);
+        if (StringUtils.isNotBlank(duration)) {
+            return Integer.parseInt(duration);
+        }
+        
         return 300; // Increased from 60 to 300 seconds (5 minutes) for better performance
     }
 
     public boolean skipCache() {
-        String duration = System.getenv(CacheHelper.OPENSRP_CACHE_EXPIRY_SECONDS);
-        return StringUtils.isNotBlank(duration) && "0".equals(duration.trim());
+        // Check new environment variable first (preferred)
+        String duration = System.getenv(OPENSRP_CACHE_EXPIRY_SECONDS);
+        if (StringUtils.isNotBlank(duration)) {
+            return "0".equals(duration.trim());
+        }
+        
+        // Fallback to legacy environment variable for backward compatibility
+        duration = System.getenv(OPENSRP_CACHE_EXPIRY_SECONDS_LEGACY);
+        if (StringUtils.isNotBlank(duration)) {
+            return "0".equals(duration.trim());
+        }
+        
+        return false; // Default to not skipping cache
     }
 
     public static final String OPENSRP_CACHE_EXPIRY_SECONDS =
             "opensrp_cache_timeout_seconds"; // Fixed typo
+    public static final String OPENSRP_CACHE_EXPIRY_SECONDS_LEGACY =
+            "openrsp_cache_timeout_seconds"; // Legacy name for backward compatibility
     private static final int DEFAULT_CACHE_SIZE =
             5_000; // Increased from 1,000 to 5,000 for better performance
 }

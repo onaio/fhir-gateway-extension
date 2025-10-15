@@ -52,6 +52,7 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
 
     private final IGenericClient r4FHIRClient;
     private final StreamingResponseHelper streamingHelper;
+    private final PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
 
     public LocationHierarchyEndpointHelper(IGenericClient fhirClient) {
         super(fhirClient);
@@ -59,6 +60,7 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         this.streamingHelper =
                 new StreamingResponseHelper(
                         FhirContext.forR4Cached().newJsonParser().setPrettyPrint(true));
+        this.practitionerDetailsEndpointHelper = new PractitionerDetailsEndpointHelper(fhirClient);
     }
 
     public LocationHierarchy getLocationHierarchy(
@@ -857,6 +859,13 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
 
     @Override
     protected List<String> getPractitionerLocationIdsByKeycloakIdCore(String practitionerId) {
-        return List.of();
+        logger.info("Getting practitioner location IDs for practitioner: {}", practitionerId);
+        try {
+            // Delegate to PractitionerDetailsEndpointHelper to get practitioner locations
+            return practitionerDetailsEndpointHelper.getPractitionerLocationIdsByKeycloakId(practitionerId);
+        } catch (Exception e) {
+            logger.error("Error getting practitioner location IDs for practitioner: {}", practitionerId, e);
+            return List.of();
+        }
     }
 }

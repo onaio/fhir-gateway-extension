@@ -2,6 +2,8 @@ package org.smartregister.fhir.gateway.plugins.helper;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
@@ -21,6 +23,8 @@ public class FhirClientPool {
 
     private static final int MAX_POOL_SIZE = 10;
     private static final int MIN_POOL_SIZE = 2;
+    private static final long ACQUISITION_TIMEOUT_SECONDS = 30;
+    private static final long CLIENT_LEASE_TIMEOUT_SECONDS = 300; // 5 minutes
 
     private final ConcurrentMap<String, PooledFhirClient> clientPool = new ConcurrentHashMap<>();
     private final AtomicInteger activeClients = new AtomicInteger(0);
@@ -60,7 +64,7 @@ public class FhirClientPool {
         logger.info("Initialized FHIR client pool with {} clients", MIN_POOL_SIZE);
     }
 
-    /** Get a FHIR client from the pool */
+    /** Get a FHIR client from the pool with bounded wait and timeout */
     public IGenericClient getClient() {
         // If no base URL is configured (e.g., in tests), return a mock client
         if (baseUrl == null || baseUrl.trim().isEmpty()) {
@@ -79,8 +83,8 @@ public class FhirClientPool {
             return createAndAddClient().getClient();
         }
 
-        // Wait for an available client (with timeout in production)
-        return waitForAvailableClient();
+        // Wait for an available client with bounded timeout
+        return waitForAvailableClientWithTimeout();
     }
 
     /** Return a client to the pool */
@@ -115,28 +119,58 @@ public class FhirClientPool {
         return pooledClient;
     }
 
-    /** Wait for an available client (simplified version - in production, use proper timeout) */
-    private IGenericClient waitForAvailableClient() {
-        // Simple retry mechanism - in production, implement proper waiting with timeout
-        int retries = 0;
-        while (retries < 10) {
+    /** Wait for an available client with bounded timeout */
+    private IGenericClient waitForAvailableClientWithTimeout() {
+        long startTime = System.currentTimeMillis();
+        long timeoutMs = ACQUISITION_TIMEOUT_SECONDS * 1000;
+        
+        while (System.currentTimeMillis() - startTime < timeoutMs) {
+            // Try to acquire any available client
             for (PooledFhirClient pooledClient : clientPool.values()) {
                 if (pooledClient.tryAcquire()) {
                     return pooledClient.getClient();
                 }
             }
+            
+            // Check for clients that have exceeded their lease timeout
+            cleanupExpiredClients();
+            
+            // Try to acquire again after cleanup
+            for (PooledFhirClient pooledClient : clientPool.values()) {
+                if (pooledClient.tryAcquire()) {
+                    return pooledClient.getClient();
+                }
+            }
+            
+            // Wait before retrying
             try {
-                Thread.sleep(10); // Short sleep before retry
-                retries++;
+                Thread.sleep(50); // Short sleep before retry
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                break;
+                throw new RuntimeException("Interrupted while waiting for FHIR client", e);
             }
         }
+        
+        // Timeout reached - throw exception instead of creating temporary client
+        throw new RuntimeException(
+            String.format("Timeout waiting for FHIR client after %d seconds. Pool stats: %s", 
+                ACQUISITION_TIMEOUT_SECONDS, getStats()));
+    }
 
-        // Fallback: create a temporary client if pool is exhausted
-        logger.warn("FHIR client pool exhausted, creating temporary client");
-        return fhirContext.newRestfulGenericClient(baseUrl);
+    /** Clean up clients that have exceeded their lease timeout */
+    private void cleanupExpiredClients() {
+        long currentTime = System.currentTimeMillis();
+        long leaseTimeoutMs = CLIENT_LEASE_TIMEOUT_SECONDS * 1000;
+        
+        clientPool.entrySet().removeIf(entry -> {
+            PooledFhirClient pooledClient = entry.getValue();
+            if (pooledClient.isInUse() && pooledClient.hasExceededLeaseTimeout(currentTime, leaseTimeoutMs)) {
+                logger.warn("Force releasing client {} due to lease timeout", entry.getKey());
+                pooledClient.forceRelease();
+                return false; // Don't remove from pool, just release it
+            }
+            return false;
+        });
     }
 
     /** Get pool statistics for monitoring */
@@ -181,10 +215,11 @@ public class FhirClientPool {
         }
     }
 
-    /** Wrapper for pooled FHIR client with acquisition tracking */
+    /** Wrapper for pooled FHIR client with acquisition tracking and lease timeout */
     private static class PooledFhirClient {
         private final IGenericClient client;
         private volatile boolean inUse = false;
+        private volatile long acquiredAt = 0;
 
         public PooledFhirClient(IGenericClient client) {
             this.client = client;
@@ -197,6 +232,7 @@ public class FhirClientPool {
         public synchronized boolean tryAcquire() {
             if (!inUse) {
                 inUse = true;
+                acquiredAt = System.currentTimeMillis();
                 return true;
             }
             return false;
@@ -204,10 +240,24 @@ public class FhirClientPool {
 
         public synchronized void release() {
             inUse = false;
+            acquiredAt = 0;
+        }
+
+        public synchronized void forceRelease() {
+            inUse = false;
+            acquiredAt = 0;
         }
 
         public boolean isAvailable() {
             return !inUse;
+        }
+
+        public boolean isInUse() {
+            return inUse;
+        }
+
+        public boolean hasExceededLeaseTimeout(long currentTime, long leaseTimeoutMs) {
+            return inUse && (currentTime - acquiredAt) > leaseTimeoutMs;
         }
     }
 }
