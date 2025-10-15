@@ -50,13 +50,11 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
     private static final Logger logger =
             LoggerFactory.getLogger(LocationHierarchyEndpointHelper.class);
 
-    private final IGenericClient r4FHIRClient;
     private final StreamingResponseHelper streamingHelper;
     private final PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
 
     public LocationHierarchyEndpointHelper(IGenericClient fhirClient) {
         super(fhirClient);
-        this.r4FHIRClient = fhirClient;
         this.streamingHelper =
                 new StreamingResponseHelper(
                         FhirContext.forR4Cached().newJsonParser().setPrettyPrint(true));
@@ -95,17 +93,16 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                     filterInventory,
                     lastUpdated);
         } else {
-            // Use resourceCache for LocationHierarchy objects
-            return (LocationHierarchy)
-                    CacheHelper.INSTANCE.resourceCache.get(
-                            cacheKey,
-                            key ->
-                                    getLocationHierarchyCore(
-                                            locationId,
-                                            preFetchAdminLevels,
-                                            postFetchAdminLevels,
-                                            filterInventory,
-                                            lastUpdated));
+            // Use locationHierarchyCache for LocationHierarchy objects
+            return CacheHelper.INSTANCE.locationHierarchyCache.get(
+                    cacheKey,
+                    key ->
+                            getLocationHierarchyCore(
+                                    locationId,
+                                    preFetchAdminLevels,
+                                    postFetchAdminLevels,
+                                    filterInventory,
+                                    lastUpdated));
         }
     }
 

@@ -63,11 +63,11 @@ public class StreamingResponseHelper {
             printWriter.println("  \"link\": [");
             printWriter.println("    {");
             printWriter.println("      \"relation\": \"self\",");
+            String queryString = request.getQueryString();
             printWriter.println(
                     "      \"url\": \""
                             + request.getRequestURL()
-                            + "?"
-                            + request.getQueryString()
+                            + (queryString != null && !queryString.isEmpty() ? "?" + queryString : "")
                             + "\"");
             printWriter.println("    }");
 
