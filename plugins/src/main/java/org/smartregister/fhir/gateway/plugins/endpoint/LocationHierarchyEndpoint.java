@@ -52,7 +52,8 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
             } else if (useStreaming
                     && Constants.LIST.equals(request.getParameter(Constants.MODE))) {
                 // Use streaming for list mode when explicitly requested
-                // For now, use a simple approach - in practice, you'd get the actual location IDs
+                // For now, use a simple approach - in practice, you'd get the actual location
+                // IDs
                 locationHierarchyEndpointHelper.streamPaginatedLocations(
                         request,
                         response,

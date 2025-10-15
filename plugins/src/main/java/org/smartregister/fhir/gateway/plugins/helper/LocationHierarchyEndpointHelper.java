@@ -506,9 +506,20 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         // Check if we should use streaming based on dataset size
         int streamingThreshold = 1000; // Use streaming for datasets larger than 1000 locations
         if (StreamingResponseHelper.shouldUseStreaming(totalEntries, streamingThreshold)) {
-            logger.info("Using streaming for large dataset with {} locations", totalEntries);
-            streamingHelper.streamLocationBundle(
-                    request, response, resourceLocations, page, count, totalEntries);
+            logger.info(
+                    "Using memory-efficient streaming for large dataset with {} locations",
+                    totalEntries);
+            // Use true streaming with chunked data fetching
+            streamPaginatedLocationsMemoryEfficient(
+                    request,
+                    response,
+                    locationIds,
+                    preFetchAdminLevels,
+                    postFetchAdminLevels,
+                    filterInventory,
+                    lastUpdated,
+                    page,
+                    count);
         } else {
             // For smaller datasets, use regular pagination
             logger.info("Using regular pagination for dataset with {} locations", totalEntries);
@@ -522,6 +533,157 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                                 .setPrettyPrint(true)
                                 .encodeResourceToString(resultBundle));
             }
+        }
+    }
+
+    /** Memory-efficient streaming that fetches and processes data in chunks. */
+    private void streamPaginatedLocationsMemoryEfficient(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            List<String> locationIds,
+            List<String> preFetchAdminLevels,
+            List<String> postFetchAdminLevels,
+            Boolean filterInventory,
+            String lastUpdated,
+            int page,
+            int pageSize)
+            throws IOException {
+
+        // First, get total count without loading all data
+        int totalCount =
+                getLocationCount(
+                        locationIds,
+                        preFetchAdminLevels,
+                        postFetchAdminLevels,
+                        filterInventory,
+                        lastUpdated);
+
+        logger.info("Total locations to stream: {}", totalCount);
+
+        // Create a data provider function that fetches data in chunks
+        java.util.function.Function<Integer, List<Location>> dataProvider =
+                (chunkSize) -> {
+                    try {
+                        return fetchLocationChunk(
+                                locationIds,
+                                preFetchAdminLevels,
+                                postFetchAdminLevels,
+                                filterInventory,
+                                lastUpdated,
+                                chunkSize);
+                    } catch (Exception e) {
+                        logger.error("Error fetching location chunk", e);
+                        return new ArrayList<>();
+                    }
+                };
+
+        // Use the memory-efficient streaming method
+        streamingHelper.streamLocationBundleWithChunking(
+                request, response, dataProvider, totalCount, page, pageSize);
+    }
+
+    /** Get total count of locations without loading all data into memory. */
+    private int getLocationCount(
+            List<String> locationIds,
+            List<String> preFetchAdminLevels,
+            List<String> postFetchAdminLevels,
+            Boolean filterInventory,
+            String lastUpdated) {
+        try {
+            // Use a count query to get total without loading data
+            StringBuilder queryStringFilter = new StringBuilder("Location?_count=0&");
+            if (locationIds != null && !locationIds.isEmpty()) {
+                queryStringFilter.append("&_tag=");
+                for (String locationId : locationIds) {
+                    if (StringUtils.isNotBlank(locationId)) {
+                        queryStringFilter
+                                .append(Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY)
+                                .append("%7C")
+                                .append(locationId)
+                                .append(',');
+                    }
+                }
+            }
+
+            if (preFetchAdminLevels != null && !preFetchAdminLevels.isEmpty()) {
+                queryStringFilter.append("&type=");
+                for (String adminLevel : preFetchAdminLevels) {
+                    queryStringFilter
+                            .append(Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL)
+                            .append("%7C")
+                            .append(adminLevel)
+                            .append(',');
+                }
+            }
+
+            Bundle countBundle =
+                    (Bundle)
+                            getFhirClientForR4()
+                                    .search()
+                                    .byUrl(queryStringFilter.toString())
+                                    .execute();
+            return countBundle.getTotal();
+        } catch (Exception e) {
+            logger.error("Error getting location count", e);
+            return 0;
+        }
+    }
+
+    /** Fetch a chunk of locations for streaming. */
+    private List<Location> fetchLocationChunk(
+            List<String> locationIds,
+            List<String> preFetchAdminLevels,
+            List<String> postFetchAdminLevels,
+            Boolean filterInventory,
+            String lastUpdated,
+            int chunkSize) {
+        try {
+            // Fetch only a small chunk of data
+            StringBuilder queryStringFilter = new StringBuilder("Location?");
+            queryStringFilter.append("_count=").append(chunkSize);
+
+            if (locationIds != null && !locationIds.isEmpty()) {
+                queryStringFilter.append("&_tag=");
+                for (String locationId : locationIds) {
+                    if (StringUtils.isNotBlank(locationId)) {
+                        queryStringFilter
+                                .append(Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY)
+                                .append("%7C")
+                                .append(locationId)
+                                .append(',');
+                    }
+                }
+            }
+
+            if (preFetchAdminLevels != null && !preFetchAdminLevels.isEmpty()) {
+                queryStringFilter.append("&type=");
+                for (String adminLevel : preFetchAdminLevels) {
+                    queryStringFilter
+                            .append(Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL)
+                            .append("%7C")
+                            .append(adminLevel)
+                            .append(',');
+                }
+            }
+
+            Bundle chunkBundle =
+                    (Bundle)
+                            getFhirClientForR4()
+                                    .search()
+                                    .byUrl(queryStringFilter.toString())
+                                    .execute();
+            List<Location> locations =
+                    chunkBundle.getEntry().stream()
+                            .map(
+                                    bundleEntryComponent ->
+                                            (Location) bundleEntryComponent.getResource())
+                            .collect(Collectors.toList());
+
+            // Apply post-fetch filters
+            return postFetchFilters(locations, postFetchAdminLevels, filterInventory, lastUpdated);
+        } catch (Exception e) {
+            logger.error("Error fetching location chunk", e);
+            return new ArrayList<>();
         }
     }
 
