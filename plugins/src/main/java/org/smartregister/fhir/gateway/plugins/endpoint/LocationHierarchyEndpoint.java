@@ -52,12 +52,12 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
             } else if (useStreaming
                     && Constants.LIST.equals(request.getParameter(Constants.MODE))) {
                 // Use streaming for list mode when explicitly requested
-                // For now, use a simple approach - in practice, you'd get the actual location
-                // IDs
+                // Extract location IDs as in the non-streaming path
+                java.util.List<String> locationIds = locationHierarchyEndpointHelper.extractLocationIds(request, verifiedJwt);
                 locationHierarchyEndpointHelper.streamPaginatedLocations(
                         request,
                         response,
-                        java.util.Collections.singletonList("default-location-id"));
+                        locationIds);
             } else {
                 Bundle resultBundle =
                         locationHierarchyEndpointHelper.handleNonIdentifierRequest(
