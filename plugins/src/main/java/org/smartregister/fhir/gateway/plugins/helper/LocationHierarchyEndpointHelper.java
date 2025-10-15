@@ -93,17 +93,16 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                     filterInventory,
                     lastUpdated);
         } else {
-            // Use resourceCache for LocationHierarchy objects
-            return (LocationHierarchy)
-                    CacheHelper.INSTANCE.resourceCache.get(
-                            cacheKey,
-                            key ->
-                                    getLocationHierarchyCore(
-                                            locationId,
-                                            preFetchAdminLevels,
-                                            postFetchAdminLevels,
-                                            filterInventory,
-                                            lastUpdated));
+            // Use locationHierarchyCache for LocationHierarchy objects
+            return CacheHelper.INSTANCE.locationHierarchyCache.get(
+                    cacheKey,
+                    key ->
+                            getLocationHierarchyCore(
+                                    locationId,
+                                    preFetchAdminLevels,
+                                    postFetchAdminLevels,
+                                    filterInventory,
+                                    lastUpdated));
         }
     }
 
