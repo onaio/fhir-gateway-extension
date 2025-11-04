@@ -70,7 +70,7 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
                         getLocationIdsFromRequest(
                                 request, verifiedJwt, locationHierarchyEndpointHelper);
                 locationHierarchyEndpointHelper.streamPaginatedLocations(
-                        request, response, locationIds);
+                        request, response, locationIds, verifiedJwt);
             } else {
                 Bundle resultBundle =
                         locationHierarchyEndpointHelper.handleNonIdentifierRequest(

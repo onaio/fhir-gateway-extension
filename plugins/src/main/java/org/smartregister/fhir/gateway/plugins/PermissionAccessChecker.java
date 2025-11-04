@@ -321,7 +321,7 @@ public class PermissionAccessChecker implements AccessChecker {
 
         Bundle allDescendantsBundle =
                 (new LocationHierarchyEndpointHelper(Utils.createFhirClientForR4(fhirContext)))
-                        .fetchAllDescendants(locationIds, null);
+                        .fetchAllDescendants(locationIds, null, null);
         return allDescendantsBundle.getEntry().stream()
                 .map(
                         bundleEntryComponent ->

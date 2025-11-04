@@ -112,7 +112,8 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
             List<String> preFetchAdminLevels,
             List<String> postFetchAdminLevels,
             Boolean filterInventory,
-            String lastUpdated) {
+            String lastUpdated,
+            String tagUrl) {
 
         locationIds = locationIds != null ? locationIds : Collections.emptyList();
 
@@ -262,8 +263,9 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                 generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         if (Constants.LIST.equals(mode)) {
             List<String> locationIds = Collections.singletonList(identifier);
+            // Use default location hierarchy tag for identifier-based requests
             return filterModeLineage
-                    ? getPaginatedLocations(request, locationIds)
+                    ? getPaginatedLocations(request, locationIds, null)
                     : getPaginatedLocationsBackwardCompatibility(request, locationIds);
         } else {
             LocationHierarchy locationHierarchy =
@@ -303,15 +305,19 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
             if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)
                     && userRoles.contains(Constants.ROLE_ALL_LOCATIONS)
                     && !selectedSyncLocations.isEmpty()) {
+                // Use Related Entity Location tag for _syncLocations with
+                // RELATED_ENTITY_LOCATION
+                // strategy
+                String tagUrl = getTagUrlForSyncStrategy(syncStrategy);
                 return filterModeLineage
-                        ? getPaginatedLocations(request, selectedSyncLocations)
+                        ? getPaginatedLocations(request, selectedSyncLocations, tagUrl)
                         : getPaginatedLocationsBackwardCompatibility(
                                 request, selectedSyncLocations);
             } else {
                 List<String> locationIds =
                         getPractitionerLocationIdsByKeycloakId(keyCloakPractitionerId);
                 return filterModeLineage
-                        ? getPaginatedLocations(request, locationIds)
+                        ? getPaginatedLocations(request, locationIds, null)
                         : getPaginatedLocationsBackwardCompatibility(
                                 request, selectedSyncLocations);
             }
@@ -320,13 +326,18 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
             if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)
                     && userRoles.contains(Constants.ROLE_ALL_LOCATIONS)
                     && !selectedSyncLocations.isEmpty()) {
+                // Use Related Entity Location tag for _syncLocations with
+                // RELATED_ENTITY_LOCATION
+                // strategy
+                String tagUrl = getTagUrlForSyncStrategy(syncStrategy);
                 List<LocationHierarchy> locationHierarchies =
                         getLocationHierarchies(
                                 selectedSyncLocations,
                                 preFetchAdminLevels,
                                 postFetchAdminLevels,
                                 filterInventory,
-                                null);
+                                null,
+                                tagUrl);
                 List<Resource> resourceList =
                         locationHierarchies != null
                                 ? locationHierarchies.stream()
@@ -343,7 +354,8 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                                 preFetchAdminLevels,
                                 postFetchAdminLevels,
                                 filterInventory,
-                                null);
+                                null,
+                                null); // Use default tag for practitioner locations
                 List<Resource> resourceList =
                         locationHierarchies != null
                                 ? locationHierarchies.stream()
@@ -365,6 +377,47 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                             applicationId, key -> getSyncStrategy(applicationId));
         }
         return syncStrategy;
+    }
+
+    /**
+     * Get the tag URL for a given sync strategy. This is used to determine which tag system to use
+     * when fetching locations.
+     *
+     * @param syncStrategy The sync strategy (e.g., RELATED_ENTITY_LOCATION)
+     * @return The tag URL for the sync strategy, or SYSTEM_LOCATION_HIERARCHY as default
+     */
+    private String getTagUrlForSyncStrategy(String syncStrategy) {
+        if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)) {
+            String envVar = System.getenv(Constants.RELATED_ENTITY_TAG_URL_ENV);
+            return envVar != null && !envVar.isEmpty()
+                    ? envVar
+                    : Constants.DEFAULT_RELATED_ENTITY_TAG_URL;
+        }
+        // Default to location hierarchy tag for other sync strategies
+        return Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY;
+    }
+
+    /**
+     * Check if a tag URL is for RELATED_ENTITY_LOCATION (either default or from environment
+     * variable).
+     *
+     * @param tagUrl The tag URL to check
+     * @return true if the tag URL is for RELATED_ENTITY_LOCATION, false otherwise
+     */
+    private boolean isRelatedEntityLocationTagUrl(String tagUrl) {
+        if (tagUrl == null) {
+            return false;
+        }
+        // Check if it's the default RELATED_ENTITY_LOCATION tag URL
+        if (Constants.DEFAULT_RELATED_ENTITY_TAG_URL.equals(tagUrl)) {
+            return true;
+        }
+        // Check if it's the RELATED_ENTITY_LOCATION tag URL from environment variable
+        String envVar = System.getenv(Constants.RELATED_ENTITY_TAG_URL_ENV);
+        if (envVar != null && !envVar.isEmpty() && envVar.equals(tagUrl)) {
+            return true;
+        }
+        return false;
     }
 
     private String getSyncStrategy(String applicationId) {
@@ -392,7 +445,8 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         return Utils.findSyncStrategy(binary);
     }
 
-    public Bundle getPaginatedLocations(HttpServletRequest request, List<String> locationIds) {
+    public Bundle getPaginatedLocations(
+            HttpServletRequest request, List<String> locationIds, String tagUrl) {
         String pageSize = request.getParameter(Constants.PAGINATION_PAGE_SIZE);
         String pageNumber = request.getParameter(Constants.PAGINATION_PAGE_NUMBER);
         String administrativeLevelMin = request.getParameter(Constants.MIN_ADMIN_LEVEL);
@@ -419,7 +473,8 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         int start = Math.max(0, (page - 1)) * count;
 
         // Fetch all descendants for all location IDs in a single query
-        Bundle allDescendantsBundle = fetchAllDescendants(locationIds, preFetchAdminLevels);
+        // Use provided tag URL or default to location hierarchy tag
+        Bundle allDescendantsBundle = fetchAllDescendants(locationIds, preFetchAdminLevels, tagUrl);
         List<Location> resourceLocations =
                 allDescendantsBundle.getEntry().stream()
                         .map(bundleEntryComponent -> (Location) bundleEntryComponent.getResource())
@@ -473,7 +528,10 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
      * method uses streaming when the dataset is large enough to benefit from it.
      */
     public void streamPaginatedLocations(
-            HttpServletRequest request, HttpServletResponse response, List<String> locationIds)
+            HttpServletRequest request,
+            HttpServletResponse response,
+            List<String> locationIds,
+            DecodedJWT verifiedJwt)
             throws IOException {
 
         String pageSize = request.getParameter(Constants.PAGINATION_PAGE_SIZE);
@@ -498,8 +556,20 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                         ? Integer.parseInt(pageNumber)
                         : Constants.PAGINATION_DEFAULT_PAGE_NUMBER;
 
+        // Determine tag URL based on sync strategy when _syncLocations is used
+        String tagUrl = null;
+        String syncLocationsParam = request.getParameter(Constants.SYNC_LOCATIONS_SEARCH_PARAM);
+        if (syncLocationsParam != null && !syncLocationsParam.isEmpty() && verifiedJwt != null) {
+            // Check if sync strategy is RELATED_ENTITY_LOCATION
+            String applicationId = JwtUtils.getApplicationIdFromJWT(verifiedJwt);
+            if (applicationId != null) {
+                String syncStrategy = getSyncStrategyByAppId(applicationId);
+                tagUrl = getTagUrlForSyncStrategy(syncStrategy);
+            }
+        }
+
         // Fetch all descendants for all location IDs in a single query
-        Bundle allDescendantsBundle = fetchAllDescendants(locationIds, preFetchAdminLevels);
+        Bundle allDescendantsBundle = fetchAllDescendants(locationIds, preFetchAdminLevels, tagUrl);
         List<Location> resourceLocations =
                 allDescendantsBundle.getEntry().stream()
                         .map(bundleEntryComponent -> (Location) bundleEntryComponent.getResource())
@@ -539,11 +609,12 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                     filterInventory,
                     lastUpdated,
                     page,
-                    count);
+                    count,
+                    tagUrl);
         } else {
             // For smaller datasets, use regular pagination
             logger.info("Using regular pagination for dataset with {} locations", totalEntries);
-            Bundle resultBundle = getPaginatedLocations(request, locationIds);
+            Bundle resultBundle = getPaginatedLocations(request, locationIds, tagUrl);
             response.setContentType("application/json");
             response.setCharacterEncoding("UTF-8");
             try (PrintWriter writer = response.getWriter()) {
@@ -566,7 +637,8 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
             Boolean filterInventory,
             String lastUpdated,
             int page,
-            int pageSize)
+            int pageSize,
+            String tagUrl)
             throws IOException {
 
         // First, get total count without loading all data
@@ -576,7 +648,8 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                         preFetchAdminLevels,
                         postFetchAdminLevels,
                         filterInventory,
-                        lastUpdated);
+                        lastUpdated,
+                        tagUrl);
 
         logger.info("Total locations to stream: {}", totalCount);
 
@@ -584,6 +657,7 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         // The provider accepts (offset, limit) where:
         // - offset: the starting position in the result set (0-based)
         // - limit: the maximum number of items to return
+        String finalTagUrl = tagUrl; // Capture for lambda
         java.util.function.BiFunction<Integer, Integer, List<Location>> dataProvider =
                 (offset, limit) -> {
                     try {
@@ -596,7 +670,8 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                                 filterInventory,
                                 lastUpdated,
                                 offset,
-                                limit);
+                                limit,
+                                finalTagUrl);
                     } catch (Exception e) {
                         logger.error(
                                 "Error fetching location chunk with offset={}, limit={}",
@@ -618,15 +693,34 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
             List<String> preFetchAdminLevels,
             List<String> postFetchAdminLevels,
             Boolean filterInventory,
-            String lastUpdated) {
+            String lastUpdated,
+            String tagUrl) {
         try {
             // Use a count query to get total without loading data
             StringBuilder queryStringFilter = new StringBuilder("Location?_count=0");
 
-            // Add location IDs parameter
-            String locationIdsParam =
-                    buildCommaSeparatedValues(
-                            locationIds, Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY);
+            // Use provided tag URL or default to location hierarchy tag
+            String tagSystem =
+                    tagUrl != null ? tagUrl : Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY;
+
+            // When using RELATED_ENTITY_LOCATION tag, also include location-lineage tags
+            // to match locations that have either tag system
+            String locationIdsParam = buildCommaSeparatedValues(locationIds, tagSystem);
+            if (Constants.DEFAULT_RELATED_ENTITY_TAG_URL.equals(tagSystem)) {
+                // Also query for location-lineage tags to match locations with either tag
+                // system
+                String locationLineageParam =
+                        buildCommaSeparatedValues(
+                                locationIds, Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY);
+                if (!locationLineageParam.isEmpty()) {
+                    // Combine both tag systems with comma (OR logic in FHIR)
+                    if (!locationIdsParam.isEmpty()) {
+                        locationIdsParam = locationIdsParam + "," + locationLineageParam;
+                    } else {
+                        locationIdsParam = locationLineageParam;
+                    }
+                }
+            }
             if (!locationIdsParam.isEmpty()) {
                 queryStringFilter.append("&_tag=").append(locationIdsParam);
             }
@@ -687,6 +781,7 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
      * @param lastUpdated Last updated timestamp filter
      * @param offset The starting position in the result set (0-based)
      * @param limit The maximum number of items to return
+     * @param tagUrl The tag URL to use for filtering locations (null for default)
      * @return List of locations matching the criteria
      */
     private List<Location> fetchLocationChunk(
@@ -696,7 +791,8 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
             Boolean filterInventory,
             String lastUpdated,
             int offset,
-            int limit) {
+            int limit,
+            String tagUrl) {
         try {
             // Build FHIR query with offset-based pagination
             // _offset: starting position in the result set (0-based)
@@ -705,10 +801,28 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
             queryStringFilter.append("_count=").append(limit);
             queryStringFilter.append("&_offset=").append(offset);
 
-            // Add location IDs parameter
-            String locationIdsParam =
-                    buildCommaSeparatedValues(
-                            locationIds, Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY);
+            // Use provided tag URL or default to location hierarchy tag
+            String tagSystem =
+                    tagUrl != null ? tagUrl : Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY;
+
+            // When using RELATED_ENTITY_LOCATION tag, also include location-lineage tags
+            // to match locations that have either tag system
+            String locationIdsParam = buildCommaSeparatedValues(locationIds, tagSystem);
+            if (Constants.DEFAULT_RELATED_ENTITY_TAG_URL.equals(tagSystem)) {
+                // Also query for location-lineage tags to match locations with either tag
+                // system
+                String locationLineageParam =
+                        buildCommaSeparatedValues(
+                                locationIds, Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY);
+                if (!locationLineageParam.isEmpty()) {
+                    // Combine both tag systems with comma (OR logic in FHIR)
+                    if (!locationIdsParam.isEmpty()) {
+                        locationIdsParam = locationIdsParam + "," + locationLineageParam;
+                    } else {
+                        locationIdsParam = locationLineageParam;
+                    }
+                }
+            }
             if (!locationIdsParam.isEmpty()) {
                 queryStringFilter.append("&_tag=").append(locationIdsParam);
             }
@@ -809,13 +923,31 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         return resultBundle;
     }
 
-    public Bundle fetchAllDescendants(List<String> locationIds, List<String> preFetchAdminLevels) {
+    public Bundle fetchAllDescendants(
+            List<String> locationIds, List<String> preFetchAdminLevels, String tagUrl) {
         StringBuilder queryStringFilter = new StringBuilder("Location?");
 
-        // Add location IDs parameter
-        String locationIdsParam =
-                buildCommaSeparatedValues(
-                        locationIds, Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY);
+        // Use provided tag URL or default to location hierarchy tag
+        String tagSystem = tagUrl != null ? tagUrl : Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY;
+
+        // When using RELATED_ENTITY_LOCATION tag, also include location-lineage tags
+        // to match locations that have either tag system
+        String locationIdsParam = buildCommaSeparatedValues(locationIds, tagSystem);
+        if (isRelatedEntityLocationTagUrl(tagSystem)) {
+            // Also query for location-lineage tags to match locations with either tag
+            // system
+            String locationLineageParam =
+                    buildCommaSeparatedValues(
+                            locationIds, Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY);
+            if (!locationLineageParam.isEmpty()) {
+                // Combine both tag systems with comma (OR logic in FHIR)
+                if (!locationIdsParam.isEmpty()) {
+                    locationIdsParam = locationIdsParam + "," + locationLineageParam;
+                } else {
+                    locationIdsParam = locationLineageParam;
+                }
+            }
+        }
         if (!locationIdsParam.isEmpty()) {
             queryStringFilter.append("_tag=").append(locationIdsParam);
         }
