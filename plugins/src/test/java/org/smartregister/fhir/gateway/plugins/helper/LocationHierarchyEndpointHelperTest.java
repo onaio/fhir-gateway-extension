@@ -1324,4 +1324,280 @@ public class LocationHierarchyEndpointHelperTest {
             Assert.assertEquals(Constants.DEFAULT_RELATED_ENTITY_TAG_URL, capturedTagUrl);
         }
     }
+
+    @Test
+    public void testFetchAllDescendantsWithEmptyLocationIds() {
+        IUntypedQuery<IBaseBundle> untypedQueryMock = mock(IUntypedQuery.class);
+        IQuery<IBaseBundle> queryMock = mock(IQuery.class);
+
+        Bundle secondBundleMock = new Bundle();
+        secondBundleMock.setEntry(new ArrayList<>());
+
+        Mockito.doReturn(untypedQueryMock).when(client).search();
+        Mockito.doReturn(queryMock).when(untypedQueryMock).byUrl(anyString());
+        Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
+
+        Bundle result =
+                locationHierarchyEndpointHelper.fetchAllDescendants(
+                        Collections.emptyList(), List.of("4"), null);
+
+        ArgumentCaptor<String> argCaptor = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(untypedQueryMock).byUrl(argCaptor.capture());
+        String queryString = argCaptor.getValue();
+
+        // Should only contain admin level filter, no tag filter
+        Assert.assertTrue(queryString.contains("type="));
+        Assert.assertFalse(queryString.contains("_tag="));
+    }
+
+    @Test
+    public void testFetchAllDescendantsWithNullTagUrlUsesLocationLineageTag() {
+        IUntypedQuery<IBaseBundle> untypedQueryMock = mock(IUntypedQuery.class);
+        IQuery<IBaseBundle> queryMock = mock(IQuery.class);
+
+        Bundle secondBundleMock = new Bundle();
+        secondBundleMock.setEntry(new ArrayList<>());
+
+        Mockito.doReturn(untypedQueryMock).when(client).search();
+        Mockito.doReturn(queryMock).when(untypedQueryMock).byUrl(anyString());
+        Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
+
+        locationHierarchyEndpointHelper.fetchAllDescendants(
+                List.of("test-location-id"), List.of("4"), null);
+
+        ArgumentCaptor<String> argCaptor = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(untypedQueryMock).byUrl(argCaptor.capture());
+        String result = argCaptor.getValue();
+
+        Assert.assertNotNull(result);
+        // Should use location-lineage tag when tagUrl is null
+        Assert.assertTrue(result.contains(Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY));
+        Assert.assertFalse(result.contains(Constants.DEFAULT_RELATED_ENTITY_TAG_URL));
+    }
+
+    @Test
+    public void testFetchLocationChunkUsesBothTagSystemsForRelatedEntityLocation() {
+        IUntypedQuery<IBaseBundle> untypedQueryMock = mock(IUntypedQuery.class);
+        IQuery<IBaseBundle> queryMock = mock(IQuery.class);
+
+        Bundle bundleMock = new Bundle();
+        bundleMock.setEntry(new ArrayList<>());
+
+        Mockito.doReturn(untypedQueryMock).when(client).search();
+        Mockito.doReturn(queryMock).when(untypedQueryMock).byUrl(anyString());
+        Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
+        Mockito.doReturn(bundleMock).when(queryMock).execute();
+
+        LocationHierarchyEndpointHelper spyHelper = Mockito.spy(locationHierarchyEndpointHelper);
+
+        // Use reflection to call private method
+        try {
+            java.lang.reflect.Method method =
+                    LocationHierarchyEndpointHelper.class.getDeclaredMethod(
+                            "fetchLocationChunk",
+                            List.class,
+                            List.class,
+                            List.class,
+                            Boolean.class,
+                            String.class,
+                            int.class,
+                            int.class,
+                            String.class);
+            method.setAccessible(true);
+            method.invoke(
+                    spyHelper,
+                    List.of("test-location-id"),
+                    List.of("4"),
+                    Collections.emptyList(),
+                    false,
+                    null,
+                    0,
+                    10,
+                    Constants.DEFAULT_RELATED_ENTITY_TAG_URL);
+
+            ArgumentCaptor<String> argCaptor = ArgumentCaptor.forClass(String.class);
+            Mockito.verify(untypedQueryMock).byUrl(argCaptor.capture());
+            String result = argCaptor.getValue();
+
+            Assert.assertNotNull(result);
+            // Should contain both tag systems
+            Assert.assertTrue(result.contains(Constants.DEFAULT_RELATED_ENTITY_TAG_URL));
+            Assert.assertTrue(result.contains(Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY));
+            // Should contain both tag parameters with location ID
+            Assert.assertTrue(
+                    result.contains(
+                            Constants.DEFAULT_RELATED_ENTITY_TAG_URL + "%7Ctest-location-id"));
+            Assert.assertTrue(
+                    result.contains(
+                            Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY + "%7Ctest-location-id"));
+        } catch (Exception e) {
+            Assert.fail("Failed to test fetchLocationChunk: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testGetLocationCountUsesBothTagSystemsForRelatedEntityLocation() {
+        IUntypedQuery<IBaseBundle> untypedQueryMock = mock(IUntypedQuery.class);
+        IQuery<IBaseBundle> queryMock = mock(IQuery.class);
+
+        Bundle bundleMock = new Bundle();
+        bundleMock.setTotal(5);
+
+        Mockito.doReturn(untypedQueryMock).when(client).search();
+        Mockito.doReturn(queryMock).when(untypedQueryMock).byUrl(anyString());
+        Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
+        Mockito.doReturn(bundleMock).when(queryMock).execute();
+
+        LocationHierarchyEndpointHelper spyHelper = Mockito.spy(locationHierarchyEndpointHelper);
+
+        // Use reflection to call private method
+        try {
+            java.lang.reflect.Method method =
+                    LocationHierarchyEndpointHelper.class.getDeclaredMethod(
+                            "getLocationCount",
+                            List.class,
+                            List.class,
+                            List.class,
+                            Boolean.class,
+                            String.class,
+                            String.class);
+            method.setAccessible(true);
+            int count =
+                    (int)
+                            method.invoke(
+                                    spyHelper,
+                                    List.of("test-location-id"),
+                                    List.of("4"),
+                                    Collections.emptyList(),
+                                    false,
+                                    null,
+                                    Constants.DEFAULT_RELATED_ENTITY_TAG_URL);
+
+            ArgumentCaptor<String> argCaptor = ArgumentCaptor.forClass(String.class);
+            Mockito.verify(untypedQueryMock).byUrl(argCaptor.capture());
+            String result = argCaptor.getValue();
+
+            Assert.assertNotNull(result);
+            // Should contain both tag systems
+            Assert.assertTrue(result.contains(Constants.DEFAULT_RELATED_ENTITY_TAG_URL));
+            Assert.assertTrue(result.contains(Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY));
+            // Should contain _count=0 for count query
+            Assert.assertTrue(result.contains("_count=0"));
+        } catch (Exception e) {
+            Assert.fail("Failed to test getLocationCount: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testFetchAllDescendantsWithMultipleLocationIds() {
+        IUntypedQuery<IBaseBundle> untypedQueryMock = mock(IUntypedQuery.class);
+        IQuery<IBaseBundle> queryMock = mock(IQuery.class);
+
+        Bundle secondBundleMock = new Bundle();
+        secondBundleMock.setEntry(new ArrayList<>());
+
+        Mockito.doReturn(untypedQueryMock).when(client).search();
+        Mockito.doReturn(queryMock).when(untypedQueryMock).byUrl(anyString());
+        Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
+
+        List<String> locationIds = List.of("loc1", "loc2", "loc3");
+        locationHierarchyEndpointHelper.fetchAllDescendants(
+                locationIds, List.of("4"), Constants.DEFAULT_RELATED_ENTITY_TAG_URL);
+
+        ArgumentCaptor<String> argCaptor = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(untypedQueryMock).byUrl(argCaptor.capture());
+        String result = argCaptor.getValue();
+
+        Assert.assertNotNull(result);
+        // Should contain all location IDs for both tag systems
+        for (String locationId : locationIds) {
+            String relatedEntityTagPattern =
+                    Constants.DEFAULT_RELATED_ENTITY_TAG_URL + "%7C" + locationId;
+            String locationLineageTagPattern =
+                    Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY + "%7C" + locationId;
+
+            Assert.assertTrue(
+                    "Should contain RELATED_ENTITY_LOCATION tag for " + locationId,
+                    result.contains(relatedEntityTagPattern));
+            Assert.assertTrue(
+                    "Should contain location-lineage tag for " + locationId,
+                    result.contains(locationLineageTagPattern));
+        }
+    }
+
+    @Test
+    public void testBuildCommaSeparatedValuesWithEmptyList() {
+        LocationHierarchyEndpointHelper spyHelper = Mockito.spy(locationHierarchyEndpointHelper);
+
+        try {
+            java.lang.reflect.Method method =
+                    LocationHierarchyEndpointHelper.class.getDeclaredMethod(
+                            "buildCommaSeparatedValues", List.class, String.class);
+            method.setAccessible(true);
+            String result = (String) method.invoke(spyHelper, Collections.emptyList(), "prefix");
+
+            Assert.assertEquals("", result);
+        } catch (Exception e) {
+            Assert.fail("Failed to test buildCommaSeparatedValues: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testBuildCommaSeparatedValuesWithNullList() {
+        LocationHierarchyEndpointHelper spyHelper = Mockito.spy(locationHierarchyEndpointHelper);
+
+        try {
+            java.lang.reflect.Method method =
+                    LocationHierarchyEndpointHelper.class.getDeclaredMethod(
+                            "buildCommaSeparatedValues", List.class, String.class);
+            method.setAccessible(true);
+            String result = (String) method.invoke(spyHelper, null, "prefix");
+
+            Assert.assertEquals("", result);
+        } catch (Exception e) {
+            Assert.fail("Failed to test buildCommaSeparatedValues with null: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testBuildCommaSeparatedValuesWithBlankValues() {
+        LocationHierarchyEndpointHelper spyHelper = Mockito.spy(locationHierarchyEndpointHelper);
+
+        try {
+            java.lang.reflect.Method method =
+                    LocationHierarchyEndpointHelper.class.getDeclaredMethod(
+                            "buildCommaSeparatedValues", List.class, String.class);
+            method.setAccessible(true);
+            String result =
+                    (String)
+                            method.invoke(
+                                    spyHelper,
+                                    Arrays.asList("valid", "", "  ", null, "valid2"),
+                                    "prefix");
+
+            // Should only contain non-blank values
+            Assert.assertTrue(result.contains("prefix%7Cvalid"));
+            Assert.assertTrue(result.contains("prefix%7Cvalid2"));
+            // Should not contain just "prefix%7C" without a value (but can contain it as part of
+            // valid values)
+            // Check that it doesn't have a standalone "prefix%7C" followed by comma or end of
+            // string
+            Assert.assertFalse(
+                    "Result should not contain standalone prefix%7C",
+                    result.matches(".*prefix%7C[,]?.*") && !result.contains("prefix%7Cvalid"));
+            // Should not have trailing comma
+            Assert.assertFalse(result.endsWith(","));
+            // Verify the exact format: should be comma-separated values
+            String[] parts = result.split(",");
+            Assert.assertEquals("Should have exactly 2 valid values", 2, parts.length);
+            Assert.assertTrue(
+                    "First part should be prefix%7Cvalid", parts[0].equals("prefix%7Cvalid"));
+            Assert.assertTrue(
+                    "Second part should be prefix%7Cvalid2", parts[1].equals("prefix%7Cvalid2"));
+        } catch (Exception e) {
+            Assert.fail(
+                    "Failed to test buildCommaSeparatedValues with blank values: "
+                            + e.getMessage());
+        }
+    }
 }
