@@ -175,37 +175,24 @@ public class StreamingResponseHelper {
             int pageSize)
             throws IOException {
 
-        int start = (page - 1) * pageSize;
-        int end = start + pageSize;
+        int offset = (page - 1) * pageSize;
+        int limit = pageSize;
 
+        // Fetch the page using offset and limit
+        List<Location> locations = locationProvider.apply(offset, limit);
+        if (locations == null || locations.isEmpty()) {
+            return;
+        }
+
+        // Stream all locations from the page
         boolean first = true;
-        int currentIndex = start;
-
-        while (currentIndex < end) {
-            // Calculate remaining items to fetch
-            int remainingItems = end - currentIndex;
-            int chunkSize = Math.min(remainingItems, getOptimalChunkSize(remainingItems));
-
-            // Get chunk of data using offset and limit
-            List<Location> chunk = locationProvider.apply(currentIndex, chunkSize);
-            if (chunk == null || chunk.isEmpty()) {
-                break;
+        for (Location location : locations) {
+            if (!first) {
+                printWriter.println(",");
             }
+            first = false;
 
-            // Stream locations from this chunk
-            for (Location location : chunk) {
-                if (currentIndex >= end) {
-                    break;
-                }
-
-                if (!first) {
-                    printWriter.println(",");
-                }
-                first = false;
-
-                streamLocationEntry(printWriter, location);
-                currentIndex++;
-            }
+            streamLocationEntry(printWriter, location);
         }
     }
 

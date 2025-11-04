@@ -7,6 +7,8 @@ import java.util.List;
 
 import org.apache.http.HttpStatus;
 import org.hl7.fhir.r4.model.Bundle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.smartregister.fhir.gateway.plugins.Constants;
 import org.smartregister.fhir.gateway.plugins.helper.LocationHierarchyEndpointHelper;
 import org.smartregister.fhir.gateway.plugins.utils.RestUtils;
@@ -21,8 +23,9 @@ import jakarta.servlet.http.HttpServletResponse;
 
 @WebServlet("/LocationHierarchy")
 public class LocationHierarchyEndpoint extends BaseEndpoint {
+    private static final Logger logger = LoggerFactory.getLogger(LocationHierarchyEndpoint.class);
 
-    public LocationHierarchyEndpoint() throws IOException {
+    public LocationHierarchyEndpoint() {
         // No need to acquire client in constructor - will acquire per request
     }
 
@@ -32,9 +35,16 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
         RestUtils.addCorsHeaders(response);
 
         // Acquire client from pool for this request
+        // Note: The client must be returned in the finally block to prevent pool
+        // exhaustion
         IGenericClient fhirClient = fhirClientPool.getClient();
         try {
             // Create helper with the acquired client
+            // The helper and its nested helpers store references to the client, but they
+            // are
+            // scoped to this request and will be garbage collected after the method
+            // returns.
+            // The client itself is returned to the pool in the finally block.
             LocationHierarchyEndpointHelper locationHierarchyEndpointHelper =
                     new LocationHierarchyEndpointHelper(fhirClient);
 
@@ -108,6 +118,7 @@ public class LocationHierarchyEndpoint extends BaseEndpoint {
             return java.util.Collections.emptyList();
         } catch (Exception e) {
             // Log error and return empty list as fallback
+            logger.warn("Failed to resolve location IDs from request", e);
             return java.util.Collections.emptyList();
         }
     }

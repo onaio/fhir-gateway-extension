@@ -580,10 +580,15 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
 
         logger.info("Total locations to stream: {}", totalCount);
 
-        // Create a data provider function that fetches data in chunks
+        // Create a data provider function that fetches data using offset and limit
+        // The provider accepts (offset, limit) where:
+        // - offset: the starting position in the result set (0-based)
+        // - limit: the maximum number of items to return
         java.util.function.BiFunction<Integer, Integer, List<Location>> dataProvider =
                 (offset, limit) -> {
                     try {
+                        logger.debug(
+                                "Fetching location chunk with offset={}, limit={}", offset, limit);
                         return fetchLocationChunk(
                                 locationIds,
                                 preFetchAdminLevels,
@@ -593,7 +598,11 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                                 offset,
                                 limit);
                     } catch (Exception e) {
-                        logger.error("Error fetching location chunk", e);
+                        logger.error(
+                                "Error fetching location chunk with offset={}, limit={}",
+                                offset,
+                                limit,
+                                e);
                         return new ArrayList<>();
                     }
                 };
@@ -643,27 +652,43 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         }
     }
 
-    /** Helper method to build comma-separated parameter values without trailing commas */
+    /**
+     * Helper method to build comma-separated parameter values without trailing commas. Collects
+     * non-blank values, applies prefix encoding, and joins with commas.
+     *
+     * @param values List of values to join
+     * @param prefix Prefix to apply to each value (will be URL-encoded with %7C)
+     * @return Comma-separated string of prefixed values, or empty string if no valid values
+     */
     private String buildCommaSeparatedValues(List<String> values, String prefix) {
         if (values == null || values.isEmpty()) {
             return "";
         }
 
-        StringBuilder result = new StringBuilder();
-        boolean first = true;
+        // Collect non-blank values with prefix encoding
+        List<String> encodedValues = new ArrayList<>();
         for (String value : values) {
             if (StringUtils.isNotBlank(value)) {
-                if (!first) {
-                    result.append(',');
-                }
-                result.append(prefix).append("%7C").append(value);
-                first = false;
+                encodedValues.add(prefix + "%7C" + value);
             }
         }
-        return result.toString();
+
+        // Join collected values with commas (no trailing comma)
+        return encodedValues.isEmpty() ? "" : String.join(",", encodedValues);
     }
 
-    /** Fetch a chunk of locations for streaming. */
+    /**
+     * Fetch a chunk of locations for streaming using offset-based pagination.
+     *
+     * @param locationIds List of location IDs to filter by
+     * @param preFetchAdminLevels Admin levels to filter by in the query
+     * @param postFetchAdminLevels Admin levels to filter by after fetching
+     * @param filterInventory Whether to filter by inventory
+     * @param lastUpdated Last updated timestamp filter
+     * @param offset The starting position in the result set (0-based)
+     * @param limit The maximum number of items to return
+     * @return List of locations matching the criteria
+     */
     private List<Location> fetchLocationChunk(
             List<String> locationIds,
             List<String> preFetchAdminLevels,
@@ -673,7 +698,9 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
             int offset,
             int limit) {
         try {
-            // Fetch only a small chunk of data with proper offset and limit
+            // Build FHIR query with offset-based pagination
+            // _offset: starting position in the result set (0-based)
+            // _count: maximum number of results to return
             StringBuilder queryStringFilter = new StringBuilder("Location?");
             queryStringFilter.append("_count=").append(limit);
             queryStringFilter.append("&_offset=").append(offset);
@@ -864,16 +891,10 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
     @Override
     protected List<String> getPractitionerLocationIdsByKeycloakIdCore(String practitionerId) {
         logger.info("Getting practitioner location IDs for practitioner: {}", practitionerId);
-        try {
-            // Delegate to PractitionerDetailsEndpointHelper to get practitioner locations
-            return practitionerDetailsEndpointHelper.getPractitionerLocationIdsByKeycloakId(
-                    practitionerId);
-        } catch (Exception e) {
-            logger.error(
-                    "Error getting practitioner location IDs for practitioner: {}",
-                    practitionerId,
-                    e);
-            return List.of();
-        }
+        // Delegate to PractitionerDetailsEndpointHelper to get practitioner locations
+        // This uses the core implementation which takes a practitioner ID (FHIR
+        // resource ID)
+        return practitionerDetailsEndpointHelper.getPractitionerLocationIdsByKeycloakIdCore(
+                practitionerId);
     }
 }

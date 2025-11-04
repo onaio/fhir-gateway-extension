@@ -21,7 +21,7 @@ import jakarta.servlet.http.HttpServletResponse;
 public class PractitionerDetailEndpoint extends BaseEndpoint {
     private final PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
 
-    public PractitionerDetailEndpoint() throws IOException {
+    public PractitionerDetailEndpoint() {
         this.practitionerDetailsEndpointHelper =
                 new PractitionerDetailsEndpointHelper(
                         fhirR4Context.newRestfulGenericClient(

@@ -99,7 +99,8 @@ public class PractitionerDetailsEndpointHelperTest {
         PractitionerDetails practitionerDetails =
                 mockHelper.getPractitionerDetailsByKeycloakId("keycloak-uuid-1234-1234");
 
-        // The practitioner should be found and FhirPractitionerDetails should not be null
+        // The practitioner should be found and FhirPractitionerDetails should not be
+        // null
         assertNotNull("PractitionerDetails should not be null", practitionerDetails);
         assertNotNull(
                 "FhirPractitionerDetails should not be null",
@@ -233,13 +234,13 @@ public class PractitionerDetailsEndpointHelperTest {
         Mockito.doReturn(stringIds)
                 .when(mockPractitionerDetailsEndpointHelper)
                 .getLocationIdsByOrganizationAffiliations(organizationAffiliations);
+        Mockito.doReturn(locationHierarchies)
+                .when(mockPractitionerDetailsEndpointHelper)
+                .getLocationsHierarchy(stringIds);
 
         MockedStatic<PractitionerDetailsEndpointHelper>
                 mockStaticPractitionerDetailsEndpointHelper =
                         Mockito.mockStatic(PractitionerDetailsEndpointHelper.class);
-        mockStaticPractitionerDetailsEndpointHelper
-                .when(() -> mockPractitionerDetailsEndpointHelper.getLocationsHierarchy(stringIds))
-                .thenReturn(locationHierarchies);
         mockStaticPractitionerDetailsEndpointHelper
                 .when(
                         () ->
