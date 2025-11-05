@@ -138,10 +138,8 @@ public abstract class BaseFhirEndpointHelper {
     public List<String> generateAdminLevels(String minLevel, String maxLevel) {
         List<String> adminLevels = new ArrayList<>();
 
-        // If both parameters are null, return empty list (original behavior)
-        if (minLevel == null && maxLevel == null) {
-            return adminLevels;
-        }
+        // If both parameters are null, use default min and max admin levels
+        // (handled by the logic below)
 
         int min;
         int max;
