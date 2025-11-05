@@ -143,8 +143,28 @@ public abstract class BaseFhirEndpointHelper {
             return adminLevels;
         }
 
-        int min = minLevel != null ? Integer.parseInt(minLevel) : Constants.DEFAULT_MIN_ADMIN_LEVEL;
-        int max = maxLevel != null ? Integer.parseInt(maxLevel) : Constants.DEFAULT_MAX_ADMIN_LEVEL;
+        int min;
+        int max;
+        try {
+            min = minLevel != null ? Integer.parseInt(minLevel) : Constants.DEFAULT_MIN_ADMIN_LEVEL;
+        } catch (NumberFormatException e) {
+            ForbiddenOperationException forbiddenException =
+                    new ForbiddenOperationException(
+                            "Invalid value for administrativeLevelMin: " + minLevel);
+            ExceptionUtil.throwRuntimeExceptionAndLog(
+                    logger, forbiddenException.getMessage(), forbiddenException);
+            return adminLevels; // Defensive: unreachable, but required for compilation
+        }
+        try {
+            max = maxLevel != null ? Integer.parseInt(maxLevel) : Constants.DEFAULT_MAX_ADMIN_LEVEL;
+        } catch (NumberFormatException e) {
+            ForbiddenOperationException forbiddenException =
+                    new ForbiddenOperationException(
+                            "Invalid value for administrativeLevelMax: " + maxLevel);
+            ExceptionUtil.throwRuntimeExceptionAndLog(
+                    logger, forbiddenException.getMessage(), forbiddenException);
+            return adminLevels; // Defensive: unreachable, but required for compilation
+        }
 
         if (min > max) {
             ForbiddenOperationException forbiddenException =
