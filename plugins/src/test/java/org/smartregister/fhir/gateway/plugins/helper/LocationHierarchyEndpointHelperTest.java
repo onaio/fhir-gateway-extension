@@ -385,6 +385,13 @@ public class LocationHierarchyEndpointHelperTest {
     public void testGenerateAdminLevelsWithNoMinAndMax() {
         List<String> adminLevels = locationHierarchyEndpointHelper.generateAdminLevels(null, null);
         List<String> expectedLevels = new ArrayList<>();
+        // When both min and max are null, defaults to DEFAULT_MIN_ADMIN_LEVEL (0) to
+        // DEFAULT_MAX_ADMIN_LEVEL (10)
+        for (int i = Constants.DEFAULT_MIN_ADMIN_LEVEL;
+                i <= Constants.DEFAULT_MAX_ADMIN_LEVEL;
+                i++) {
+            expectedLevels.add(String.valueOf(i));
+        }
         assertEquals(expectedLevels, adminLevels);
     }
 
