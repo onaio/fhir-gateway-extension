@@ -18,6 +18,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.smartregister.fhir.gateway.plugins.Constants;
 import org.smartregister.fhir.gateway.plugins.helper.PractitionerDetailsEndpointHelper;
 import org.smartregister.fhir.gateway.plugins.utils.RestUtils;
+import org.smartregister.model.practitioner.FhirPractitionerDetails;
 import org.smartregister.model.practitioner.PractitionerDetails;
 
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
@@ -31,7 +32,6 @@ public class PractitionerDetailEndpointTest {
     @Mock private HttpServletRequest request;
     @Mock private HttpServletResponse response;
     @Mock private PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
-    @Mock private PractitionerDetails practitionerDetails;
 
     @Before
     public void setUp() throws Exception {
@@ -51,6 +51,24 @@ public class PractitionerDetailEndpointTest {
                         "practitionerDetailsEndpointHelper");
         field.setAccessible(true);
         field.set(endpoint, practitionerDetailsEndpointHelper);
+    }
+
+    /** Helper method to set up token verifier and mock parser for tests */
+    private void setupTokenVerifierAndParser() throws Exception {
+        java.lang.reflect.Field tokenVerifierField =
+                BaseEndpoint.class.getDeclaredField("tokenVerifier");
+        tokenVerifierField.setAccessible(true);
+        com.google.fhir.gateway.TokenVerifier mockTokenVerifier =
+                mock(com.google.fhir.gateway.TokenVerifier.class);
+        tokenVerifierField.set(endpoint, mockTokenVerifier);
+
+        // Mock the fhirR4JsonParser to avoid serialization issues
+        java.lang.reflect.Field parserField =
+                BaseEndpoint.class.getDeclaredField("fhirR4JsonParser");
+        parserField.setAccessible(true);
+        ca.uhn.fhir.parser.IParser mockParser = mock(ca.uhn.fhir.parser.IParser.class);
+        when(mockParser.encodeResourceToString(any())).thenReturn("{\"resourceType\":\"Bundle\"}");
+        parserField.set(endpoint, mockParser);
     }
 
     @Test
@@ -83,7 +101,9 @@ public class PractitionerDetailEndpointTest {
                     .thenReturn(new StringBuffer("http://test:8080/PractitionerDetail"));
             when(request.getQueryString()).thenReturn("keycloakUuid=" + keycloakUuid);
 
-            when(practitionerDetails.getId()).thenReturn(practitionerId);
+            // Create a real PractitionerDetails object instead of a mock
+            // so it can be properly serialized by fhirR4JsonParser
+            PractitionerDetails practitionerDetails = createPractitionerDetails(practitionerId);
             when(practitionerDetailsEndpointHelper.getPractitionerDetailsByKeycloakId(keycloakUuid))
                     .thenReturn(practitionerDetails);
 
@@ -94,23 +114,8 @@ public class PractitionerDetailEndpointTest {
                     .when(() -> RestUtils.checkAuthentication(any(), any()))
                     .thenAnswer(invocation -> null);
 
-            // Use reflection to set the helper
-            try {
-                java.lang.reflect.Field field =
-                        PractitionerDetailEndpoint.class.getDeclaredField(
-                                "practitionerDetailsEndpointHelper");
-                field.setAccessible(true);
-                field.set(endpoint, practitionerDetailsEndpointHelper);
-
-                java.lang.reflect.Field tokenVerifierField =
-                        BaseEndpoint.class.getDeclaredField("tokenVerifier");
-                tokenVerifierField.setAccessible(true);
-                com.google.fhir.gateway.TokenVerifier mockTokenVerifier =
-                        mock(com.google.fhir.gateway.TokenVerifier.class);
-                tokenVerifierField.set(endpoint, mockTokenVerifier);
-            } catch (Exception e) {
-                return;
-            }
+            // Set token verifier and mock parser
+            setupTokenVerifierAndParser();
 
             endpoint.doGet(request, response);
 
@@ -149,8 +154,10 @@ public class PractitionerDetailEndpointTest {
                     .thenReturn(new StringBuffer("http://test:8080/PractitionerDetail"));
             when(request.getQueryString()).thenReturn("keycloakUuid=" + keycloakUuid);
 
-            when(practitionerDetails.getId())
-                    .thenReturn(org.smartregister.utils.Constants.PRACTITIONER_NOT_FOUND);
+            // Create a real PractitionerDetails object with NOT_FOUND id
+            PractitionerDetails practitionerDetails =
+                    createPractitionerDetails(
+                            org.smartregister.utils.Constants.PRACTITIONER_NOT_FOUND);
             when(practitionerDetailsEndpointHelper.getPractitionerDetailsByKeycloakId(keycloakUuid))
                     .thenReturn(practitionerDetails);
 
@@ -256,5 +263,22 @@ public class PractitionerDetailEndpointTest {
 
             verify(response).setStatus(500);
         }
+    }
+
+    /**
+     * Create a real PractitionerDetails object for testing. This is needed because
+     * fhirR4JsonParser.encodeResourceToString() requires a real object that can be properly
+     * serialized.
+     */
+    private PractitionerDetails createPractitionerDetails(String id) {
+        PractitionerDetails practitionerDetails = new PractitionerDetails();
+        practitionerDetails.setId(id);
+
+        // Create a minimal FhirPractitionerDetails structure
+        // This is required for the object to be serializable
+        FhirPractitionerDetails fhirPractitionerDetails = new FhirPractitionerDetails();
+        practitionerDetails.setFhirPractitionerDetails(fhirPractitionerDetails);
+
+        return practitionerDetails;
     }
 }
