@@ -97,9 +97,6 @@ public class PractitionerDetailEndpointTest {
                         }
                     };
             when(response.getOutputStream()).thenReturn(servletOutputStream);
-            when(request.getRequestURL())
-                    .thenReturn(new StringBuffer("http://test:8080/PractitionerDetail"));
-            when(request.getQueryString()).thenReturn("keycloakUuid=" + keycloakUuid);
 
             // Create a real PractitionerDetails object instead of a mock
             // so it can be properly serialized by fhirR4JsonParser
