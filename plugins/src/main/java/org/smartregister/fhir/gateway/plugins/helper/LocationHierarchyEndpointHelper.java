@@ -11,8 +11,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -38,6 +40,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.api.SearchStyleEnum;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
+import ca.uhn.fhir.rest.client.impl.GenericClient;
 import ca.uhn.fhir.rest.gclient.IQuery;
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
 import ca.uhn.fhir.rest.gclient.TokenClientParam;
@@ -257,8 +260,7 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                                 || Boolean.parseBoolean(
                                         request.getParameter(Constants.FILTER_MODE_LINEAGE)));
         List<String> preFetchAdminLevels =
-                generateAdminLevels(
-                        String.valueOf(Constants.DEFAULT_MIN_ADMIN_LEVEL), administrativeLevelMax);
+                generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         List<String> postFetchAdminLevels =
                 generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         if (Constants.LIST.equals(mode)) {
@@ -291,8 +293,7 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                                 || Boolean.parseBoolean(
                                         request.getParameter(Constants.FILTER_MODE_LINEAGE)));
         List<String> preFetchAdminLevels =
-                generateAdminLevels(
-                        String.valueOf(Constants.DEFAULT_MIN_ADMIN_LEVEL), administrativeLevelMax);
+                generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         List<String> postFetchAdminLevels =
                 generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         List<String> selectedSyncLocations = extractSyncLocations(syncLocationsParam);
@@ -414,10 +415,7 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         }
         // Check if it's the RELATED_ENTITY_LOCATION tag URL from environment variable
         String envVar = System.getenv(Constants.RELATED_ENTITY_TAG_URL_ENV);
-        if (envVar != null && !envVar.isEmpty() && envVar.equals(tagUrl)) {
-            return true;
-        }
-        return false;
+        return envVar != null && !envVar.isEmpty() && envVar.equals(tagUrl);
     }
 
     private String getSyncStrategy(String applicationId) {
@@ -455,8 +453,7 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         String lastUpdated = request.getParameter(Constants.LAST_UPDATED);
         String summary = request.getParameter(Constants.SUMMARY);
         List<String> preFetchAdminLevels =
-                generateAdminLevels(
-                        String.valueOf(Constants.DEFAULT_MIN_ADMIN_LEVEL), administrativeLevelMax);
+                generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         List<String> postFetchAdminLevels =
                 generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         Map<String, String[]> parameters = new HashMap<>(request.getParameterMap());
@@ -475,10 +472,7 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         // Fetch all descendants for all location IDs in a single query
         // Use provided tag URL or default to location hierarchy tag
         Bundle allDescendantsBundle = fetchAllDescendants(locationIds, preFetchAdminLevels, tagUrl);
-        List<Location> resourceLocations =
-                allDescendantsBundle.getEntry().stream()
-                        .map(bundleEntryComponent -> (Location) bundleEntryComponent.getResource())
-                        .collect(Collectors.toList());
+        List<Location> resourceLocations = collectAllLocations(allDescendantsBundle);
 
         // Get the parents
         Bundle parentLocation = getLocationsById(locationIds);
@@ -542,8 +536,7 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         String lastUpdated = request.getParameter(Constants.LAST_UPDATED);
 
         List<String> preFetchAdminLevels =
-                generateAdminLevels(
-                        String.valueOf(Constants.DEFAULT_MIN_ADMIN_LEVEL), administrativeLevelMax);
+                generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         List<String> postFetchAdminLevels =
                 generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
 
@@ -570,10 +563,7 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
 
         // Fetch all descendants for all location IDs in a single query
         Bundle allDescendantsBundle = fetchAllDescendants(locationIds, preFetchAdminLevels, tagUrl);
-        List<Location> resourceLocations =
-                allDescendantsBundle.getEntry().stream()
-                        .map(bundleEntryComponent -> (Location) bundleEntryComponent.getResource())
-                        .collect(Collectors.toList());
+        List<Location> resourceLocations = collectAllLocations(allDescendantsBundle);
 
         // Get the parents
         Bundle parentLocation = getLocationsById(locationIds);
@@ -867,8 +857,7 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         String lastUpdated = request.getParameter(Constants.LAST_UPDATED);
         String summary = request.getParameter(Constants.SUMMARY);
         List<String> preFetchAdminLevels =
-                generateAdminLevels(
-                        String.valueOf(Constants.DEFAULT_MIN_ADMIN_LEVEL), administrativeLevelMax);
+                generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         List<String> postFetchAdminLevels =
                 generateAdminLevels(administrativeLevelMin, administrativeLevelMax);
         Map<String, String[]> parameters = new HashMap<>(request.getParameterMap());
@@ -964,6 +953,52 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
         }
 
         return (Bundle) getFhirClientForR4().search().byUrl(queryStringFilter.toString()).execute();
+    }
+
+    private List<Location> collectAllLocations(Bundle initialBundle) {
+        List<Location> collectedLocations = new ArrayList<>();
+        if (initialBundle == null) {
+            return collectedLocations;
+        }
+
+        Bundle currentPage = initialBundle;
+        Set<String> visitedNextLinks = new HashSet<>();
+
+        while (currentPage != null) {
+            if (currentPage.hasEntry()) {
+                for (Bundle.BundleEntryComponent entry : currentPage.getEntry()) {
+                    if (entry.getResource() instanceof Location) {
+                        collectedLocations.add((Location) entry.getResource());
+                    }
+                }
+            }
+
+            Bundle.BundleLinkComponent nextLink = currentPage.getLink(Bundle.LINK_NEXT);
+            if (nextLink == null || StringUtils.isBlank(nextLink.getUrl())) {
+                break;
+            }
+
+            String nextUrl = nextLink.getUrl();
+            if (!visitedNextLinks.add(nextUrl)) {
+                logger.warn("Detected repeated next link while collecting locations, stopping");
+                break;
+            }
+
+            IGenericClient fhirClient = getFhirClientForR4();
+            if (fhirClient instanceof GenericClient) {
+                Utils.cleanUpBundlePaginationNextLinkServerBaseUrl(
+                        (GenericClient) fhirClient, currentPage);
+            }
+
+            try {
+                currentPage = fhirClient.loadPage().next(currentPage).execute();
+            } catch (Exception e) {
+                logger.error("Error loading next page of locations", e);
+                break;
+            }
+        }
+
+        return collectedLocations;
     }
 
     public List<Location> postFetchFilters(

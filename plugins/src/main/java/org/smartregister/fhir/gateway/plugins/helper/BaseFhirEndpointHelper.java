@@ -144,7 +144,10 @@ public abstract class BaseFhirEndpointHelper {
         int min;
         int max;
         try {
-            min = minLevel != null ? Integer.parseInt(minLevel) : Constants.DEFAULT_MIN_ADMIN_LEVEL;
+            min =
+                    StringUtils.isNotBlank(minLevel)
+                            ? Integer.parseInt(minLevel)
+                            : Constants.DEFAULT_MIN_ADMIN_LEVEL;
         } catch (NumberFormatException e) {
             ForbiddenOperationException forbiddenException =
                     new ForbiddenOperationException(
@@ -154,7 +157,10 @@ public abstract class BaseFhirEndpointHelper {
             return adminLevels; // Defensive: unreachable, but required for compilation
         }
         try {
-            max = maxLevel != null ? Integer.parseInt(maxLevel) : Constants.DEFAULT_MAX_ADMIN_LEVEL;
+            max =
+                    StringUtils.isNotBlank(maxLevel)
+                            ? Integer.parseInt(maxLevel)
+                            : Constants.DEFAULT_MAX_ADMIN_LEVEL;
         } catch (NumberFormatException e) {
             ForbiddenOperationException forbiddenException =
                     new ForbiddenOperationException(
