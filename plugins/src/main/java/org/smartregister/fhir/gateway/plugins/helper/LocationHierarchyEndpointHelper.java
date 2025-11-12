@@ -984,13 +984,14 @@ public class LocationHierarchyEndpointHelper extends BaseFhirEndpointHelper {
                 break;
             }
 
-            if (getFhirClientForR4() instanceof GenericClient) {
+            IGenericClient fhirClient = getFhirClientForR4();
+            if (fhirClient instanceof GenericClient) {
                 Utils.cleanUpBundlePaginationNextLinkServerBaseUrl(
-                        (GenericClient) getFhirClientForR4(), currentPage);
+                        (GenericClient) fhirClient, currentPage);
             }
 
             try {
-                currentPage = getFhirClientForR4().loadPage().next(currentPage).execute();
+                currentPage = fhirClient.loadPage().next(currentPage).execute();
             } catch (Exception e) {
                 logger.error("Error loading next page of locations", e);
                 break;
