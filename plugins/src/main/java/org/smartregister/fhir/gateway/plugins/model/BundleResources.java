@@ -1,4 +1,4 @@
-package org.smartregister.fhir.gateway.plugins;
+package org.smartregister.fhir.gateway.plugins.model;
 
 import org.hl7.fhir.instance.model.api.IBaseResource;
 

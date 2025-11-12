@@ -36,15 +36,12 @@ import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 @Ignore
 public class PermissionAccessCheckerTest {
 
-    @Mock protected DecodedJWT jwtMock;
-
-    @Mock protected Claim claimMock;
-
-    // TODO consider making a real request object from a URL string to avoid over-mocking.
-    @Mock protected RequestDetailsReader requestMock;
-
     // Note this is an expensive class to instantiate, so we only do this once for all tests.
     protected static final FhirContext fhirContext = FhirContext.forR4();
+    @Mock protected DecodedJWT jwtMock;
+    @Mock protected Claim claimMock;
+    // TODO consider making a real request object from a URL string to avoid over-mocking.
+    @Mock protected RequestDetailsReader requestMock;
 
     void setUpFhirBundle(String filename) throws IOException {
         when(requestMock.getResourceName()).thenReturn(null);

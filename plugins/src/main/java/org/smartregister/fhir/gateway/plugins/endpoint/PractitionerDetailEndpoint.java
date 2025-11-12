@@ -7,9 +7,9 @@ import java.util.Collections;
 
 import org.apache.http.HttpStatus;
 import org.smartregister.fhir.gateway.plugins.Constants;
-import org.smartregister.fhir.gateway.plugins.PractitionerDetailsEndpointHelper;
-import org.smartregister.fhir.gateway.plugins.RestUtils;
-import org.smartregister.fhir.gateway.plugins.Utils;
+import org.smartregister.fhir.gateway.plugins.helper.PractitionerDetailsEndpointHelper;
+import org.smartregister.fhir.gateway.plugins.utils.RestUtils;
+import org.smartregister.fhir.gateway.plugins.utils.Utils;
 import org.smartregister.model.practitioner.PractitionerDetails;
 
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
@@ -21,7 +21,7 @@ import jakarta.servlet.http.HttpServletResponse;
 public class PractitionerDetailEndpoint extends BaseEndpoint {
     private final PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
 
-    public PractitionerDetailEndpoint() throws IOException {
+    public PractitionerDetailEndpoint() {
         this.practitionerDetailsEndpointHelper =
                 new PractitionerDetailsEndpointHelper(
                         fhirR4Context.newRestfulGenericClient(

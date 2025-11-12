@@ -1,4 +1,4 @@
-package org.smartregister.fhir.gateway.plugins;
+package org.smartregister.fhir.gateway.plugins.utils;
 
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
@@ -26,6 +26,8 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.smartregister.fhir.gateway.plugins.Constants;
+import org.smartregister.fhir.gateway.plugins.PermissionAccessChecker;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -205,6 +207,7 @@ public class UtilsTest {
         reference.setReference("Binary/5678");
         sectionComponent.setFocus(reference);
         sectionComponent.setFocus(new Reference());
+
         composition.setSection(Arrays.asList(sectionComponent));
         Utils.getBinaryResourceReference(composition, logger);
     }

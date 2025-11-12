@@ -1,4 +1,4 @@
-package org.smartregister.fhir.gateway.plugins;
+package org.smartregister.fhir.gateway.plugins.helper;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,6 +25,7 @@ import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.PractitionerRole;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.smartregister.fhir.gateway.plugins.Constants;
 import org.smartregister.model.location.LocationHierarchy;
 import org.smartregister.model.location.ParentChildrenMap;
 import org.smartregister.model.practitioner.FhirPractitionerDetails;
@@ -38,20 +39,15 @@ import ca.uhn.fhir.rest.gclient.ReferenceClientParam;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
-public class PractitionerDetailsEndpointHelper {
+public class PractitionerDetailsEndpointHelper extends BaseFhirEndpointHelper {
     private static final Logger logger =
             LoggerFactory.getLogger(PractitionerDetailsEndpointHelper.class);
     public static final String PRACTITIONER_GROUP_CODE = "405623001";
     public static final String HTTP_SNOMED_INFO_SCT = "http://snomed.info/sct";
     public static final Bundle EMPTY_BUNDLE = new Bundle();
-    private static IGenericClient r4FHIRClient;
 
     public PractitionerDetailsEndpointHelper(IGenericClient fhirClient) {
-        this.r4FHIRClient = fhirClient;
-    }
-
-    private static IGenericClient getFhirClientForR4() {
-        return r4FHIRClient;
+        super(fhirClient);
     }
 
     public PractitionerDetails getPractitionerDetailsByKeycloakId(String keycloakUUID) {
@@ -223,17 +219,8 @@ public class PractitionerDetailsEndpointHelper {
                 .collect(Collectors.toList());
     }
 
-    private String getPractitionerIdentifier(Practitioner practitioner) {
-        String practitionerId = Constants.EMPTY_STRING;
-        if (practitioner.getIdElement() != null
-                && practitioner.getIdElement().getIdPart() != null) {
-            practitionerId = practitioner.getIdElement().getIdPart();
-        }
-        return practitionerId;
-    }
-
     public PractitionerDetails getPractitionerDetailsByPractitioner(Practitioner practitioner) {
-        String practitionerId = getPractitionerIdentifier(practitioner);
+        String practitionerId = getPractitionerId(practitioner);
 
         PractitionerDetails practitionerDetails;
 
@@ -253,32 +240,8 @@ public class PractitionerDetailsEndpointHelper {
         return practitionerDetails;
     }
 
-    public List<String> getPractitionerLocationIdsByByKeycloakId(String keycloakUUID) {
-        logger.info("Searching for Practitioner with user id: " + keycloakUUID);
-        Practitioner practitioner = getPractitionerByIdentifier(keycloakUUID);
-        List<String> locationIds = new ArrayList<>();
-
-        if (practitioner != null) {
-            String practitionerId = getPractitionerIdentifier(practitioner);
-            if (CacheHelper.INSTANCE.skipCache()) {
-                locationIds = getPractitionerLocationIdsByByKeycloakIdCore(practitionerId);
-            } else {
-                locationIds =
-                        CacheHelper.INSTANCE.listStringCache.get(
-                                keycloakUUID,
-                                key ->
-                                        getPractitionerLocationIdsByByKeycloakIdCore(
-                                                practitionerId));
-            }
-
-        } else {
-            logger.error("Practitioner with KC identifier : " + keycloakUUID + " not found");
-        }
-        return locationIds;
-    }
-
-    @VisibleForTesting
-    protected List<String> getPractitionerLocationIdsByByKeycloakIdCore(String practitionerId) {
+    @Override
+    protected List<String> getPractitionerLocationIdsByKeycloakIdCore(String practitionerId) {
 
         logger.info("Searching for CareTeams with Practitioner Id: " + practitionerId);
         Bundle careTeams = getCareTeams(practitionerId);
@@ -399,11 +362,12 @@ public class PractitionerDetailsEndpointHelper {
         List<String> locationIds =
                 getLocationIdsByOrganizationAffiliations(organizationAffiliations);
 
-        //        logger.info("Searching for location hierarchy list by locations identifiers");
-        //        List<LocationHierarchy> locationHierarchyList =
+        // logger.info("Searching for location hierarchy list by locations
+        // identifiers");
+        // List<LocationHierarchy> locationHierarchyList =
         // getLocationsHierarchy(locationIds);
         //
-        //        fhirPractitionerDetails.setLocationHierarchyList(locationHierarchyList);
+        // fhirPractitionerDetails.setLocationHierarchyList(locationHierarchyList);
 
         logger.info("Searching for locations by ids : " + locationIds);
         List<Location> locationsList = getLocationsByIds(locationIds);
@@ -455,22 +419,6 @@ public class PractitionerDetailsEndpointHelper {
                 .filter(PractitionerRole::hasOrganization)
                 .map(it -> getReferenceIDPart(it.getOrganization().getReference()))
                 .collect(Collectors.toSet());
-    }
-
-    @VisibleForTesting
-    protected Practitioner getPractitionerByIdentifier(String identifier) {
-        Bundle resultBundle =
-                getFhirClientForR4()
-                        .search()
-                        .forResource(Practitioner.class)
-                        .where(Practitioner.IDENTIFIER.exactly().identifier(identifier))
-                        .usingStyle(SearchStyleEnum.POST)
-                        .returnBundle(Bundle.class)
-                        .execute();
-
-        return resultBundle != null
-                ? (Practitioner) resultBundle.getEntryFirstRep().getResource()
-                : null;
     }
 
     @VisibleForTesting
@@ -661,11 +609,11 @@ public class PractitionerDetailsEndpointHelper {
                 : Collections.emptyList();
     }
 
-    public static List<LocationHierarchy> getLocationsHierarchy(List<String> locationsIdentifiers) {
+    public List<LocationHierarchy> getLocationsHierarchy(List<String> locationsIdentifiers) {
         return locationsIdentifiers.parallelStream()
                 .map(
                         locationsIdentifier ->
-                                new LocationHierarchyEndpointHelper(r4FHIRClient)
+                                new LocationHierarchyEndpointHelper(getFhirClientForR4())
                                         .getLocationHierarchy(
                                                 locationsIdentifier, null, null, false, ""))
                 .filter(

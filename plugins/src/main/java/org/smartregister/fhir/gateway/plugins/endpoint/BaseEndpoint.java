@@ -8,7 +8,8 @@ import java.nio.charset.StandardCharsets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.smartregister.fhir.gateway.plugins.RestUtils;
+import org.smartregister.fhir.gateway.plugins.helper.FhirClientPool;
+import org.smartregister.fhir.gateway.plugins.utils.RestUtils;
 
 import com.google.fhir.gateway.TokenVerifier;
 
@@ -24,6 +25,7 @@ public abstract class BaseEndpoint extends HttpServlet {
     protected static TokenVerifier tokenVerifier;
     protected final FhirContext fhirR4Context = FhirContext.forR4Cached();
     protected final IParser fhirR4JsonParser = fhirR4Context.newJsonParser().setPrettyPrint(true);
+    protected final FhirClientPool fhirClientPool = FhirClientPool.getInstance(fhirR4Context);
 
     static {
         try {
@@ -38,7 +40,7 @@ public abstract class BaseEndpoint extends HttpServlet {
         RestUtils.addCorsHeaders(response);
     }
 
-    protected BaseEndpoint() throws IOException {}
+    protected BaseEndpoint() {}
 
     protected void writeUTF8StringToStream(OutputStream fileOutputStream, String content) {
         try (OutputStreamWriter outputStreamWriter =

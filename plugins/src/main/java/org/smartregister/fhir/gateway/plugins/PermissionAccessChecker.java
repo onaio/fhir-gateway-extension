@@ -20,7 +20,13 @@ import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.Organization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.smartregister.fhir.gateway.plugins.interfaces.ResourceFinder;
+import org.smartregister.fhir.gateway.plugins.helper.CacheHelper;
+import org.smartregister.fhir.gateway.plugins.helper.LocationHierarchyEndpointHelper;
+import org.smartregister.fhir.gateway.plugins.helper.PractitionerDetailsEndpointHelper;
+import org.smartregister.fhir.gateway.plugins.implementation.ResourceFinder;
+import org.smartregister.fhir.gateway.plugins.model.BundleResources;
+import org.smartregister.fhir.gateway.plugins.utils.JwtUtils;
+import org.smartregister.fhir.gateway.plugins.utils.Utils;
 import org.smartregister.model.practitioner.PractitionerDetails;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
@@ -44,7 +50,7 @@ import jakarta.annotation.Nonnull;
 
 public class PermissionAccessChecker implements AccessChecker {
     private static final Logger logger = LoggerFactory.getLogger(PermissionAccessChecker.class);
-    private final ResourceFinder resourceFinder;
+    private final org.smartregister.fhir.gateway.plugins.interfaces.ResourceFinder resourceFinder;
     private final List<String> userRoles;
     private SyncAccessDecision syncAccessDecision;
     private final String applicationId;
@@ -55,7 +61,7 @@ public class PermissionAccessChecker implements AccessChecker {
             FhirContext fhirContext,
             DecodedJWT jwt,
             List<String> userRoles,
-            ResourceFinderImp resourceFinder,
+            org.smartregister.fhir.gateway.plugins.interfaces.ResourceFinder resourceFinder,
             String applicationId) {
         Preconditions.checkNotNull(userRoles);
         Preconditions.checkNotNull(resourceFinder);
@@ -71,7 +77,7 @@ public class PermissionAccessChecker implements AccessChecker {
 
         initSyncAccessDecision(requestDetails);
 
-        //  For a Bundle requestDetails.getResourceName() returns null
+        // For a Bundle requestDetails.getResourceName() returns null
         if (requestDetails.getRequestType() == RequestTypeEnum.POST
                 && requestDetails.getResourceName() == null) {
             return processBundle(requestDetails);
@@ -140,33 +146,25 @@ public class PermissionAccessChecker implements AccessChecker {
                         userRoles);
     }
 
-    @VisibleForTesting
-    protected static String generateSyncStrategyIdsCacheKey(
+    public static String generateSyncStrategyIdsCacheKey(
             String userId, String syncStrategy, Map<String, String[]> parameters) {
 
         String key = null;
-        switch (syncStrategy) {
-            case Constants.SyncStrategy.RELATED_ENTITY_LOCATION:
-                try {
-
-                    String[] syncLocations =
-                            parameters.getOrDefault(
-                                    Constants.SYNC_LOCATIONS_SEARCH_PARAM, new String[] {});
-
-                    if (syncLocations.length == 0) {
-                        key = userId;
-                    } else {
-                        key = Utils.generateHash(Utils.getSortedInput(syncLocations[0], ","));
-                    }
-
-                } catch (NoSuchAlgorithmException exception) {
-                    logger.error(exception.getMessage());
+        if (syncStrategy.equals(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)) {
+            try {
+                String[] syncLocations =
+                        parameters.getOrDefault(
+                                Constants.SYNC_LOCATIONS_SEARCH_PARAM, new String[] {});
+                if (syncLocations.length == 0) {
+                    key = userId;
+                } else {
+                    key = Utils.generateHash(Utils.getSortedInput(syncLocations[0], ","));
                 }
-
-                break;
-
-            default:
-                key = userId;
+            } catch (NoSuchAlgorithmException exception) {
+                logger.error(exception.getMessage());
+            }
+        } else {
+            key = userId;
         }
 
         return key;
@@ -321,13 +319,10 @@ public class PermissionAccessChecker implements AccessChecker {
                         .map(location -> location.getIdElement().getIdPart())
                         .collect(Collectors.toList());
 
-        return locationIds.stream()
-                .map(
-                        locationId ->
-                                (new LocationHierarchyEndpointHelper(
-                                                Utils.createFhirClientForR4(fhirContext)))
-                                        .fetchAllDescendants(locationId, null))
-                .flatMap(descendant -> descendant.getEntry().stream())
+        Bundle allDescendantsBundle =
+                (new LocationHierarchyEndpointHelper(Utils.createFhirClientForR4(fhirContext)))
+                        .fetchAllDescendants(locationIds, null, null);
+        return allDescendantsBundle.getEntry().stream()
                 .map(
                         bundleEntryComponent ->
                                 bundleEntryComponent.getResource().getIdElement().getIdPart())
@@ -337,8 +332,11 @@ public class PermissionAccessChecker implements AccessChecker {
     @Deprecated(since = "3.0.0", forRemoval = true)
     private Set<String> getPractitionerLocationHierarchyDescendantsBackwardCompatibility(
             PractitionerDetails practitionerDetails) {
+        IGenericClient client = Utils.createFhirClientForR4(FhirContext.forR4());
+        PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper =
+                new PractitionerDetailsEndpointHelper(client);
         return PractitionerDetailsEndpointHelper.getAttributedLocations(
-                PractitionerDetailsEndpointHelper.getLocationsHierarchy(
+                practitionerDetailsEndpointHelper.getLocationsHierarchy(
                         practitionerDetails.getFhirPractitionerDetails().getLocations().stream()
                                 .map(location -> location.getIdElement().getIdPart())
                                 .collect(Collectors.toList())));
@@ -412,9 +410,12 @@ public class PermissionAccessChecker implements AccessChecker {
                         && syncLocations != null) {
                     // Selected locations
                     List<String> locationUuids = getLocationUuids(syncLocations);
+                    IGenericClient client = Utils.createFhirClientForR4(FhirContext.forR4());
+                    PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper =
+                            new PractitionerDetailsEndpointHelper(client);
                     syncStrategyIds =
                             PractitionerDetailsEndpointHelper.getAttributedLocations(
-                                    PractitionerDetailsEndpointHelper.getLocationsHierarchy(
+                                    practitionerDetailsEndpointHelper.getLocationsHierarchy(
                                             locationUuids));
 
                 } else {
@@ -469,7 +470,7 @@ public class PermissionAccessChecker implements AccessChecker {
                     fhirContext,
                     jwt,
                     userRoles,
-                    ResourceFinderImp.getInstance(fhirContext),
+                    ResourceFinder.getInstance(fhirContext),
                     applicationId);
         }
     }

@@ -33,6 +33,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.smartregister.fhir.gateway.plugins.helper.PractitionerDetailsEndpointHelper;
+import org.smartregister.fhir.gateway.plugins.utils.TestUtil;
 import org.smartregister.helpers.LocationHelper;
 
 import com.google.common.collect.Maps;
@@ -63,6 +65,23 @@ public class SyncAccessDecisionTest {
     private final List<String> relatedEntityLocationIds = new ArrayList<>();
 
     private SyncAccessDecision testInstance;
+
+    private static @NotNull RequestDetails getRequestDetails(String[] locations) {
+        Map<String, String[]> parameters = new HashMap<>();
+
+        // empty string
+        parameters.put(Constants.SYNC_LOCATIONS_SEARCH_PARAM, locations);
+
+        RequestDetails requestDetails = new ServletRequestDetails();
+        requestDetails.setRequestType(RequestTypeEnum.GET);
+        requestDetails.setRestOperationType(RestOperationTypeEnum.SEARCH_TYPE);
+        requestDetails.setResourceName("Patient");
+        requestDetails.setFhirServerBase("https://smartregister.org/fhir");
+        requestDetails.setCompleteUrl("https://smartregister.org/fhir/Patient");
+        requestDetails.setRequestPath("Patient");
+        requestDetails.setParameters(parameters);
+        return requestDetails;
+    }
 
     @Test
     public void preProcessShouldAddLocationIdFiltersWhenUserIsAssignedToLocationsOnly()
@@ -184,20 +203,54 @@ public class SyncAccessDecisionTest {
             Assert.assertFalse(requestDetails.getCompleteUrl().contains(locationId));
             Assert.assertFalse(requestDetails.getRequestPath().contains(locationId));
         }
-        Assert.assertTrue(
-                mutatedRequest
-                        .getAdditionalQueryParams()
-                        .get(Constants.TAG_SEARCH_PARAM)
-                        .get(0)
-                        .contains(
-                                StringUtils.join(
-                                        relatedEntityLocationIds,
-                                        Constants.PARAM_VALUES_SEPARATOR
-                                                + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
-                                                + Constants.CODE_URL_VALUE_SEPARATOR)));
+        // Verify that both RELATED_ENTITY_LOCATION tag and location-lineage tag are used
+        // when using RELATED_ENTITY_LOCATION sync strategy
+        List<String> tagParams =
+                mutatedRequest.getAdditionalQueryParams().get(Constants.TAG_SEARCH_PARAM);
+        Assert.assertNotNull("Tag parameters should be present", tagParams);
+        Assert.assertFalse("Tag parameters should not be empty", tagParams.isEmpty());
 
-        for (String param :
-                mutatedRequest.getAdditionalQueryParams().get(Constants.TAG_SEARCH_PARAM)) {
+        // Check that RELATED_ENTITY_LOCATION tag is present
+        boolean hasRelatedEntityTag =
+                tagParams.stream()
+                        .anyMatch(
+                                param -> param.contains(Constants.DEFAULT_RELATED_ENTITY_TAG_URL));
+        Assert.assertTrue("Query should contain RELATED_ENTITY_LOCATION tag", hasRelatedEntityTag);
+
+        // Check that location-lineage tag is also present
+        boolean hasLocationLineageTag =
+                tagParams.stream()
+                        .anyMatch(
+                                param ->
+                                        param.contains(
+                                                Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY));
+        Assert.assertTrue("Query should contain location-lineage tag", hasLocationLineageTag);
+
+        // Verify that both tag systems are present with the location IDs
+        for (String locationId : relatedEntityLocationIds) {
+            String relatedEntityTagPattern =
+                    Constants.DEFAULT_RELATED_ENTITY_TAG_URL
+                            + Constants.CODE_URL_VALUE_SEPARATOR
+                            + locationId;
+            String locationLineageTagPattern =
+                    Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY
+                            + Constants.CODE_URL_VALUE_SEPARATOR
+                            + locationId;
+
+            boolean hasRelatedEntityTagForLocation =
+                    tagParams.stream().anyMatch(param -> param.contains(relatedEntityTagPattern));
+            boolean hasLocationLineageTagForLocation =
+                    tagParams.stream().anyMatch(param -> param.contains(locationLineageTagPattern));
+
+            Assert.assertTrue(
+                    "Query should contain RELATED_ENTITY_LOCATION tag for location: " + locationId,
+                    hasRelatedEntityTagForLocation);
+            Assert.assertTrue(
+                    "Query should contain location-lineage tag for location: " + locationId,
+                    hasLocationLineageTagForLocation);
+        }
+
+        for (String param : tagParams) {
             Assert.assertFalse(param.contains(Constants.DEFAULT_CARE_TEAM_TAG_URL));
             Assert.assertFalse(param.contains(Constants.DEFAULT_ORGANISATION_TAG_URL));
         }
@@ -217,12 +270,20 @@ public class SyncAccessDecisionTest {
             selectedRelatedEntityLocationIds.add(srelocationid1);
             selectedRelatedEntityLocationIds.add(srelocationid2);
 
-            String searchTagValues =
+            String relatedEntitySearchTagValues =
                     Constants.DEFAULT_RELATED_ENTITY_TAG_URL
                             + Constants.CODE_URL_VALUE_SEPARATOR
                             + srelocationid1
                             + Constants.PARAM_VALUES_SEPARATOR
                             + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
+                            + Constants.CODE_URL_VALUE_SEPARATOR
+                            + srelocationid2;
+            String locationLineageSearchTagValues =
+                    Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY
+                            + Constants.CODE_URL_VALUE_SEPARATOR
+                            + srelocationid1
+                            + Constants.PARAM_VALUES_SEPARATOR
+                            + Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY
                             + Constants.CODE_URL_VALUE_SEPARATOR
                             + srelocationid2;
             relatedEntityLocationIds.add("relocationid1");
@@ -242,7 +303,22 @@ public class SyncAccessDecisionTest {
                             () ->
                                     PractitionerDetailsEndpointHelper.createSearchTagValues(
                                             Mockito.any()))
-                    .thenReturn(searchTagValues);
+                    .thenAnswer(
+                            invocation -> {
+                                @SuppressWarnings("unchecked")
+                                Map.Entry<String, String[]> entry =
+                                        (Map.Entry<String, String[]>) invocation.getArgument(0);
+                                // Return appropriate value based on tag system
+                                if (Constants.DEFAULT_RELATED_ENTITY_TAG_URL.equals(
+                                        entry.getKey())) {
+                                    return relatedEntitySearchTagValues;
+                                } else if (Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY.equals(
+                                        entry.getKey())) {
+                                    return locationLineageSearchTagValues;
+                                }
+                                // Fallback to related entity tag format
+                                return relatedEntitySearchTagValues;
+                            });
 
             RequestDetails requestDetails =
                     getRequestDetails(new String[] {"srelocationid1", "srelocationid2"});
@@ -251,26 +327,52 @@ public class SyncAccessDecisionTest {
             RequestMutation mutatedRequest =
                     testInstance.getRequestMutation(new TestRequestDetailsToReader(requestDetails));
 
-            List<String> list = new ArrayList<>(selectedRelatedEntityLocationIds);
-            Collections.reverse(list);
+            // Verify that both RELATED_ENTITY_LOCATION tag and location-lineage tag are used
+            // when using RELATED_ENTITY_LOCATION sync strategy
+            List<String> tagParams =
+                    mutatedRequest.getAdditionalQueryParams().get(Constants.TAG_SEARCH_PARAM);
+            Assert.assertNotNull("Tag parameters should be present", tagParams);
+            Assert.assertFalse("Tag parameters should not be empty", tagParams.isEmpty());
 
-            String expected = "";
-            for (String item : list) {
-                expected +=
+            // The result should contain both tag systems (RELATED_ENTITY_LOCATION and
+            // location-lineage)
+            // Since we're mocking createSearchTagValues to return the same value for both,
+            // we should see both tag systems in the result
+            String actualTagParam = tagParams.get(0);
+
+            // Verify that RELATED_ENTITY_LOCATION tag is present
+            Assert.assertTrue(
+                    "Query should contain RELATED_ENTITY_LOCATION tag",
+                    actualTagParam.contains(Constants.DEFAULT_RELATED_ENTITY_TAG_URL));
+
+            // Verify that location-lineage tag is also present
+            Assert.assertTrue(
+                    "Query should contain location-lineage tag",
+                    actualTagParam.contains(Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY));
+
+            // Verify that both tag systems are present with the location IDs
+            for (String locationId : selectedRelatedEntityLocationIds) {
+                String relatedEntityTagPattern =
                         Constants.DEFAULT_RELATED_ENTITY_TAG_URL
                                 + Constants.CODE_URL_VALUE_SEPARATOR
-                                + item
-                                + Constants.PARAM_VALUES_SEPARATOR;
+                                + locationId;
+                String locationLineageTagPattern =
+                        Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY
+                                + Constants.CODE_URL_VALUE_SEPARATOR
+                                + locationId;
+
+                Assert.assertTrue(
+                        "Query should contain RELATED_ENTITY_LOCATION tag for location: "
+                                + locationId,
+                        actualTagParam.contains(relatedEntityTagPattern));
+                Assert.assertTrue(
+                        "Query should contain location-lineage tag for location: " + locationId,
+                        actualTagParam.contains(locationLineageTagPattern));
             }
 
-            Assert.assertEquals(
-                    expected.substring(0, expected.length() - 1),
-                    mutatedRequest
-                            .getAdditionalQueryParams()
-                            .get(Constants.TAG_SEARCH_PARAM)
-                            .get(0));
-
             Collections.reverse(relatedEntityLocationIds);
+            // The relatedEntityLocationIds are internal IDs, not the selected sync location IDs,
+            // so they should not be in the tag parameters
             Assert.assertFalse(
                     mutatedRequest
                             .getAdditionalQueryParams()
@@ -336,23 +438,6 @@ public class SyncAccessDecisionTest {
 
             testInstance.getRequestMutation(new TestRequestDetailsToReader(requestDetails));
         }
-    }
-
-    private static @NotNull RequestDetails getRequestDetails(String[] locations) {
-        Map<String, String[]> parameters = new HashMap<>();
-
-        // empty string
-        parameters.put(Constants.SYNC_LOCATIONS_SEARCH_PARAM, locations);
-
-        RequestDetails requestDetails = new ServletRequestDetails();
-        requestDetails.setRequestType(RequestTypeEnum.GET);
-        requestDetails.setRestOperationType(RestOperationTypeEnum.SEARCH_TYPE);
-        requestDetails.setResourceName("Patient");
-        requestDetails.setFhirServerBase("https://smartregister.org/fhir");
-        requestDetails.setCompleteUrl("https://smartregister.org/fhir/Patient");
-        requestDetails.setRequestPath("Patient");
-        requestDetails.setParameters(parameters);
-        return requestDetails;
     }
 
     @Test
@@ -798,7 +883,7 @@ public class SyncAccessDecisionTest {
         Bundle.BundleEntryComponent bundleEntryComponent = new Bundle.BundleEntryComponent();
         bundleEntryComponent.setResource(listResource);
         bundle.setType(Bundle.BundleType.BATCHRESPONSE);
-        bundle.setEntry(Arrays.asList(bundleEntryComponent));
+        bundle.setEntry(List.of(bundleEntryComponent));
 
         HttpResponse fhirResponseMock =
                 Mockito.mock(HttpResponse.class, Answers.RETURNS_DEEP_STUBS);
@@ -966,7 +1051,7 @@ public class SyncAccessDecisionTest {
         Bundle.BundleEntryComponent bundleEntryComponent = new Bundle.BundleEntryComponent();
         bundleEntryComponent.setResource(listResource);
         bundle.setType(Bundle.BundleType.BATCHRESPONSE);
-        bundle.setEntry(Arrays.asList(bundleEntryComponent));
+        bundle.setEntry(List.of(bundleEntryComponent));
 
         HttpResponse fhirResponseMock =
                 Mockito.mock(HttpResponse.class, Answers.RETURNS_DEEP_STUBS);

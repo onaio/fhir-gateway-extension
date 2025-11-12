@@ -1,4 +1,4 @@
-package org.smartregister.fhir.gateway.plugins;
+package org.smartregister.fhir.gateway.plugins.helper;
 
 import java.util.List;
 import java.util.Map;
@@ -13,15 +13,11 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 
 public enum CacheHelper {
     INSTANCE;
-    Cache<String, Map<String, List<String>>> cache;
-
-    Cache<String, DomainResource> resourceCache;
-
-    Cache<String, List<Location>> locationListCache;
-
-    Cache<String, String> stringCache;
-
-    Cache<String, List<String>> listStringCache;
+    public final Cache<String, Map<String, List<String>>> cache;
+    final Cache<String, DomainResource> resourceCache;
+    final Cache<String, List<Location>> locationListCache;
+    final Cache<String, String> stringCache;
+    final Cache<String, List<String>> listStringCache;
 
     CacheHelper() {
         cache =
@@ -52,18 +48,41 @@ public enum CacheHelper {
     }
 
     private int getCacheExpiryDurationInSeconds() {
+        // Check new environment variable first (preferred)
         String duration = System.getenv(OPENSRP_CACHE_EXPIRY_SECONDS);
         if (StringUtils.isNotBlank(duration)) {
             return Integer.parseInt(duration);
         }
-        return 60;
+
+        // Fallback to legacy environment variable for backward compatibility
+        duration = System.getenv(OPENSRP_CACHE_EXPIRY_SECONDS_LEGACY);
+        if (StringUtils.isNotBlank(duration)) {
+            return Integer.parseInt(duration);
+        }
+
+        return 300; // Increased from 60 to 300 seconds (5 minutes) for better performance
     }
 
     public boolean skipCache() {
-        String duration = System.getenv(CacheHelper.OPENSRP_CACHE_EXPIRY_SECONDS);
-        return StringUtils.isNotBlank(duration) && "0".equals(duration.trim());
+        // Check new environment variable first (preferred)
+        String duration = System.getenv(OPENSRP_CACHE_EXPIRY_SECONDS);
+        if (StringUtils.isNotBlank(duration)) {
+            return "0".equals(duration.trim());
+        }
+
+        // Fallback to legacy environment variable for backward compatibility
+        duration = System.getenv(OPENSRP_CACHE_EXPIRY_SECONDS_LEGACY);
+        if (StringUtils.isNotBlank(duration)) {
+            return "0".equals(duration.trim());
+        }
+
+        return false; // Default to not skipping cache
     }
 
-    public static final String OPENSRP_CACHE_EXPIRY_SECONDS = "openrsp_cache_timeout_seconds";
-    private static final int DEFAULT_CACHE_SIZE = 1_000;
+    public static final String OPENSRP_CACHE_EXPIRY_SECONDS =
+            "opensrp_cache_timeout_seconds"; // Fixed typo
+    public static final String OPENSRP_CACHE_EXPIRY_SECONDS_LEGACY =
+            "openrsp_cache_timeout_seconds"; // Legacy name for backward compatibility
+    private static final int DEFAULT_CACHE_SIZE =
+            5_000; // Increased from 1,000 to 5,000 for better performance
 }

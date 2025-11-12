@@ -11,7 +11,7 @@
 
   <groupId>org.smartregister</groupId>
   <artifactId>opensrp-gateway-plugin</artifactId>
-  <version>3.0.3</version>
+  <version>3.0.4</version>
   <packaging>pom</packaging>
 
   <modules>
@@ -43,6 +43,17 @@
       <id>spring-io-snapshot</id>
       <url>https://repo.spring.io/snapshot</url>
     </repository>
+      <repository>
+          <id>sonatype-central-snapshots</id>
+          <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+          <releases>
+              <enabled>false</enabled>
+          </releases>
+          <snapshots>
+              <enabled>true</enabled>
+              <updatePolicy>always</updatePolicy>
+          </snapshots>
+      </repository>
   </repositories>
 
   <build>

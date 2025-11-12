@@ -1,7 +1,8 @@
-package org.smartregister.fhir.gateway.plugins;
+package org.smartregister.fhir.gateway.plugins.helper;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -33,6 +34,10 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.internal.stubbing.defaultanswers.ReturnsDeepStubs;
+import org.smartregister.fhir.gateway.plugins.Constants;
+import org.smartregister.fhir.gateway.plugins.SyncAccessDecision;
+import org.smartregister.fhir.gateway.plugins.utils.JwtUtils;
+import org.smartregister.fhir.gateway.plugins.utils.Utils;
 import org.smartregister.model.location.LocationHierarchy;
 import org.smartregister.model.location.LocationHierarchyTree;
 
@@ -48,8 +53,41 @@ import jakarta.servlet.http.HttpServletRequest;
 
 public class LocationHierarchyEndpointHelperTest {
 
-    private LocationHierarchyEndpointHelper locationHierarchyEndpointHelper;
     IGenericClient client;
+    private LocationHierarchyEndpointHelper locationHierarchyEndpointHelper;
+
+    public static List<Location> createTestLocationList(
+            int numLocations, boolean setAdminLevel, boolean setLastUpdated) {
+        List<Location> locations = new ArrayList<>();
+        for (int i = 0; i < numLocations; i++) {
+            Location location = new Location();
+            location.setId(Integer.toString(i));
+            locations.add(location);
+            if (setAdminLevel) {
+                CodeableConcept type = new CodeableConcept();
+                Coding coding = new Coding();
+                coding.setSystem(Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL);
+                coding.setCode(Integer.toString(i));
+                coding.setDisplay(String.format("Level %d", i));
+                type.addCoding(coding);
+                location.addType(type);
+            }
+            if (setLastUpdated) {
+                Meta meta = new Meta();
+                meta.setLastUpdated(Date.from(OffsetDateTime.now().toInstant()));
+                location.setMeta(meta);
+            }
+        }
+        return locations;
+    }
+
+    public static LocationHierarchy createLocationHierarchy(List<Location> locations) {
+        LocationHierarchy locationHierarchy = new LocationHierarchy();
+        LocationHierarchyTree locationHierarchyTree = new LocationHierarchyTree();
+        locationHierarchyTree.buildTreeFromList(locations);
+        locationHierarchy.setLocationHierarchyTree(locationHierarchyTree);
+        return locationHierarchy;
+    }
 
     @Before
     public void setUp() {
@@ -187,10 +225,10 @@ public class LocationHierarchyEndpointHelperTest {
                 .inventoryFilter(Mockito.any(Location.class));
         Mockito.doCallRealMethod()
                 .when(mockLocationHierarchyEndpointHelper)
-                .getPaginatedLocations(request, locationIds);
+                .getPaginatedLocations(request, locationIds, null);
         Mockito.doReturn(Utils.createBundle(locations))
                 .when(mockLocationHierarchyEndpointHelper)
-                .fetchAllDescendants("12345", adminLevels);
+                .fetchAllDescendants(List.of("12345"), adminLevels, null);
 
         Location parentLocation = new Location();
         parentLocation.setId("12345");
@@ -203,10 +241,11 @@ public class LocationHierarchyEndpointHelperTest {
 
         Mockito.doReturn(Utils.createBundle(List.of(parentLocation)))
                 .when(mockLocationHierarchyEndpointHelper)
-                .getLocationById(List.of("12345"));
+                .getLocationsById(List.of("12345"));
 
         Bundle resultBundle =
-                mockLocationHierarchyEndpointHelper.getPaginatedLocations(request, locationIds);
+                mockLocationHierarchyEndpointHelper.getPaginatedLocations(
+                        request, locationIds, null);
 
         Assert.assertTrue(resultBundle.hasEntry());
         Assert.assertTrue(resultBundle.hasLink());
@@ -272,8 +311,7 @@ public class LocationHierarchyEndpointHelperTest {
                 .extractSyncLocations("1,2,3,4");
         Mockito.doCallRealMethod()
                 .when(mockLocationHierarchyEndpointHelper)
-                .handleNonIdentifierRequest(
-                        request, mockPractitionerDetailsEndpointHelper, mockDecodedJWT);
+                .handleNonIdentifierRequest(request, mockDecodedJWT);
         Mockito.doReturn(false)
                 .when(mockLocationHierarchyEndpointHelper)
                 .adminLevelFilter(Mockito.any(), Mockito.any());
@@ -304,7 +342,7 @@ public class LocationHierarchyEndpointHelperTest {
 
         Bundle resultBundle =
                 mockLocationHierarchyEndpointHelper.handleNonIdentifierRequest(
-                        request, mockPractitionerDetailsEndpointHelper, mockDecodedJWT);
+                        request, mockDecodedJWT);
 
         Assert.assertTrue(resultBundle.hasEntry());
         Assert.assertTrue(resultBundle.hasLink());
@@ -347,6 +385,13 @@ public class LocationHierarchyEndpointHelperTest {
     public void testGenerateAdminLevelsWithNoMinAndMax() {
         List<String> adminLevels = locationHierarchyEndpointHelper.generateAdminLevels(null, null);
         List<String> expectedLevels = new ArrayList<>();
+        // When both min and max are null, defaults to DEFAULT_MIN_ADMIN_LEVEL (0) to
+        // DEFAULT_MAX_ADMIN_LEVEL (10)
+        for (int i = Constants.DEFAULT_MIN_ADMIN_LEVEL;
+                i <= Constants.DEFAULT_MAX_ADMIN_LEVEL;
+                i++) {
+            expectedLevels.add(String.valueOf(i));
+        }
         assertEquals(expectedLevels, adminLevels);
     }
 
@@ -571,21 +616,28 @@ public class LocationHierarchyEndpointHelperTest {
                 .extractSyncLocations("1,2,3,4");
         Mockito.doCallRealMethod()
                 .when(mockLocationHierarchyEndpointHelper)
-                .handleNonIdentifierRequest(
-                        request, mockPractitionerDetailsEndpointHelper, mockDecodedJWT);
+                .handleNonIdentifierRequest(request, mockDecodedJWT);
         Mockito.doReturn(locationHierarchies)
                 .when(mockLocationHierarchyEndpointHelper)
                 .getLocationHierarchies(
-                        Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+                        Mockito.any(),
+                        Mockito.any(),
+                        Mockito.any(),
+                        Mockito.any(),
+                        Mockito.any(),
+                        Mockito.any());
         Mockito.doReturn(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
                 .when(mockLocationHierarchyEndpointHelper)
                 .getSyncStrategyByAppId(Mockito.any());
         mockJwtUtils
                 .when(() -> JwtUtils.getUserRolesFromJWT(any(DecodedJWT.class)))
                 .thenReturn(userRoles);
+        mockJwtUtils
+                .when(() -> JwtUtils.getApplicationIdFromJWT(any(DecodedJWT.class)))
+                .thenReturn("test-app-id");
         Bundle resultBundle =
                 mockLocationHierarchyEndpointHelper.handleNonIdentifierRequest(
-                        request, mockPractitionerDetailsEndpointHelper, mockDecodedJWT);
+                        request, mockDecodedJWT);
         Assert.assertEquals(1, resultBundle.getTotal());
         Assert.assertEquals(1, resultBundle.getEntry().size());
         mockJwtUtils.close();
@@ -620,15 +672,19 @@ public class LocationHierarchyEndpointHelperTest {
                 .extractSyncLocations(Mockito.any());
         Mockito.doCallRealMethod()
                 .when(mockLocationHierarchyEndpointHelper)
-                .handleNonIdentifierRequest(
-                        request, mockPractitionerDetailsEndpointHelper, mockDecodedJWT);
+                .handleNonIdentifierRequest(request, mockDecodedJWT);
         Mockito.doReturn(locationHierarchies)
                 .when(mockLocationHierarchyEndpointHelper)
                 .getLocationHierarchies(
-                        Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+                        Mockito.any(),
+                        Mockito.any(),
+                        Mockito.any(),
+                        Mockito.any(),
+                        Mockito.any(),
+                        Mockito.any());
         Mockito.doReturn(Arrays.asList("1", "2", "3", "4"))
                 .when(mockPractitionerDetailsEndpointHelper)
-                .getPractitionerLocationIdsByByKeycloakId(Mockito.any());
+                .getPractitionerLocationIdsByKeycloakId(Mockito.any());
 
         Mockito.doReturn(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
                 .when(mockLocationHierarchyEndpointHelper)
@@ -640,7 +696,7 @@ public class LocationHierarchyEndpointHelperTest {
 
         Bundle resultBundle =
                 mockLocationHierarchyEndpointHelper.handleNonIdentifierRequest(
-                        request, mockPractitionerDetailsEndpointHelper, mockDecodedJWT);
+                        request, mockDecodedJWT);
 
         Assert.assertEquals(1, resultBundle.getTotal());
         Assert.assertEquals(1, resultBundle.getEntry().size());
@@ -697,7 +753,7 @@ public class LocationHierarchyEndpointHelperTest {
         Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
 
         locationHierarchyEndpointHelper.fetchAllDescendants(
-                "test-parent-location-id", List.of("4"));
+                List.of("test-parent-location-id"), List.of("4"), null);
 
         ArgumentCaptor<String> argCaptor = ArgumentCaptor.forClass(String.class);
         Mockito.verify(untypedQueryMock).byUrl(argCaptor.capture());
@@ -705,12 +761,106 @@ public class LocationHierarchyEndpointHelperTest {
 
         Assert.assertNotNull(result);
         Assert.assertEquals(
-                "Location?&_tag=http://smartregister.org/CodeSystem/location-lineage%7Ctest-parent-location-id,&type=https://smartregister.org/codes/administrative-level%7C4,",
+                "Location?_tag=http://smartregister.org/CodeSystem/location-lineage%7Ctest-parent-location-id&type=https://smartregister.org/codes/administrative-level%7C4",
                 result);
     }
 
     @Test
-    public void testGetLocationByIdGeneratesCorrectUrlQueryPath() {
+    public void testFetchAllDescendantsWithMultipleLocationsGeneratesCorrectQueryFilter() {
+        IUntypedQuery<IBaseBundle> untypedQueryMock = mock(IUntypedQuery.class);
+        IQuery<IBaseBundle> queryMock = mock(IQuery.class);
+
+        Bundle secondBundleMock = new Bundle();
+        secondBundleMock.setEntry(new ArrayList<>());
+
+        Mockito.doReturn(untypedQueryMock).when(client).search();
+        Mockito.doReturn(queryMock).when(untypedQueryMock).byUrl(anyString());
+        Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
+
+        List<String> locationIds = List.of("location-1", "location-2", "location-3");
+        locationHierarchyEndpointHelper.fetchAllDescendants(locationIds, List.of("4", "5"), null);
+
+        ArgumentCaptor<String> argCaptor = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(untypedQueryMock).byUrl(argCaptor.capture());
+        String result = argCaptor.getValue();
+
+        Assert.assertNotNull(result);
+        Assert.assertEquals(
+                "Location?_tag=http://smartregister.org/CodeSystem/location-lineage%7Clocation-1,http://smartregister.org/CodeSystem/location-lineage%7Clocation-2,http://smartregister.org/CodeSystem/location-lineage%7Clocation-3&type=https://smartregister.org/codes/administrative-level%7C4,https://smartregister.org/codes/administrative-level%7C5",
+                result);
+    }
+
+    @Test
+    public void testGetPaginatedLocationsWithMultipleLocationIds() {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        Map<String, String[]> parameterMap = new HashMap<>();
+        parameterMap.put("_count", new String[] {"10"});
+        parameterMap.put("_page", new String[] {"1"});
+        parameterMap.put("filter_mode_lineage", new String[] {"true"});
+        Mockito.doReturn(parameterMap).when(request).getParameterMap();
+        Mockito.doReturn("10").when(request).getParameter("_count");
+        Mockito.doReturn("1").when(request).getParameter("_page");
+        Mockito.doReturn(new StringBuffer("http://test:8080/LocationHierarchy"))
+                .when(request)
+                .getRequestURL();
+        Mockito.doReturn("").when(request).getQueryString();
+
+        List<String> locationIds = List.of("location-1", "location-2");
+        List<String> adminLevels = List.of("4", "5");
+
+        LocationHierarchyEndpointHelper mockLocationHierarchyEndpointHelper =
+                Mockito.spy(locationHierarchyEndpointHelper);
+
+        // Mock the fetchAllDescendantsForMultipleLocations method
+        Bundle descendantsBundle = new Bundle();
+        Location descendant1 = new Location();
+        descendant1.setId("descendant-1");
+        Location descendant2 = new Location();
+        descendant2.setId("descendant-2");
+        descendantsBundle.addEntry().setResource(descendant1);
+        descendantsBundle.addEntry().setResource(descendant2);
+
+        Mockito.doReturn(descendantsBundle)
+                .when(mockLocationHierarchyEndpointHelper)
+                .fetchAllDescendants(any(), any(), any());
+
+        // Mock parent locations
+        Bundle parentBundle = new Bundle();
+        Location parent1 = new Location();
+        parent1.setId("location-1");
+        Location parent2 = new Location();
+        parent2.setId("location-2");
+        parentBundle.addEntry().setResource(parent1);
+        parentBundle.addEntry().setResource(parent2);
+
+        Mockito.doReturn(parentBundle)
+                .when(mockLocationHierarchyEndpointHelper)
+                .getLocationsById(locationIds);
+
+        // Mock postFetchFilters
+        List<Location> allLocations = List.of(parent1, parent2, descendant1, descendant2);
+        Mockito.doReturn(allLocations)
+                .when(mockLocationHierarchyEndpointHelper)
+                .postFetchFilters(any(), any(), anyBoolean(), any());
+
+        Bundle resultBundle =
+                mockLocationHierarchyEndpointHelper.getPaginatedLocations(
+                        request, locationIds, null);
+
+        Assert.assertNotNull(resultBundle);
+        Assert.assertTrue(resultBundle.hasEntry());
+        Assert.assertEquals(4, resultBundle.getEntry().size());
+
+        // Verify that fetchAllDescendants was called with the correct parameters
+        // Note: The actual admin levels will be the default range
+        // [0,1,2,3,4,5,6,7,8,9,10]
+        // since no specific admin levels are provided in the request
+        Mockito.verify(mockLocationHierarchyEndpointHelper)
+                .fetchAllDescendants(any(), any(), any());
+    }
+
+    @Test
+    public void testGetLocationByIdWithCacheGeneratesCorrectUrlQueryPath() {
 
         Mockito.doReturn(null)
                 .when(client)
@@ -722,7 +872,7 @@ public class LocationHierarchyEndpointHelperTest {
 
         List<String> locationIds = Arrays.asList("location-test-1", "location-test-2");
 
-        locationHierarchyEndpointHelper.getLocationById(locationIds);
+        locationHierarchyEndpointHelper.getLocationsById(locationIds);
 
         Mockito.verify(client)
                 .fetchResourceFromUrl(
@@ -841,7 +991,7 @@ public class LocationHierarchyEndpointHelperTest {
 
         Mockito.doReturn(Utils.createBundle(locations))
                 .when(mockLocationHierarchyEndpointHelper)
-                .getPaginatedLocations(Mockito.any(), Mockito.any());
+                .getPaginatedLocations(Mockito.any(), Mockito.any(), Mockito.any());
 
         mockLocationHierarchyEndpointHelper.handleIdentifierRequest(request, "test-location-id");
 
@@ -850,7 +1000,8 @@ public class LocationHierarchyEndpointHelperTest {
         Mockito.verify(mockLocationHierarchyEndpointHelper)
                 .getPaginatedLocations(
                         ArgumentMatchers.any(HttpServletRequest.class),
-                        listArgumentCaptor.capture());
+                        listArgumentCaptor.capture(),
+                        ArgumentMatchers.any());
 
         List<String> locationIds = listArgumentCaptor.getValue();
 
@@ -859,36 +1010,601 @@ public class LocationHierarchyEndpointHelperTest {
         Assert.assertEquals("test-location-id", locationIds.get(0));
     }
 
-    public static List<Location> createTestLocationList(
-            int numLocations, boolean setAdminLevel, boolean setLastUpdated) {
-        List<Location> locations = new ArrayList<>();
-        for (int i = 0; i < numLocations; i++) {
-            Location location = new Location();
-            location.setId(Integer.toString(i));
-            locations.add(location);
-            if (setAdminLevel) {
-                CodeableConcept type = new CodeableConcept();
-                Coding coding = new Coding();
-                coding.setSystem(Constants.DEFAULT_ADMIN_LEVEL_TYPE_URL);
-                coding.setCode(Integer.toString(i));
-                coding.setDisplay(String.format("Level %d", i));
-                type.addCoding(coding);
-                location.addType(type);
-            }
-            if (setLastUpdated) {
-                Meta meta = new Meta();
-                meta.setLastUpdated(Date.from(OffsetDateTime.now().toInstant()));
-                location.setMeta(meta);
-            }
-        }
-        return locations;
+    @Test
+    public void testFetchAllDescendantsUsesRelatedEntityLocationTag() {
+        IUntypedQuery<IBaseBundle> untypedQueryMock = mock(IUntypedQuery.class);
+        IQuery<IBaseBundle> queryMock = mock(IQuery.class);
+
+        Bundle secondBundleMock = new Bundle();
+        secondBundleMock.setEntry(new ArrayList<>());
+
+        Mockito.doReturn(untypedQueryMock).when(client).search();
+        Mockito.doReturn(queryMock).when(untypedQueryMock).byUrl(anyString());
+        Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
+
+        String relatedEntityTagUrl = Constants.DEFAULT_RELATED_ENTITY_TAG_URL;
+        locationHierarchyEndpointHelper.fetchAllDescendants(
+                List.of("test-location-id"), List.of("4"), relatedEntityTagUrl);
+
+        ArgumentCaptor<String> argCaptor = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(untypedQueryMock).byUrl(argCaptor.capture());
+        String result = argCaptor.getValue();
+
+        Assert.assertNotNull(result);
+        // Verify that both RELATED_ENTITY_LOCATION tag and location-lineage tag are used
+        // to match locations with either tag system
+        Assert.assertTrue(
+                "Query should contain RELATED_ENTITY_LOCATION tag",
+                result.contains(relatedEntityTagUrl));
+        Assert.assertTrue(
+                "Query should contain location-lineage tag",
+                result.contains(Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY));
+        // Verify that both tag systems are present with the location ID
+        // The format should be:
+        // _tag=RELATED_ENTITY_TAG_URL%7Ctest-location-id,SYSTEM_LOCATION_HIERARCHY%7Ctest-location-id
+        String expectedRelatedEntityTag = relatedEntityTagUrl + "%7Ctest-location-id";
+        String expectedLocationLineageTag =
+                Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY + "%7Ctest-location-id";
+        Assert.assertTrue(
+                "Query should contain RELATED_ENTITY_LOCATION tag with location ID",
+                result.contains(expectedRelatedEntityTag));
+        Assert.assertTrue(
+                "Query should contain location-lineage tag with location ID",
+                result.contains(expectedLocationLineageTag));
+        // Verify the tags are separated by comma (OR logic in FHIR)
+        int relatedEntityIndex = result.indexOf(expectedRelatedEntityTag);
+        int locationLineageIndex = result.indexOf(expectedLocationLineageTag);
+        Assert.assertTrue(
+                "Both tag systems should be present in query",
+                relatedEntityIndex > 0 && locationLineageIndex > 0);
+        // Verify the admin level filter is present
+        Assert.assertTrue(
+                "Query should contain admin level filter",
+                result.contains("type=https://smartregister.org/codes/administrative-level%7C4"));
     }
 
-    public static LocationHierarchy createLocationHierarchy(List<Location> locations) {
-        LocationHierarchy locationHierarchy = new LocationHierarchy();
-        LocationHierarchyTree locationHierarchyTree = new LocationHierarchyTree();
-        locationHierarchyTree.buildTreeFromList(locations);
-        locationHierarchy.setLocationHierarchyTree(locationHierarchyTree);
-        return locationHierarchy;
+    @Test
+    public void testFetchAllDescendantsUsesDefaultTagWhenTagUrlIsNull() {
+        IUntypedQuery<IBaseBundle> untypedQueryMock = mock(IUntypedQuery.class);
+        IQuery<IBaseBundle> queryMock = mock(IQuery.class);
+
+        Bundle secondBundleMock = new Bundle();
+        secondBundleMock.setEntry(new ArrayList<>());
+
+        Mockito.doReturn(untypedQueryMock).when(client).search();
+        Mockito.doReturn(queryMock).when(untypedQueryMock).byUrl(anyString());
+        Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
+
+        locationHierarchyEndpointHelper.fetchAllDescendants(
+                List.of("test-location-id"), List.of("4"), null);
+
+        ArgumentCaptor<String> argCaptor = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(untypedQueryMock).byUrl(argCaptor.capture());
+        String result = argCaptor.getValue();
+
+        Assert.assertNotNull(result);
+        // Verify that the default location hierarchy tag is used when tagUrl is null
+        Assert.assertTrue(result.contains(Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY));
+        Assert.assertFalse(result.contains(Constants.DEFAULT_RELATED_ENTITY_TAG_URL));
+    }
+
+    @Test
+    public void
+            testHandleNonIdentifierRequestWithSyncLocationsUsesRelatedEntityLocationTagForListMode() {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        Mockito.doReturn("list").when(request).getParameter(Constants.MODE);
+        Mockito.doReturn("loc1,loc2")
+                .when(request)
+                .getParameter(Constants.SYNC_LOCATIONS_SEARCH_PARAM);
+        Mockito.doReturn(new StringBuffer("http://test:8080/LocationHierarchy"))
+                .when(request)
+                .getRequestURL();
+
+        Map<String, String[]> parameters = new HashMap<>();
+        parameters.put(Constants.MODE, new String[] {"list"});
+        parameters.put(Constants.SYNC_LOCATIONS_SEARCH_PARAM, new String[] {"loc1,loc2"});
+        parameters.put(Constants.FILTER_MODE_LINEAGE, new String[] {"true"});
+
+        LocationHierarchyEndpointHelper mockLocationHierarchyEndpointHelper =
+                mock(LocationHierarchyEndpointHelper.class);
+        DecodedJWT mockDecodedJWT = mock(DecodedJWT.class);
+
+        // Use try-with-resources to ensure static mock is properly closed
+        try (MockedStatic<JwtUtils> mockJwtUtils = Mockito.mockStatic(JwtUtils.class)) {
+
+            List<String> userRoles = Collections.singletonList(Constants.ROLE_ALL_LOCATIONS);
+            List<String> selectedSyncLocations = List.of("loc1", "loc2");
+
+            Mockito.doReturn(parameters).when(request).getParameterMap();
+            Mockito.doCallRealMethod()
+                    .when(mockLocationHierarchyEndpointHelper)
+                    .extractSyncLocations("loc1,loc2");
+            Mockito.doCallRealMethod()
+                    .when(mockLocationHierarchyEndpointHelper)
+                    .handleNonIdentifierRequest(request, mockDecodedJWT);
+            Mockito.doReturn(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                    .when(mockLocationHierarchyEndpointHelper)
+                    .getSyncStrategyByAppId(Mockito.any());
+
+            mockJwtUtils
+                    .when(() -> JwtUtils.getUserRolesFromJWT(any(DecodedJWT.class)))
+                    .thenReturn(userRoles);
+            mockJwtUtils
+                    .when(() -> JwtUtils.getApplicationIdFromJWT(any(DecodedJWT.class)))
+                    .thenReturn("test-app-id");
+
+            Bundle mockBundle = new Bundle();
+            Mockito.doReturn(mockBundle)
+                    .when(mockLocationHierarchyEndpointHelper)
+                    .getPaginatedLocations(
+                            Mockito.any(HttpServletRequest.class),
+                            Mockito.eq(selectedSyncLocations),
+                            Mockito.anyString());
+
+            mockLocationHierarchyEndpointHelper.handleNonIdentifierRequest(request, mockDecodedJWT);
+
+            // Verify that getPaginatedLocations was called with RELATED_ENTITY_LOCATION tag URL
+            ArgumentCaptor<String> tagUrlCaptor = ArgumentCaptor.forClass(String.class);
+            Mockito.verify(mockLocationHierarchyEndpointHelper)
+                    .getPaginatedLocations(
+                            Mockito.any(HttpServletRequest.class),
+                            Mockito.eq(selectedSyncLocations),
+                            tagUrlCaptor.capture());
+
+            String capturedTagUrl = tagUrlCaptor.getValue();
+            Assert.assertNotNull(capturedTagUrl);
+            Assert.assertEquals(Constants.DEFAULT_RELATED_ENTITY_TAG_URL, capturedTagUrl);
+        }
+    }
+
+    @Test
+    public void
+            testHandleNonIdentifierRequestWithSyncLocationsUsesRelatedEntityLocationTagForNonListMode() {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        Mockito.doReturn("loc1,loc2")
+                .when(request)
+                .getParameter(Constants.SYNC_LOCATIONS_SEARCH_PARAM);
+        Mockito.doReturn(new StringBuffer("http://test:8080/LocationHierarchy"))
+                .when(request)
+                .getRequestURL();
+
+        Map<String, String[]> parameters = new HashMap<>();
+        parameters.put(Constants.SYNC_LOCATIONS_SEARCH_PARAM, new String[] {"loc1,loc2"});
+
+        LocationHierarchyEndpointHelper mockLocationHierarchyEndpointHelper =
+                mock(LocationHierarchyEndpointHelper.class);
+        DecodedJWT mockDecodedJWT = mock(DecodedJWT.class);
+
+        // Use try-with-resources to ensure static mock is properly closed
+        try (MockedStatic<JwtUtils> mockJwtUtils = Mockito.mockStatic(JwtUtils.class)) {
+
+            List<String> userRoles = Collections.singletonList(Constants.ROLE_ALL_LOCATIONS);
+            List<String> selectedSyncLocations = List.of("loc1", "loc2");
+            List<LocationHierarchy> locationHierarchies = new ArrayList<>();
+            LocationHierarchy locationHierarchy =
+                    createLocationHierarchy(createTestLocationList(2, false, false));
+            locationHierarchies.add(locationHierarchy);
+
+            Mockito.doReturn(parameters).when(request).getParameterMap();
+            Mockito.doCallRealMethod()
+                    .when(mockLocationHierarchyEndpointHelper)
+                    .extractSyncLocations("loc1,loc2");
+            Mockito.doCallRealMethod()
+                    .when(mockLocationHierarchyEndpointHelper)
+                    .handleNonIdentifierRequest(request, mockDecodedJWT);
+            Mockito.doReturn(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                    .when(mockLocationHierarchyEndpointHelper)
+                    .getSyncStrategyByAppId(Mockito.any());
+            Mockito.doReturn(locationHierarchies)
+                    .when(mockLocationHierarchyEndpointHelper)
+                    .getLocationHierarchies(
+                            Mockito.any(),
+                            Mockito.any(),
+                            Mockito.any(),
+                            Mockito.any(),
+                            Mockito.any(),
+                            Mockito.anyString());
+
+            mockJwtUtils
+                    .when(() -> JwtUtils.getUserRolesFromJWT(any(DecodedJWT.class)))
+                    .thenReturn(userRoles);
+            mockJwtUtils
+                    .when(() -> JwtUtils.getApplicationIdFromJWT(any(DecodedJWT.class)))
+                    .thenReturn("test-app-id");
+
+            mockLocationHierarchyEndpointHelper.handleNonIdentifierRequest(request, mockDecodedJWT);
+
+            // Verify that getLocationHierarchies was called with RELATED_ENTITY_LOCATION tag URL
+            ArgumentCaptor<String> tagUrlCaptor = ArgumentCaptor.forClass(String.class);
+            Mockito.verify(mockLocationHierarchyEndpointHelper)
+                    .getLocationHierarchies(
+                            Mockito.eq(selectedSyncLocations),
+                            Mockito.any(),
+                            Mockito.any(),
+                            Mockito.any(),
+                            Mockito.any(),
+                            tagUrlCaptor.capture());
+
+            String capturedTagUrl = tagUrlCaptor.getValue();
+            Assert.assertNotNull(capturedTagUrl);
+            Assert.assertEquals(Constants.DEFAULT_RELATED_ENTITY_TAG_URL, capturedTagUrl);
+        }
+    }
+
+    @Test
+    public void testStreamPaginatedLocationsUsesRelatedEntityLocationTagWithSyncLocations()
+            throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        jakarta.servlet.http.HttpServletResponse response =
+                mock(jakarta.servlet.http.HttpServletResponse.class);
+        DecodedJWT mockDecodedJWT = mock(DecodedJWT.class);
+
+        // Use try-with-resources to ensure static mock is properly closed
+        try (MockedStatic<JwtUtils> mockJwtUtils = Mockito.mockStatic(JwtUtils.class)) {
+
+            Mockito.doReturn("10").when(request).getParameter(Constants.PAGINATION_PAGE_SIZE);
+            Mockito.doReturn("1").when(request).getParameter(Constants.PAGINATION_PAGE_NUMBER);
+            Mockito.doReturn("loc1,loc2")
+                    .when(request)
+                    .getParameter(Constants.SYNC_LOCATIONS_SEARCH_PARAM);
+            Mockito.doReturn(new StringBuffer("http://test:8080/LocationHierarchy"))
+                    .when(request)
+                    .getRequestURL();
+            Mockito.doReturn("").when(request).getQueryString();
+
+            Map<String, String[]> parameters = new HashMap<>();
+            parameters.put(Constants.SYNC_LOCATIONS_SEARCH_PARAM, new String[] {"loc1,loc2"});
+            Mockito.doReturn(parameters).when(request).getParameterMap();
+
+            List<String> locationIds = List.of("loc1", "loc2");
+            List<String> userRoles = Collections.singletonList(Constants.ROLE_ALL_LOCATIONS);
+
+            LocationHierarchyEndpointHelper mockLocationHierarchyEndpointHelper =
+                    Mockito.spy(locationHierarchyEndpointHelper);
+
+            mockJwtUtils
+                    .when(() -> JwtUtils.getUserRolesFromJWT(any(DecodedJWT.class)))
+                    .thenReturn(userRoles);
+            mockJwtUtils
+                    .when(() -> JwtUtils.getApplicationIdFromJWT(any(DecodedJWT.class)))
+                    .thenReturn("test-app-id");
+
+            Mockito.doReturn(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                    .when(mockLocationHierarchyEndpointHelper)
+                    .getSyncStrategyByAppId(Mockito.any());
+
+            Bundle mockBundle = new Bundle();
+            // Add enough entries to trigger streaming (threshold is 1000)
+            List<Location> mockLocations = new ArrayList<>();
+            for (int i = 0; i < 1001; i++) {
+                Location loc = new Location();
+                loc.setId("loc-" + i);
+                mockBundle.addEntry().setResource(loc);
+                mockLocations.add(loc);
+            }
+            Mockito.doReturn(mockBundle)
+                    .when(mockLocationHierarchyEndpointHelper)
+                    .fetchAllDescendants(Mockito.any(), Mockito.any(), Mockito.anyString());
+
+            // Mock getLocationsById to return parent locations
+            Bundle parentBundle = new Bundle();
+            Location parent1 = new Location();
+            parent1.setId("loc1");
+            Location parent2 = new Location();
+            parent2.setId("loc2");
+            parentBundle.addEntry().setResource(parent1);
+            parentBundle.addEntry().setResource(parent2);
+            mockLocations.add(parent1);
+            mockLocations.add(parent2);
+            Mockito.doReturn(parentBundle)
+                    .when(mockLocationHierarchyEndpointHelper)
+                    .getLocationsById(Mockito.any());
+
+            // Mock postFetchFilters to return all locations (to trigger streaming)
+            // With 1001+ locations, streaming mode will be used
+            Mockito.doReturn(mockLocations)
+                    .when(mockLocationHierarchyEndpointHelper)
+                    .postFetchFilters(
+                            Mockito.any(), Mockito.any(), Mockito.anyBoolean(), Mockito.any());
+
+            try {
+                mockLocationHierarchyEndpointHelper.streamPaginatedLocations(
+                        request, response, locationIds, mockDecodedJWT);
+            } catch (Exception e) {
+                // Expected to fail due to mocking, but we can verify the tag URL was used
+            }
+
+            // Verify that fetchAllDescendants was called with RELATED_ENTITY_LOCATION tag URL
+            // Note: It may be called multiple times (from streamPaginatedLocations and potentially
+            // getPaginatedLocations), so we verify at least once
+            ArgumentCaptor<String> tagUrlCaptor = ArgumentCaptor.forClass(String.class);
+            Mockito.verify(mockLocationHierarchyEndpointHelper, Mockito.atLeastOnce())
+                    .fetchAllDescendants(
+                            Mockito.eq(locationIds), Mockito.any(), tagUrlCaptor.capture());
+
+            // Get the last captured tag URL (or first if only one)
+            List<String> capturedTagUrls = tagUrlCaptor.getAllValues();
+            Assert.assertFalse(
+                    "Should have captured at least one tag URL", capturedTagUrls.isEmpty());
+            String capturedTagUrl = capturedTagUrls.get(capturedTagUrls.size() - 1);
+            Assert.assertNotNull(capturedTagUrl);
+            Assert.assertEquals(Constants.DEFAULT_RELATED_ENTITY_TAG_URL, capturedTagUrl);
+        }
+    }
+
+    @Test
+    public void testFetchAllDescendantsWithEmptyLocationIds() {
+        IUntypedQuery<IBaseBundle> untypedQueryMock = mock(IUntypedQuery.class);
+        IQuery<IBaseBundle> queryMock = mock(IQuery.class);
+
+        Bundle secondBundleMock = new Bundle();
+        secondBundleMock.setEntry(new ArrayList<>());
+
+        Mockito.doReturn(untypedQueryMock).when(client).search();
+        Mockito.doReturn(queryMock).when(untypedQueryMock).byUrl(anyString());
+        Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
+
+        Bundle result =
+                locationHierarchyEndpointHelper.fetchAllDescendants(
+                        Collections.emptyList(), List.of("4"), null);
+
+        ArgumentCaptor<String> argCaptor = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(untypedQueryMock).byUrl(argCaptor.capture());
+        String queryString = argCaptor.getValue();
+
+        // Should only contain admin level filter, no tag filter
+        Assert.assertTrue(queryString.contains("type="));
+        Assert.assertFalse(queryString.contains("_tag="));
+    }
+
+    @Test
+    public void testFetchAllDescendantsWithNullTagUrlUsesLocationLineageTag() {
+        IUntypedQuery<IBaseBundle> untypedQueryMock = mock(IUntypedQuery.class);
+        IQuery<IBaseBundle> queryMock = mock(IQuery.class);
+
+        Bundle secondBundleMock = new Bundle();
+        secondBundleMock.setEntry(new ArrayList<>());
+
+        Mockito.doReturn(untypedQueryMock).when(client).search();
+        Mockito.doReturn(queryMock).when(untypedQueryMock).byUrl(anyString());
+        Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
+
+        locationHierarchyEndpointHelper.fetchAllDescendants(
+                List.of("test-location-id"), List.of("4"), null);
+
+        ArgumentCaptor<String> argCaptor = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(untypedQueryMock).byUrl(argCaptor.capture());
+        String result = argCaptor.getValue();
+
+        Assert.assertNotNull(result);
+        // Should use location-lineage tag when tagUrl is null
+        Assert.assertTrue(result.contains(Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY));
+        Assert.assertFalse(result.contains(Constants.DEFAULT_RELATED_ENTITY_TAG_URL));
+    }
+
+    @Test
+    public void testFetchLocationChunkUsesBothTagSystemsForRelatedEntityLocation() {
+        IUntypedQuery<IBaseBundle> untypedQueryMock = mock(IUntypedQuery.class);
+        IQuery<IBaseBundle> queryMock = mock(IQuery.class);
+
+        Bundle bundleMock = new Bundle();
+        bundleMock.setEntry(new ArrayList<>());
+
+        Mockito.doReturn(untypedQueryMock).when(client).search();
+        Mockito.doReturn(queryMock).when(untypedQueryMock).byUrl(anyString());
+        Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
+        Mockito.doReturn(bundleMock).when(queryMock).execute();
+
+        LocationHierarchyEndpointHelper spyHelper = Mockito.spy(locationHierarchyEndpointHelper);
+
+        // Use reflection to call private method
+        try {
+            java.lang.reflect.Method method =
+                    LocationHierarchyEndpointHelper.class.getDeclaredMethod(
+                            "fetchLocationChunk",
+                            List.class,
+                            List.class,
+                            List.class,
+                            Boolean.class,
+                            String.class,
+                            int.class,
+                            int.class,
+                            String.class);
+            method.setAccessible(true);
+            method.invoke(
+                    spyHelper,
+                    List.of("test-location-id"),
+                    List.of("4"),
+                    Collections.emptyList(),
+                    false,
+                    null,
+                    0,
+                    10,
+                    Constants.DEFAULT_RELATED_ENTITY_TAG_URL);
+
+            ArgumentCaptor<String> argCaptor = ArgumentCaptor.forClass(String.class);
+            Mockito.verify(untypedQueryMock).byUrl(argCaptor.capture());
+            String result = argCaptor.getValue();
+
+            Assert.assertNotNull(result);
+            // Should contain both tag systems
+            Assert.assertTrue(result.contains(Constants.DEFAULT_RELATED_ENTITY_TAG_URL));
+            Assert.assertTrue(result.contains(Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY));
+            // Should contain both tag parameters with location ID
+            Assert.assertTrue(
+                    result.contains(
+                            Constants.DEFAULT_RELATED_ENTITY_TAG_URL + "%7Ctest-location-id"));
+            Assert.assertTrue(
+                    result.contains(
+                            Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY + "%7Ctest-location-id"));
+        } catch (Exception e) {
+            Assert.fail("Failed to test fetchLocationChunk: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testGetLocationCountUsesBothTagSystemsForRelatedEntityLocation() {
+        IUntypedQuery<IBaseBundle> untypedQueryMock = mock(IUntypedQuery.class);
+        IQuery<IBaseBundle> queryMock = mock(IQuery.class);
+
+        Bundle bundleMock = new Bundle();
+        bundleMock.setTotal(5);
+
+        Mockito.doReturn(untypedQueryMock).when(client).search();
+        Mockito.doReturn(queryMock).when(untypedQueryMock).byUrl(anyString());
+        Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
+        Mockito.doReturn(bundleMock).when(queryMock).execute();
+
+        LocationHierarchyEndpointHelper spyHelper = Mockito.spy(locationHierarchyEndpointHelper);
+
+        // Use reflection to call private method
+        try {
+            java.lang.reflect.Method method =
+                    LocationHierarchyEndpointHelper.class.getDeclaredMethod(
+                            "getLocationCount",
+                            List.class,
+                            List.class,
+                            List.class,
+                            Boolean.class,
+                            String.class,
+                            String.class);
+            method.setAccessible(true);
+            int count =
+                    (int)
+                            method.invoke(
+                                    spyHelper,
+                                    List.of("test-location-id"),
+                                    List.of("4"),
+                                    Collections.emptyList(),
+                                    false,
+                                    null,
+                                    Constants.DEFAULT_RELATED_ENTITY_TAG_URL);
+
+            ArgumentCaptor<String> argCaptor = ArgumentCaptor.forClass(String.class);
+            Mockito.verify(untypedQueryMock).byUrl(argCaptor.capture());
+            String result = argCaptor.getValue();
+
+            Assert.assertNotNull(result);
+            // Should contain both tag systems
+            Assert.assertTrue(result.contains(Constants.DEFAULT_RELATED_ENTITY_TAG_URL));
+            Assert.assertTrue(result.contains(Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY));
+            // Should contain _count=0 for count query
+            Assert.assertTrue(result.contains("_count=0"));
+        } catch (Exception e) {
+            Assert.fail("Failed to test getLocationCount: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testFetchAllDescendantsWithMultipleLocationIds() {
+        IUntypedQuery<IBaseBundle> untypedQueryMock = mock(IUntypedQuery.class);
+        IQuery<IBaseBundle> queryMock = mock(IQuery.class);
+
+        Bundle secondBundleMock = new Bundle();
+        secondBundleMock.setEntry(new ArrayList<>());
+
+        Mockito.doReturn(untypedQueryMock).when(client).search();
+        Mockito.doReturn(queryMock).when(untypedQueryMock).byUrl(anyString());
+        Mockito.doReturn(queryMock).when(queryMock).returnBundle(Bundle.class);
+
+        List<String> locationIds = List.of("loc1", "loc2", "loc3");
+        locationHierarchyEndpointHelper.fetchAllDescendants(
+                locationIds, List.of("4"), Constants.DEFAULT_RELATED_ENTITY_TAG_URL);
+
+        ArgumentCaptor<String> argCaptor = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(untypedQueryMock).byUrl(argCaptor.capture());
+        String result = argCaptor.getValue();
+
+        Assert.assertNotNull(result);
+        // Should contain all location IDs for both tag systems
+        for (String locationId : locationIds) {
+            String relatedEntityTagPattern =
+                    Constants.DEFAULT_RELATED_ENTITY_TAG_URL + "%7C" + locationId;
+            String locationLineageTagPattern =
+                    Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY + "%7C" + locationId;
+
+            Assert.assertTrue(
+                    "Should contain RELATED_ENTITY_LOCATION tag for " + locationId,
+                    result.contains(relatedEntityTagPattern));
+            Assert.assertTrue(
+                    "Should contain location-lineage tag for " + locationId,
+                    result.contains(locationLineageTagPattern));
+        }
+    }
+
+    @Test
+    public void testBuildCommaSeparatedValuesWithEmptyList() {
+        LocationHierarchyEndpointHelper spyHelper = Mockito.spy(locationHierarchyEndpointHelper);
+
+        try {
+            java.lang.reflect.Method method =
+                    LocationHierarchyEndpointHelper.class.getDeclaredMethod(
+                            "buildCommaSeparatedValues", List.class, String.class);
+            method.setAccessible(true);
+            String result = (String) method.invoke(spyHelper, Collections.emptyList(), "prefix");
+
+            Assert.assertEquals("", result);
+        } catch (Exception e) {
+            Assert.fail("Failed to test buildCommaSeparatedValues: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testBuildCommaSeparatedValuesWithNullList() {
+        LocationHierarchyEndpointHelper spyHelper = Mockito.spy(locationHierarchyEndpointHelper);
+
+        try {
+            java.lang.reflect.Method method =
+                    LocationHierarchyEndpointHelper.class.getDeclaredMethod(
+                            "buildCommaSeparatedValues", List.class, String.class);
+            method.setAccessible(true);
+            String result = (String) method.invoke(spyHelper, null, "prefix");
+
+            Assert.assertEquals("", result);
+        } catch (Exception e) {
+            Assert.fail("Failed to test buildCommaSeparatedValues with null: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testBuildCommaSeparatedValuesWithBlankValues() {
+        LocationHierarchyEndpointHelper spyHelper = Mockito.spy(locationHierarchyEndpointHelper);
+
+        try {
+            java.lang.reflect.Method method =
+                    LocationHierarchyEndpointHelper.class.getDeclaredMethod(
+                            "buildCommaSeparatedValues", List.class, String.class);
+            method.setAccessible(true);
+            String result =
+                    (String)
+                            method.invoke(
+                                    spyHelper,
+                                    Arrays.asList("valid", "", "  ", null, "valid2"),
+                                    "prefix");
+
+            // Should only contain non-blank values
+            Assert.assertTrue(result.contains("prefix%7Cvalid"));
+            Assert.assertTrue(result.contains("prefix%7Cvalid2"));
+            // Should not contain just "prefix%7C" without a value (but can contain it as part of
+            // valid values)
+            // Check that it doesn't have a standalone "prefix%7C" followed by comma or end of
+            // string
+            Assert.assertFalse(
+                    "Result should not contain standalone prefix%7C",
+                    result.matches(".*prefix%7C[,]?.*") && !result.contains("prefix%7Cvalid"));
+            // Should not have trailing comma
+            Assert.assertFalse(result.endsWith(","));
+            // Verify the exact format: should be comma-separated values
+            String[] parts = result.split(",");
+            Assert.assertEquals("Should have exactly 2 valid values", 2, parts.length);
+            Assert.assertTrue(
+                    "First part should be prefix%7Cvalid", parts[0].equals("prefix%7Cvalid"));
+            Assert.assertTrue(
+                    "Second part should be prefix%7Cvalid2", parts[1].equals("prefix%7Cvalid2"));
+        } catch (Exception e) {
+            Assert.fail(
+                    "Failed to test buildCommaSeparatedValues with blank values: "
+                            + e.getMessage());
+        }
     }
 }

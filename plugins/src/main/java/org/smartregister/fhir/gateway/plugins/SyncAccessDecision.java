@@ -1,7 +1,7 @@
 package org.smartregister.fhir.gateway.plugins;
 
 import static ca.uhn.fhir.rest.api.Constants.PARAM_SUMMARY;
-import static org.smartregister.fhir.gateway.plugins.EnvUtil.getEnvironmentVar;
+import static org.smartregister.fhir.gateway.plugins.utils.EnvUtil.getEnvironmentVar;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -26,6 +26,8 @@ import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.smartregister.fhir.gateway.plugins.helper.PractitionerDetailsEndpointHelper;
+import org.smartregister.fhir.gateway.plugins.utils.Utils;
 import org.smartregister.helpers.LocationHelper;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -302,15 +304,16 @@ public class SyncAccessDecision implements AccessDecision {
             Bundle requestBundle = new Bundle();
             requestBundle.setType(Bundle.BundleType.BATCH);
             for (String entry : entries) {
+                // When using RELATED_ENTITY_LOCATION tag, also include location-lineage tags
+                // to match resources (e.g., Group) that have either tag system
+                String relatedEntityTag = Constants.DEFAULT_RELATED_ENTITY_TAG_URL + "%7C" + entry;
+                String locationLineageTag =
+                        Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY + "%7C" + entry;
+                // Combine both tag systems with comma (OR logic in FHIR)
+                String tagParam = relatedEntityTag + "," + locationLineageTag;
                 requestBundle.addEntry(
                         createBundleEntryComponent(
-                                Bundle.HTTPVerb.GET,
-                                requestPath
-                                        + "&_tag="
-                                        + Constants.DEFAULT_RELATED_ENTITY_TAG_URL
-                                        + "%7C"
-                                        + entry,
-                                null));
+                                Bundle.HTTPVerb.GET, requestPath + "&_tag=" + tagParam, null));
             }
 
             Bundle res = fhirR4Client.transaction().withBundle(requestBundle).execute();
@@ -538,6 +541,15 @@ public class SyncAccessDecision implements AccessDecision {
         String tagUrl = getSyncTagUrl(syncStrategy);
         if (tagUrl != null) {
             addTags(tagUrl, syncStrategyIds.get(syncStrategy), map, sb);
+            // When using RELATED_ENTITY_LOCATION tag, also include location-lineage tags
+            // to match resources (e.g., Group) that have either tag system
+            if (Constants.SyncStrategy.RELATED_ENTITY_LOCATION.equalsIgnoreCase(syncStrategy)) {
+                addTags(
+                        Constants.Meta.Tag.SYSTEM_LOCATION_HIERARCHY,
+                        syncStrategyIds.get(syncStrategy),
+                        map,
+                        sb);
+            }
         }
 
         return map;
