@@ -1220,12 +1220,91 @@ public class SyncAccessDecisionTest {
                 mutatedRequest.getDiscardQueryParams().contains(Constants.FILTER_MODE_LINEAGE));
     }
 
+    @Test
+    public void createBundleEntryComponentShouldCopyRequestDetails() {
+        Bundle.BundleEntryComponent entryComponent =
+                SyncAccessDecision.createBundleEntryComponent(
+                        Bundle.HTTPVerb.POST, "Observation/123", "W/\"etag\"");
+
+        Assert.assertNotNull(entryComponent);
+        Assert.assertNotNull(entryComponent.getRequest());
+        Assert.assertEquals(Bundle.HTTPVerb.POST, entryComponent.getRequest().getMethod());
+        Assert.assertEquals("Observation/123", entryComponent.getRequest().getUrl());
+        Assert.assertEquals("W/\"etag\"", entryComponent.getRequest().getIfMatch());
+    }
+
+    @Test
+    public void postProcessShouldExcludeClientSuppliedSyncParamsFromRelatedEntityRequests()
+            throws IOException {
+        userRoles.add(Constants.ROLE_ANDROID_CLIENT);
+        for (int i = 0; i < 25; i++) {
+            relatedEntityLocationIds.add("rel-location-" + i);
+        }
+
+        testInstance =
+                Mockito.spy(
+                        createSyncAccessDecisionTestInstance(
+                                Constants.SyncStrategy.RELATED_ENTITY_LOCATION));
+
+        IGenericClient iGenericClient = mock(IGenericClient.class);
+        ITransaction iTransaction = mock(ITransaction.class);
+        @SuppressWarnings("unchecked")
+        ITransactionTyped<Bundle> iClientExecutable = mock(ITransactionTyped.class);
+
+        FhirContext fhirR4Context = FhirContext.forR4();
+        testInstance.setFhirR4Context(fhirR4Context);
+        testInstance.setFhirR4Client(iGenericClient);
+
+        Mockito.when(iGenericClient.transaction()).thenReturn(iTransaction);
+        Mockito.when(iTransaction.withBundle(any(Bundle.class))).thenReturn(iClientExecutable);
+        Mockito.when(iGenericClient.getFhirContext()).thenReturn(fhirR4Context);
+
+        Bundle transactionResult = new Bundle();
+        transactionResult.setType(Bundle.BundleType.BATCHRESPONSE);
+        Mockito.when(iClientExecutable.execute()).thenReturn(transactionResult);
+
+        ArgumentCaptor<Bundle> bundleArgumentCaptor = ArgumentCaptor.forClass(Bundle.class);
+
+        Map<String, String[]> params = new HashMap<>();
+        params.put(Constants.SYNC_LOCATIONS_SEARCH_PARAM, new String[] {"shouldNotAppear"});
+        params.put(Constants.TAG_SEARCH_PARAM, new String[] {"preExistingTag"});
+        params.put("status", new String[] {"active"});
+
+        RequestDetailsReader requestDetailsSpy = Mockito.mock(RequestDetailsReader.class);
+        Mockito.when(requestDetailsSpy.getParameters()).thenReturn(params);
+        Mockito.when(requestDetailsSpy.getRequestPath()).thenReturn("List");
+        Mockito.when(requestDetailsSpy.getRequestType()).thenReturn(RequestTypeEnum.GET);
+        Mockito.when(requestDetailsSpy.getHeader(Constants.Header.FHIR_GATEWAY_MODE))
+                .thenReturn(null);
+
+        HttpResponse fhirResponseMock =
+                Mockito.mock(HttpResponse.class, Answers.RETURNS_DEEP_STUBS);
+        URL listUrl = Resources.getResource("test_list_resource.json");
+        String testListJson = Resources.toString(listUrl, StandardCharsets.UTF_8);
+        TestUtil.setUpFhirResponseMock(fhirResponseMock, testListJson);
+
+        testInstance.postProcess(requestDetailsSpy, fhirResponseMock);
+
+        Mockito.verify(iTransaction).withBundle(bundleArgumentCaptor.capture());
+        Bundle requestBundle = bundleArgumentCaptor.getValue();
+        Assert.assertNotNull(requestBundle);
+        Assert.assertFalse(requestBundle.getEntry().isEmpty());
+
+        for (Bundle.BundleEntryComponent entryComponent : requestBundle.getEntry()) {
+            String requestUrl = entryComponent.getRequest().getUrl();
+            Assert.assertTrue(requestUrl.contains("status=active"));
+            Assert.assertFalse(requestUrl.contains("preExistingTag"));
+            Assert.assertFalse(requestUrl.contains("shouldNotAppear"));
+        }
+    }
+
     @After
     public void cleanUp() {
         locationIds.clear();
         careTeamIds.clear();
         organisationIds.clear();
         relatedEntityLocationIds.clear();
+        userRoles.clear();
     }
 
     private SyncAccessDecision createSyncAccessDecisionTestInstance(String syncStrategy) {

@@ -8,6 +8,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,6 +53,7 @@ import ca.uhn.fhir.rest.gclient.IQuery;
 import ca.uhn.fhir.rest.gclient.IUntypedQuery;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 public class LocationHierarchyEndpointHelperTest {
 
@@ -1396,6 +1399,77 @@ public class LocationHierarchyEndpointHelperTest {
             String capturedTagUrl = capturedTagUrls.get(capturedTagUrls.size() - 1);
             Assert.assertNotNull(capturedTagUrl);
             Assert.assertEquals(Constants.DEFAULT_RELATED_ENTITY_TAG_URL, capturedTagUrl);
+        }
+    }
+
+    @Test
+    public void testStreamPaginatedLocationsUsesRelatedEntityTagForRegularPagination()
+            throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        DecodedJWT decodedJWT = mock(DecodedJWT.class);
+        List<String> locationIds = List.of("loc-1", "loc-2");
+
+        Mockito.doReturn(new StringBuffer("http://test:8080/LocationHierarchy"))
+                .when(request)
+                .getRequestURL();
+        Mockito.doReturn("").when(request).getQueryString();
+        Mockito.doReturn("loc-1,loc-2")
+                .when(request)
+                .getParameter(Constants.SYNC_LOCATIONS_SEARCH_PARAM);
+
+        Map<String, String[]> parameterMap = new HashMap<>();
+        parameterMap.put(Constants.SYNC_LOCATIONS_SEARCH_PARAM, new String[] {"loc-1,loc-2"});
+        Mockito.doReturn(parameterMap).when(request).getParameterMap();
+
+        LocationHierarchyEndpointHelper helperSpy = Mockito.spy(locationHierarchyEndpointHelper);
+
+        try (MockedStatic<JwtUtils> mockJwt = Mockito.mockStatic(JwtUtils.class);
+                MockedStatic<StreamingResponseHelper> mockStreaming =
+                        Mockito.mockStatic(StreamingResponseHelper.class)) {
+
+            mockJwt.when(() -> JwtUtils.getUserRolesFromJWT(decodedJWT))
+                    .thenReturn(List.of(Constants.ROLE_ALL_LOCATIONS));
+            mockJwt.when(() -> JwtUtils.getApplicationIdFromJWT(decodedJWT))
+                    .thenReturn("test-app-id");
+
+            Mockito.doReturn(Constants.SyncStrategy.RELATED_ENTITY_LOCATION)
+                    .when(helperSpy)
+                    .getSyncStrategyByAppId("test-app-id");
+
+            mockStreaming
+                    .when(() -> StreamingResponseHelper.shouldUseStreaming(2, 1000))
+                    .thenReturn(false);
+
+            Mockito.doReturn(new Bundle())
+                    .when(helperSpy)
+                    .fetchAllDescendants(Mockito.any(), Mockito.any(), Mockito.anyString());
+            Mockito.doReturn(new Bundle()).when(helperSpy).getLocationsById(Mockito.any());
+
+            List<Location> filteredLocations = new ArrayList<>();
+            Location filteredOne = new Location();
+            filteredOne.setId("filtered-1");
+            filteredLocations.add(filteredOne);
+            Location filteredTwo = new Location();
+            filteredTwo.setId("filtered-2");
+            filteredLocations.add(filteredTwo);
+            Mockito.doReturn(filteredLocations)
+                    .when(helperSpy)
+                    .postFetchFilters(
+                            Mockito.any(), Mockito.any(), Mockito.anyBoolean(), Mockito.any());
+
+            ArgumentCaptor<String> tagCaptor = ArgumentCaptor.forClass(String.class);
+            Mockito.doReturn(new Bundle())
+                    .when(helperSpy)
+                    .getPaginatedLocations(
+                            Mockito.eq(request), Mockito.anyList(), tagCaptor.capture());
+
+            StringWriter writer = new StringWriter();
+            Mockito.doReturn(new PrintWriter(writer)).when(response).getWriter();
+
+            helperSpy.streamPaginatedLocations(request, response, locationIds, decodedJWT);
+
+            Assert.assertEquals(Constants.DEFAULT_RELATED_ENTITY_TAG_URL, tagCaptor.getValue());
         }
     }
 
