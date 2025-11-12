@@ -440,6 +440,15 @@ public class SyncAccessDecision implements AccessDecision {
     static Bundle.BundleEntryComponent createBundleEntryComponent(
             Bundle.HTTPVerb method, String requestPath, @Nullable String condition) {
 
+        if (logger.isInfoEnabled()) {
+            String proxyBase = System.getenv(Constants.PROXY_TO_ENV);
+            logger.info(
+                    "Proxying {} request to PROXY_TO base '{}' with path '{}'",
+                    method,
+                    proxyBase,
+                    requestPath);
+        }
+
         Bundle.BundleEntryComponent bundleEntryComponent = new Bundle.BundleEntryComponent();
         bundleEntryComponent.setRequest(
                 new Bundle.BundleEntryRequestComponent()
@@ -523,8 +532,9 @@ public class SyncAccessDecision implements AccessDecision {
         }
     }
 
-    /* Generates a map of Code.url to multiple Code.Value which contains all the possible filters that
-     * will be used in syncing
+    /**
+     * Generates a map of Code.url to multiple Code.Value which contains all the possible filters
+     * that will be used in syncing
      *
      * @param syncStrategy
      * @param syncStrategyIds
