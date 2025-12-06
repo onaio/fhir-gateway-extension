@@ -2,6 +2,7 @@ package org.smartregister.fhir.gateway.plugins.endpoint;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -21,6 +22,7 @@ import org.smartregister.fhir.gateway.plugins.utils.RestUtils;
 import org.smartregister.model.practitioner.FhirPractitionerDetails;
 import org.smartregister.model.practitioner.PractitionerDetails;
 
+import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -31,7 +33,7 @@ public class PractitionerDetailEndpointTest {
     private PractitionerDetailEndpoint endpoint;
     @Mock private HttpServletRequest request;
     @Mock private HttpServletResponse response;
-    @Mock private PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
+    private PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
 
     @Before
     public void setUp() throws Exception {
@@ -44,6 +46,10 @@ public class PractitionerDetailEndpointTest {
 
         // Create endpoint with the environment variable
         endpoint = new PractitionerDetailEndpoint();
+
+        IGenericClient iGenericClient = mock(IGenericClient.class);
+        practitionerDetailsEndpointHelper =
+                spy(new PractitionerDetailsEndpointHelper(iGenericClient));
 
         // Replace the helper with our mock using reflection
         java.lang.reflect.Field field =

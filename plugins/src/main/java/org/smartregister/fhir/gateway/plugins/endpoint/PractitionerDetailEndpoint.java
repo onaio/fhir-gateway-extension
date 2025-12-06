@@ -1,16 +1,24 @@
 package org.smartregister.fhir.gateway.plugins.endpoint;
 
+import static org.smartregister.fhir.gateway.plugins.Constants.AUTHORIZATION;
 import static org.smartregister.fhir.gateway.plugins.Constants.KEYCLOAK_UUID;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 
 import org.apache.http.HttpStatus;
+import org.hl7.fhir.r4.model.Bundle;
 import org.smartregister.fhir.gateway.plugins.Constants;
+import org.smartregister.fhir.gateway.plugins.SyncAccessDecision;
 import org.smartregister.fhir.gateway.plugins.helper.PractitionerDetailsEndpointHelper;
+import org.smartregister.fhir.gateway.plugins.utils.JwtUtils;
 import org.smartregister.fhir.gateway.plugins.utils.RestUtils;
 import org.smartregister.fhir.gateway.plugins.utils.Utils;
 import org.smartregister.model.practitioner.PractitionerDetails;
+
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.interfaces.DecodedJWT;
 
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 import jakarta.servlet.annotation.WebServlet;
@@ -34,22 +42,14 @@ public class PractitionerDetailEndpoint extends BaseEndpoint {
         RestUtils.addCorsHeaders(response);
         try {
             RestUtils.checkAuthentication(request, tokenVerifier);
+            String authHeader = request.getHeader(AUTHORIZATION);
+            String token = authHeader.replace("Bearer ", "");
+            DecodedJWT jwt = JWT.decode(token);
+            List<String> roles = JwtUtils.getUserRolesFromJWT(jwt);
             String keycloakUuid = request.getParameter(KEYCLOAK_UUID);
-            PractitionerDetails practitionerDetails =
-                    practitionerDetailsEndpointHelper.getPractitionerDetailsByKeycloakId(
-                            keycloakUuid);
-            String resultContent;
-            if (org.smartregister.utils.Constants.PRACTITIONER_NOT_FOUND.equals(
-                    practitionerDetails.getId())) {
-                resultContent =
-                        fhirR4JsonParser.encodeResourceToString(
-                                Utils.createEmptyBundle(
-                                        request.getRequestURL() + "?" + request.getQueryString()));
-            } else {
-                resultContent =
-                        fhirR4JsonParser.encodeResourceToString(
-                                Utils.createBundle(Collections.singletonList(practitionerDetails)));
-            }
+
+            Bundle bundle = getPractitionerDetailsBundle(keycloakUuid, roles, request);
+            String resultContent = fhirR4JsonParser.encodeResourceToString(bundle);
 
             response.setContentType("application/json");
             writeUTF8StringToStream(response.getOutputStream(), resultContent);
@@ -63,6 +63,25 @@ public class PractitionerDetailEndpoint extends BaseEndpoint {
             response.setContentType("application/json");
             writeUTF8StringToStream(response.getOutputStream(), exception.getMessage());
             response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private Bundle getPractitionerDetailsBundle(
+            String keycloakUuid, List<String> roles, HttpServletRequest request) {
+        if (roles.contains(SyncAccessDecision.SyncAccessDecisionConstants.ROLE_SUPERVISOR)) {
+            return practitionerDetailsEndpointHelper.getSupervisorPractitionerDetailsByKeycloakId(
+                    keycloakUuid);
+        } else {
+            PractitionerDetails practitionerDetails =
+                    practitionerDetailsEndpointHelper.getPractitionerDetailsByKeycloakId(
+                            keycloakUuid);
+            if (org.smartregister.utils.Constants.PRACTITIONER_NOT_FOUND.equals(
+                    practitionerDetails.getId())) {
+                return Utils.createEmptyBundle(
+                        request.getRequestURL() + "?" + request.getQueryString());
+            } else {
+                return Utils.createBundle(Collections.singletonList(practitionerDetails));
+            }
         }
     }
 }
