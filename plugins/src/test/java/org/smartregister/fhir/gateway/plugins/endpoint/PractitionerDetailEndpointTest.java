@@ -4,10 +4,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.spy;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
+import ca.uhn.fhir.rest.client.api.IGenericClient;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -31,7 +33,7 @@ public class PractitionerDetailEndpointTest {
     private PractitionerDetailEndpoint endpoint;
     @Mock private HttpServletRequest request;
     @Mock private HttpServletResponse response;
-    @Mock private PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
+    private PractitionerDetailsEndpointHelper practitionerDetailsEndpointHelper;
 
     @Before
     public void setUp() throws Exception {
@@ -44,6 +46,9 @@ public class PractitionerDetailEndpointTest {
 
         // Create endpoint with the environment variable
         endpoint = new PractitionerDetailEndpoint();
+
+        IGenericClient iGenericClient = mock(IGenericClient.class);
+        practitionerDetailsEndpointHelper = spy(new PractitionerDetailsEndpointHelper(iGenericClient));
 
         // Replace the helper with our mock using reflection
         java.lang.reflect.Field field =
