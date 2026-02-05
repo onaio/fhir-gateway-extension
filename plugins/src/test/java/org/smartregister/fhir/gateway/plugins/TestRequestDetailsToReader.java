@@ -12,6 +12,7 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.api.RequestTypeEnum;
 import ca.uhn.fhir.rest.api.RestOperationTypeEnum;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
+import ca.uhn.fhir.rest.server.servlet.ServletRequestDetails;
 
 // Note instances of this class are expected to be one per thread and this class is not thread-safe
 // the same way the underlying `requestDetails` is not.
@@ -91,5 +92,10 @@ public class TestRequestDetailsToReader implements RequestDetailsReader {
 
     public byte[] loadRequestContents() {
         return requestDetails.loadRequestContents();
+    }
+
+    @Override
+    public String getServletRequestRemoteAddr() {
+        return ((ServletRequestDetails) requestDetails).getServletRequest().getRemoteAddr();
     }
 }

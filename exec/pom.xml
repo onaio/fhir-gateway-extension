@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.smartregister</groupId>
     <artifactId>opensrp-gateway-plugin</artifactId>
-    <version>3.0.5</version>
+    <version>3.1.0</version>
   </parent>
 
   <artifactId>exec</artifactId>
@@ -12,8 +12,7 @@
 
   <properties>
     <root.basedir>${project.parent.basedir}</root.basedir>
-    <spring-boot.version>3.3.4</spring-boot.version>
-    <fhir.opensrp.plugins>3.0.5</fhir.opensrp.plugins>
+    <fhir.opensrp.plugins>3.1.0</fhir.opensrp.plugins>
     <!-- We do not want to deploy the `exec` uber jar. -->
     <maven.deploy.skip>true</maven.deploy.skip>
   </properties>

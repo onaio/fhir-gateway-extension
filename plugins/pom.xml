@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.smartregister</groupId>
     <artifactId>opensrp-gateway-plugin</artifactId>
-    <version>3.0.5</version>
+    <version>3.1.0</version>
   </parent>
 
   <artifactId>plugins</artifactId>
@@ -14,10 +14,9 @@
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
     <project.basedir>${project.basedir}</project.basedir>
-    <hapifhir.version>7.4.3</hapifhir.version>
-    <fhir.proxy-plugin.version>0.2.0</fhir.proxy-plugin.version>
-    <sentry.version>7.15.0</sentry.version>
-    <jakarta-servlet.version>6.0.0</jakarta-servlet.version>
+    <hapifhir.version>8.0.0</hapifhir.version>
+    <sentry.version>7.22.6</sentry.version>
+    <jakarta-servlet.version>6.1.0</jakarta-servlet.version>
     <fhir.commons.utils>1.0.4-SNAPSHOT</fhir.commons.utils>
   </properties>
 
