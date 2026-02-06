@@ -2,7 +2,7 @@ package org.smartregister.fhir.gateway;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.web.servlet.ServletComponentScan;
+import org.springframework.boot.web.server.servlet.context.ServletComponentScan;
 
 /**
  * This class shows the minimum that is required to create a FHIR Gateway with all AccessChecker
