@@ -14,6 +14,11 @@ import com.google.common.base.Preconditions;
 
 public class TestUtil {
 
+    public static final String JWT_NORMAL_USER =
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJUZXN0IFVzZXIiLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiTk9STUFMX1VTRVIiXX19.";
+    public static final String JWT_SUPERVISOR_USER =
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJUZXN0IFVzZXIiLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiU1VQRVJWSVNPUiJdXX0.\n";
+
     public static void setUpFhirResponseMock(HttpResponse fhirResponseMock, String responseJson) {
         Preconditions.checkNotNull(responseJson);
         StatusLine statusLineMock = Mockito.mock(StatusLine.class);
