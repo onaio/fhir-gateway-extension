@@ -17,7 +17,7 @@
     <hapifhir.version>8.0.0</hapifhir.version>
     <sentry.version>7.22.6</sentry.version>
     <jakarta-servlet.version>6.1.0</jakarta-servlet.version>
-    <fhir.commons.utils>1.0.4-SNAPSHOT</fhir.commons.utils>
+    <fhir.commons.utils>1.0.5-SNAPSHOT</fhir.commons.utils>
   </properties>
 
   <dependencies>
