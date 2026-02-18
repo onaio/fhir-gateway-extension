@@ -15,7 +15,7 @@
     <maven.compiler.target>17</maven.compiler.target>
     <project.basedir>${project.basedir}</project.basedir>
     <hapifhir.version>8.0.0</hapifhir.version>
-    <sentry.version>7.22.6</sentry.version>
+    <sentry.version>8.32.0</sentry.version>
     <jakarta-servlet.version>6.1.0</jakarta-servlet.version>
     <fhir.commons.utils>1.0.5-SNAPSHOT</fhir.commons.utils>
   </properties>
