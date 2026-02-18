@@ -149,7 +149,9 @@ public class PractitionerDetailsEndpointHelperTest {
         ctx.registerCustomType(LocationHierarchy.class);
         IParser parser = ctx.newJsonParser();
         LocationHierarchy locationHierarchy =
-                (LocationHierarchy) parser.parseResource(locationHierarchyNoParentChildren);
+                (LocationHierarchy)
+                        parser.parseResource(
+                                LocationHierarchy.class, locationHierarchyNoParentChildren);
 
         List<LocationHierarchy> hierarchies = Collections.singletonList(locationHierarchy);
         Set<String> attributedLocationIds =

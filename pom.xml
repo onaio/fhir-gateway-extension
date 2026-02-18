@@ -6,12 +6,12 @@
     implementations do not have to do this; they can redeclare those deps. -->
     <groupId>com.google.fhir.gateway</groupId>
     <artifactId>fhir-gateway</artifactId>
-    <version>0.4.0</version>
+    <version>0.5.0</version>
   </parent>
 
   <groupId>org.smartregister</groupId>
   <artifactId>opensrp-gateway-plugin</artifactId>
-  <version>3.0.5</version>
+  <version>3.1.0</version>
   <packaging>pom</packaging>
 
   <modules>
@@ -20,10 +20,10 @@
   </modules>
 
   <properties>
-    <spotless.version>2.43.0</spotless.version>
-    <fhir.gateway.version>0.4.0</fhir.gateway.version>
-    <spring-boot.version>3.3.4</spring-boot.version>
-    <micrometer.version>1.13.7-SNAPSHOT</micrometer.version>
+    <spotless.version>3.2.1</spotless.version>
+    <fhir.gateway.version>0.5.0</fhir.gateway.version>
+    <spring-boot.version>4.0.2</spring-boot.version>
+    <micrometer.version>1.16.2</micrometer.version>
   </properties>
 
   <dependencies>
