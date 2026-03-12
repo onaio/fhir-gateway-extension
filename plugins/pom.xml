@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.smartregister</groupId>
     <artifactId>opensrp-gateway-plugin</artifactId>
-    <version>3.1.0</version>
+    <version>3.1.1</version>
   </parent>
 
   <artifactId>plugins</artifactId>
@@ -15,7 +15,7 @@
     <maven.compiler.target>17</maven.compiler.target>
     <project.basedir>${project.basedir}</project.basedir>
     <hapifhir.version>8.0.0</hapifhir.version>
-    <sentry.version>8.32.0</sentry.version>
+    <sentry.version>8.34.1</sentry.version>
     <jakarta-servlet.version>6.1.0</jakarta-servlet.version>
     <fhir.commons.utils>1.0.5-SNAPSHOT</fhir.commons.utils>
   </properties>
@@ -55,7 +55,7 @@
     </dependency>
     <dependency>
       <groupId>io.sentry</groupId>
-      <artifactId>sentry-spring-boot-starter-jakarta</artifactId>
+      <artifactId>sentry-spring-boot-4</artifactId>
       <version>${sentry.version}</version>
     </dependency>
   </dependencies>
