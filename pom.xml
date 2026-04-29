@@ -11,7 +11,7 @@
 
   <groupId>org.smartregister</groupId>
   <artifactId>opensrp-gateway-plugin</artifactId>
-  <version>3.1.1</version>
+  <version>3.2.0</version>
   <packaging>pom</packaging>
 
   <modules>
@@ -22,7 +22,7 @@
   <properties>
     <spotless.version>3.2.1</spotless.version>
     <fhir.gateway.version>0.5.0</fhir.gateway.version>
-    <spring-boot.version>4.0.2</spring-boot.version>
+    <spring-boot.version>3.5.14</spring-boot.version>
     <micrometer.version>1.16.2</micrometer.version>
   </properties>
 
