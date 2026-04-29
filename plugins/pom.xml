@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.smartregister</groupId>
     <artifactId>opensrp-gateway-plugin</artifactId>
-    <version>3.2.0</version>
+    <version>3.2.0-diagnostics</version>
   </parent>
 
   <artifactId>plugins</artifactId>
@@ -22,12 +22,12 @@
 
   <dependencies>
     <dependency>
-      <groupId>com.google.fhir.gateway</groupId>
+      <groupId>org.smartregister</groupId>
       <artifactId>server</artifactId>
       <version>${fhir.gateway.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.google.fhir.gateway</groupId>
+      <groupId>org.smartregister</groupId>
       <artifactId>plugins</artifactId>
       <version>${fhir.gateway.version}</version>
     </dependency>
